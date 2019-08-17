@@ -49,9 +49,9 @@ The core part of FMD depends on
 - MPI (e.g. OpenMPI or MPICH)
 - GNU Scientific Library
 
-To install the core on GNU/Linux or hopefully any other Unix-like
-environment, open a terminal and change the current directory to "src".
-Then simply enter the following command:
+To install the core on Linux or hopefully any other Unix-like environment,
+open a terminal and change the current directory to "src". Then simply
+enter the following command:
 
 $ make install
 
