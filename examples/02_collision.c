@@ -1,3 +1,18 @@
+/*
+   02_collision.c - an example showing how to use FMD in practice
+
+   Written in 2019 by the FMD authors
+
+   To the extent possible under law, the author(s) have dedicated all
+   copyright and related and neighboring rights to the current file to
+   the public domain worldwide. This file is distributed without
+   any warranty.
+
+   You should have received a copy of the CC0 Public Domain Dedication
+   along with this file. If not,
+   see <http://creativecommons.org/publicdomain/zero/1.0/>.
+*/
+
 /* Assuming that FMD is already installed, this example can be compiled by
 
    $ gcc 02_collision.c -lfmd -lm -O3 -o 02_collision.x

@@ -1,11 +1,25 @@
-"""PyFMD example
+"""
+   02_collision.py - an example showing how to use PyFMD in practice
 
-This example simulates collision between two nanocrystals (Ar & Cu) in NVE ensemble.
-Before running it, make sure that PyFMD and the core part of FMD are both installed.
+   Written in 2019 by the FMD authors
 
-How to run:
+   To the extent possible under law, the author(s) have dedicated all
+   copyright and related and neighboring rights to the current file to
+   the public domain worldwide. This file is distributed without
+   any warranty.
 
-    $ mpirun -n 2 python 02_collision.py
+   You should have received a copy of the CC0 Public Domain Dedication
+   along with this file. If not,
+   see <http://creativecommons.org/publicdomain/zero/1.0/>.
+"""
+
+"""
+   This example simulates collision between two nanocrystals (Ar & Cu) in NVE ensemble.
+   Before running it, make sure that PyFMD and the core part of FMD are both installed.
+
+   How to run:
+
+       $ mpirun -n 2 python 02_collision.py
 """
 
 import sys
