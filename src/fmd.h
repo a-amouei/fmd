@@ -102,6 +102,7 @@ void fmd_dync_incTime(fmd_t *md);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
 void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, int useThermostat);
 int fmd_dync_velocityVerlet_takeLastStep(fmd_t *md);
-void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration, double strength);
+void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration,
+  double timestep, double strength, double temperature);
 
 #endif /* FMD_H */

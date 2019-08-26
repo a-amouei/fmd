@@ -1351,12 +1351,27 @@ void fmd_dync_incTime(fmd_t *md)
     if (md->eventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
 }
 
-void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration, double strength)
+void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration,
+  double timestep, double strength, double temperature)
 {
+    double bak_mdTime, bak_desiredTemperature;
+    double bak_delta_t, bak_BerendsenThermostatParam;
+    int bak_activeGroup;
+
+    // make backups
+    bak_mdTime = md->mdTime;
+    bak_delta_t = md->delta_t;
+    bak_BerendsenThermostatParam = md->BerendsenThermostatParam;
+    bak_desiredTemperature = md->desiredTemperature;
+    bak_activeGroup = md->activeGroup;
+
+    // initialize
     md->mdTime = 0.0;
-    md->globalTemperature = md->desiredTemperature;
-    fmd_dync_setBerendsenThermostatParameter(md, strength);
-    fmd_matt_setActiveGroup(md, groupID);
+    md->delta_t = timestep;
+    md->desiredTemperature = temperature;
+    md->globalTemperature = temperature;
+    md->BerendsenThermostatParam = strength;
+    md->activeGroup = groupID;
 
     // compute forces for the first time
     fmd_dync_updateForces(md);
@@ -1376,7 +1391,13 @@ void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration, double streng
         if (md->eventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
     }
     // end of the time loop
-    md->mdTime = 0.0;
+
+    // restore backups
+    md->mdTime = bak_mdTime;
+    md->delta_t = bak_delta_t;
+    md->desiredTemperature = bak_desiredTemperature;
+    md->BerendsenThermostatParam = bak_BerendsenThermostatParam;
+    md->activeGroup = bak_activeGroup;
 }
 
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
