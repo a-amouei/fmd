@@ -23,5 +23,6 @@
 #include "config.h"
 
 typedef char *fmd_string_t;
+typedef int fmd_bool_t;
 
 #endif /* TYPES_H */

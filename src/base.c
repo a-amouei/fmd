@@ -190,7 +190,7 @@ void compLocOrdParam(fmd_t *md)
 */
 }
 
-void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, int useThermostat)
+void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat)
 {
     int ic[3];
     int d;
@@ -713,7 +713,7 @@ void insertInList(TParticleListItem **root_pp, TParticleListItem *item_p)
     *root_pp = item_p;
 }
 
-void fmd_io_loadState(fmd_t *md, fmd_string_t file, int useTime)
+void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
 {
     TParticleListItem *item_p;
     FILE *fp;
@@ -911,7 +911,7 @@ void fmd_matt_saveConfiguration(fmd_t *md)
     ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
         for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
         {
-            if (md->iCompLocOrdParam)
+            if (md->CompLocOrdParam)
             {
                 localData[k].x[0] = (float)item_p->P.x_avgd[0];
                 localData[k].x[1] = (float)item_p->P.x_avgd[1];
@@ -1127,7 +1127,7 @@ void fmd_matt_setDesiredTemperature(fmd_t *md, double desiredTemperature)
     md->desiredTemperature = desiredTemperature;
 }
 
-void fmd_box_setPBC(fmd_t *md, int PBCx, int PBCy, int PBCz)
+void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz)
 {
     md->PBC[0] = PBCx;
     md->PBC[1] = PBCy;
@@ -1167,7 +1167,7 @@ fmd_t *fmd_create()
     md->useAutoStep = 0;
     md->mdTime = 0.0;
     md->saveDirectory[0] = '\0';
-    md->iCompLocOrdParam = 0;
+    md->CompLocOrdParam = 0;
     md->subDomain.grid = NULL;
     md->totalNoOfParticles = 0;
     md->activeGroup = -1;             // all groups are active by default
@@ -1209,12 +1209,12 @@ double fmd_proc_getWallTime(fmd_t *md)
     return (MPI_Wtime() - md->wallTimeOrigin);
 }
 
-int fmd_proc_isMD(fmd_t *md)
+fmd_bool_t fmd_proc_isMD(fmd_t *md)
 {
     return md->isMDprocess;
 }
 
-int fmd_proc_isRoot(fmd_t *md)
+fmd_bool_t fmd_proc_isRoot(fmd_t *md)
 {
     return md->isRootProcess;
 }
@@ -1474,7 +1474,7 @@ void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter)
     md->BerendsenThermostatParam = parameter;
 }
 
-void fmd_free(fmd_t *md, int finalizeMPI)
+void fmd_free(fmd_t *md, fmd_bool_t finalizeMPI)
 {
     fmd_subd_free(md);
     fmd_potsys_free(md);

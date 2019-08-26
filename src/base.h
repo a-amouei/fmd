@@ -175,16 +175,16 @@ struct fmd_t
     fmd_EventHandler_t eventHandler;
     unsigned timers_num;
     fmd_timer_t *timers;
-    int globalGridExists;
-    int boxSizeDetermined;
-    int PBCdetermined;
+    fmd_bool_t globalGridExists;
+    fmd_bool_t boxSizeDetermined;
+    fmd_bool_t PBCdetermined;
     double cutoffRadius;
     double mdTime;
     double delta_t;
-    int totalNoOfParticles;
+    unsigned totalNoOfParticles;
     double globalTemperature;
-    int isMDprocess;
-    int isRootProcess;
+    fmd_bool_t isMDprocess;
+    fmd_bool_t isRootProcess;
     int LOPiteration;               // must be initialized with zero
     MPI_Comm MD_comm;
     double totalKineticEnergy;
@@ -195,15 +195,14 @@ struct fmd_t
     double desiredTemperature;
     int PBC[3];
     int ns[3];                      // number of subdomains = ns[0] x ns[1] x ns[2]
-    int threadsNumPerSubdomain;
     double l[3];                    // size of the simulation box
     int nc[3];                      // number of grid cells in the simulation box
     double cellh[3];                // size of one single grid cell
-    int useAutoStep;
+    fmd_bool_t useAutoStep;
     double autoStepSensitivity;
     char saveDirectory[MAX_PATH_LENGTH];
     double BerendsenThermostatParam;
-    int iCompLocOrdParam;           // compute local order parameter?
+    fmd_bool_t CompLocOrdParam;           // compute local order parameter?
     int locOrdParamPeriod;
     fmd_SaveConfigMode_t saveConfigMode;
     FILE *configFilep;
@@ -211,7 +210,7 @@ struct fmd_t
     int activeGroup;
     int activeGroupParticlesNum;
     double totalMomentum[3];
-    int particlesDistributed;
+    fmd_bool_t particlesDistributed;
     int _oldNumberOfParticles;
     int _fileIndex;
     double _oldTotalMDEnergy;

@@ -20,7 +20,7 @@
 #ifndef FMD_H
 #define FMD_H
 
-// types
+// typedefs
 
 typedef struct fmd_t fmd_t;
 
@@ -35,6 +35,7 @@ typedef enum
 } fmd_SaveConfigMode_t;
 
 typedef char *fmd_string_t;
+typedef int fmd_bool_t;
 
 typedef enum
 {
@@ -58,7 +59,7 @@ double fmd_matt_getGlobalTemperature(fmd_t *md);
 void fmd_matt_distribute(fmd_t *md);
 void fmd_matt_giveTemperature(fmd_t *md, int groupID);
 
-void fmd_box_setPBC(fmd_t *md, int PBCx, int PBCy, int PBCz);
+void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
 void fmd_box_setSize(fmd_t *md, double sx, double sy, double sz);
 void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz);
 void fmd_box_createGrid(fmd_t *md, double cutoff);
@@ -66,7 +67,7 @@ void fmd_box_createGrid(fmd_t *md, double cutoff);
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...);
-void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, int useTime);
+void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, fmd_bool_t useTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 
 fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath);
@@ -86,11 +87,11 @@ void fmd_subd_free(fmd_t *md);
 unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double stop);
 
 double fmd_proc_getWallTime(fmd_t *md);
-int fmd_proc_isMD(fmd_t *md);
-int fmd_proc_isRoot(fmd_t *md);
+fmd_bool_t fmd_proc_isMD(fmd_t *md);
+fmd_bool_t fmd_proc_isRoot(fmd_t *md);
 
 fmd_t *fmd_create();
-void fmd_free(fmd_t *md, int finalizeMPI);
+void fmd_free(fmd_t *md, fmd_bool_t finalizeMPI);
 void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
 
 double fmd_dync_getTimeStep(fmd_t *md);
@@ -100,7 +101,7 @@ void fmd_dync_updateForces(fmd_t *md);
 void fmd_dync_updateForcesLJ(fmd_t *md);
 void fmd_dync_incTime(fmd_t *md);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
-void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, int useThermostat);
+void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat);
 int fmd_dync_velocityVerlet_takeLastStep(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration,
   double timestep, double strength, double temperature);

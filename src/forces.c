@@ -215,7 +215,7 @@ void fmd_dync_updateForces(fmd_t *md)
                 break;
 
             case POTKIND_EAM_ALLOY:
-                if (md->iCompLocOrdParam) compLocOrdParam(md);
+                if (md->CompLocOrdParam) compLocOrdParam(md);
                 double FembSum;
                 fmd_computeEAM_pass1(md, &FembSum);
                 fmd_ghostparticles_update_Femb(md);
