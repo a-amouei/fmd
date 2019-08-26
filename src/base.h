@@ -211,6 +211,7 @@ struct fmd_t
     int activeGroupParticlesNum;
     double totalMomentum[3];
     fmd_bool_t particlesDistributed;
+    fmd_bool_t MPI_initialized_by_me;
     int _oldNumberOfParticles;
     int _fileIndex;
     double _oldTotalMDEnergy;

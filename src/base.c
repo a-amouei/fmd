@@ -1155,9 +1155,14 @@ fmd_t *fmd_create()
 {
     fmd_t *md = (fmd_t *)malloc(sizeof(fmd_t));
 
+    md->MPI_initialized_by_me = 0;
     int isMPIInitialized;
     MPI_Initialized(&isMPIInitialized);
-    if (!isMPIInitialized) MPI_Init(NULL, NULL);
+    if (!isMPIInitialized)
+    {
+        MPI_Init(NULL, NULL);
+        md->MPI_initialized_by_me = 1;
+    }
 
     omp_set_num_threads(1);
 
@@ -1474,12 +1479,12 @@ void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter)
     md->BerendsenThermostatParam = parameter;
 }
 
-void fmd_free(fmd_t *md, fmd_bool_t finalizeMPI)
+void fmd_free(fmd_t *md)
 {
     fmd_subd_free(md);
     fmd_potsys_free(md);
     free(md);
-    if (finalizeMPI)
+    if (md->MPI_initialized_by_me)
     {
         int isMPIFinalized;
         MPI_Finalized(&isMPIFinalized);

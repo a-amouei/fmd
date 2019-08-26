@@ -91,7 +91,7 @@ fmd_bool_t fmd_proc_isMD(fmd_t *md);
 fmd_bool_t fmd_proc_isRoot(fmd_t *md);
 
 fmd_t *fmd_create();
-void fmd_free(fmd_t *md, fmd_bool_t finalizeMPI);
+void fmd_free(fmd_t *md);
 void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
 
 double fmd_dync_getTimeStep(fmd_t *md);
