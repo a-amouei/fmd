@@ -20,7 +20,7 @@
 #include "timer.h"
 #include "base.h"
 
-unsigned fmd_timer_newSimple(fmd_t *md, double start, double interval, double stop)
+unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double stop)
 {
     int i = md->timers_num;
 

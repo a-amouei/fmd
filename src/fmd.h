@@ -83,7 +83,7 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
 void fmd_subd_init(fmd_t *md);
 void fmd_subd_free(fmd_t *md);
 
-unsigned fmd_timer_newSimple(fmd_t *md, double start, double interval, double stop);
+unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double stop);
 
 double fmd_proc_getWallTime(fmd_t *md);
 int fmd_proc_isMD(fmd_t *md);
