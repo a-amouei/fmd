@@ -1179,6 +1179,7 @@ fmd_t *fmd_create()
     md->eventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
+    md->desiredTemperature = 300.0;
     md->_oldNumberOfParticles = -1;
     md->_fileIndex = 0;
     md->_oldTotalMDEnergy = 0.0;
