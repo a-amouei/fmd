@@ -31,7 +31,7 @@ void fmd_pot_setCutoffRadius(fmd_t *md, double cutoff)
     md->cutoffRadius = cutoff;
 }
 
-void fmd_pot_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[])
+void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[])
 {
     // TO-DO: error should be handled here
     assert(number > 0);

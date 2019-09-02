@@ -58,6 +58,7 @@ double fmd_matt_getTotalEnergy(fmd_t *md);
 double fmd_matt_getGlobalTemperature(fmd_t *md);
 void fmd_matt_distribute(fmd_t *md);
 void fmd_matt_giveTemperature(fmd_t *md, int groupID);
+void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[]);
 
 void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
 void fmd_box_setSize(fmd_t *md, double sx, double sy, double sz);
@@ -74,7 +75,6 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath);
 double fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
 double fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
 void fmd_pot_setCutoffRadius(fmd_t *md, double cutoff);
-void fmd_pot_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[]);
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
   double sigma, double epsilon, double cutoff);
 fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
