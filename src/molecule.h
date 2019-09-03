@@ -22,6 +22,23 @@
 
 #include "types.h"
 
+typedef enum
+{
+    FMD_BOND_HARMONIC
+} fmd_bondkind_t;
+
+typedef struct
+{
+    fmd_bondkind_t kind;
+} bond_t;
+
+typedef struct
+{
+    fmd_bondkind_t kind;
+    double k;
+    double r0;
+} bond_harmonic_t;
+
 typedef struct
 {
     unsigned atomkind;
@@ -35,7 +52,7 @@ typedef struct
     unsigned atoms_num;
     fmd_string_t name;
     unsigned **distances;
-    molatom_t *configuration;
+    molatom_t *atoms;
 } molkind_t;
 
 #endif /* MOLECULE_H */
