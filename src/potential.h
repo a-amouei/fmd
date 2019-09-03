@@ -54,6 +54,7 @@ typedef struct
 } atomkind_t;
 
 typedef struct list_t list_t;
+typedef struct bond_t bond_t;
 
 typedef struct
 {
@@ -63,6 +64,7 @@ typedef struct
     list_t *potkinds;           // list of pot kinds that are present in pottable
     unsigned potkinds_num;
     list_t *potlist;            // list of all pots, whether applied or not
+    bond_t *bonds;              // array of bonds that are defined
     int hybridpasses[2];
 } potsys_t;
 

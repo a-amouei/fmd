@@ -80,6 +80,12 @@ void fmd_potsys_free(fmd_t *md)
         md->potsys.atomkinds = NULL;
     }
 
+    if (md->potsys.bonds != NULL)
+    {
+        free(md->potsys.bonds);
+        md->potsys.bonds = NULL;
+    }
+
     if (md->potsys.pottable != NULL)
     {
         fmd_array_neat2d_free((void **)md->potsys.pottable);
@@ -105,6 +111,7 @@ void fmd_potsys_init(fmd_t *md)
     md->potsys.potlist = NULL;
     md->potsys.pottable = NULL;
     md->potsys.potkinds = NULL;
+    md->potsys.bonds = NULL;
 }
 
 static void pottable_create(fmd_t *md)
