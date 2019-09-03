@@ -71,6 +71,13 @@ static void potlist_free(fmd_t *md)
     fmd_list_free(md->potsys.potlist);
 }
 
+static void bondkinds_free(fmd_t *md)
+{
+    for (unsigned i=0; i < md->potsys.bondkinds_num; i++)
+        free(md->potsys.bondkinds[i]);
+    free(md->potsys.bondkinds);
+    md->potsys.bondkinds_num = 0;
+}
 
 void fmd_potsys_free(fmd_t *md)
 {
@@ -80,10 +87,10 @@ void fmd_potsys_free(fmd_t *md)
         md->potsys.atomkinds = NULL;
     }
 
-    if (md->potsys.bonds != NULL)
+    if (md->potsys.bondkinds != NULL)
     {
-        free(md->potsys.bonds);
-        md->potsys.bonds = NULL;
+        bondkinds_free(md);
+        md->potsys.bondkinds = NULL;
     }
 
     if (md->potsys.pottable != NULL)
@@ -111,7 +118,8 @@ void fmd_potsys_init(fmd_t *md)
     md->potsys.potlist = NULL;
     md->potsys.pottable = NULL;
     md->potsys.potkinds = NULL;
-    md->potsys.bonds = NULL;
+    md->potsys.bondkinds = NULL;
+    md->potsys.bondkinds_num = 0;
 }
 
 static void pottable_create(fmd_t *md)

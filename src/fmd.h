@@ -34,6 +34,11 @@ typedef enum
     FMD_SCM_VTF
 } fmd_SaveConfigMode_t;
 
+typedef enum
+{
+    FMD_BOND_HARMONIC
+} fmd_bond_t;
+
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 
@@ -45,6 +50,8 @@ typedef enum
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
 
 // functions
+
+unsigned fmd_bond_define(fmd_t *md, fmd_bond_t cat, double coeffs[]);
 
 void fmd_matt_addVelocity(fmd_t *md, int groupID, double vx, double vy, double vz);
 void fmd_matt_setActiveGroup(fmd_t *md, int groupID);

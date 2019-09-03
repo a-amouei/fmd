@@ -54,17 +54,19 @@ typedef struct
 } atomkind_t;
 
 typedef struct list_t list_t;
-typedef struct bond_t bond_t;
+typedef struct bondkind_t bondkind_t;
+typedef bondkind_t *bondkindp_t;
 
 typedef struct
 {
     unsigned atomkinds_num;
     atomkind_t *atomkinds;
-    potpair_t **pottable;       // table of applied pots
-    list_t *potkinds;           // list of pot kinds that are present in pottable
+    potpair_t **pottable;           // table of applied pots
+    list_t *potkinds;               // list of pot kinds that are present in pottable
     unsigned potkinds_num;
-    list_t *potlist;            // list of all pots, whether applied or not
-    bond_t *bonds;              // array of bonds that are defined
+    list_t *potlist;                // list of all pots, whether applied or not
+    bondkindp_t *bondkinds;         // array of pointers to bondkinds that are defined
+    unsigned bondkinds_num;         // size of 'bondkinds' array
     fmd_bool_t hybridpasses[2];
 } potsys_t;
 

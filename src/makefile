@@ -44,6 +44,7 @@ forces.o: forces.c forces.h config.h eam.h types.h cspline.h lj.h morse.h \
 list.o: list.c list.h config.h
 lj.o: lj.c lj.h config.h potential.h types.h base.h list.h forces.h
 md_ghost.o: md_ghost.c base.h config.h potential.h types.h md_ghost.h
+molecule.o: molecule.c molecule.h config.h types.h potential.h base.h
 morse.o: morse.c morse.h config.h base.h potential.h types.h forces.h \
  list.h
 potential.o: potential.c potential.h config.h types.h base.h array.h \

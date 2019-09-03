@@ -20,24 +20,27 @@
 #ifndef MOLECULE_H
 #define MOLECULE_H
 
+#include "config.h"
 #include "types.h"
 
 typedef enum
 {
     FMD_BOND_HARMONIC
-} fmd_bondkind_t;
+} fmd_bond_t;   // category of a bond
+
+typedef struct bondkind_t
+{
+    fmd_bond_t cat;
+} bondkind_t;
+
+typedef bondkind_t *bondkindp_t;
 
 typedef struct
 {
-    fmd_bondkind_t kind;
-} bond_t;
-
-typedef struct
-{
-    fmd_bondkind_t kind;
+    fmd_bond_t cat;
     double k;
     double r0;
-} bond_harmonic_t;
+} bondkind_harmonic_t;
 
 typedef struct
 {

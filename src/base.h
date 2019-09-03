@@ -70,10 +70,8 @@
 
 #define ROOTPROCESS(numprocs)       ((numprocs) - 1)
 #define K_BOLTZMANN                 8.6173303e-5       // (eV / Kelvin)
-#define VACUUM_PERMITTIVITY         1.4185972718e-16   // (amp^2 ps^4 / mass_unit ang^3)
 #define LIGHT_SPEED                 2.9979245800e+06   // (ang / ps)
 #define METER_PER_SECOND            1e-2               // (ang / ps)
-#define PER_OHM_METER               1.6021766208e-17   // (ps^3 amp^2 / mass_unit ang^3)
 #define JOULE_PER_METER2            6.2415091259e-02   // (eV / ang^2)
 #define JOULE_PER_METER3_KELVIN2    6.2415091259e-12   // (eV / ang^3 Kelvin^2)
 #define JOULE_PER_METER3_KELVIN     6.2415091259e-12   // (eV / ang^3 Kelvin)
@@ -86,6 +84,7 @@
 #define E_MASS                      5.6856300621e-08   // electron mass in MD mass unit
 #define HBAR                        6.5821195136e-04   // Planck constant devided by 2*pi in MD units (eV ps)
 #define GRAM_PER_CM3                6.2415091259e-05   // x (mass_unit / ang^3)
+#define NEWTON_PER_METER            6.2415091259e-02   // x (eV / ang^2)
 #define MAX_PATH_LENGTH             256
 
 // error codes
