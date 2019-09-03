@@ -65,7 +65,7 @@ typedef struct
     unsigned potkinds_num;
     list_t *potlist;            // list of all pots, whether applied or not
     bond_t *bonds;              // array of bonds that are defined
-    int hybridpasses[2];
+    fmd_bool_t hybridpasses[2];
 } potsys_t;
 
 typedef struct fmd_t fmd_t;
