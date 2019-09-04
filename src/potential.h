@@ -25,21 +25,21 @@
 
 typedef enum
 {
-    POTKIND_NONE,
-    POTKIND_LJ_6_12,
-    POTKIND_EAM_ALLOY,
-    POTKIND_MORSE
-} potkind_t;
+    POT_NONE,
+    POT_LJ_6_12,
+    POT_EAM_ALLOY,
+    POT_MORSE
+} potcat_t;
 
 typedef struct
 {
-    potkind_t kind;
+    potcat_t cat;
     void *data;
 } fmd_pot_t;
 
 typedef struct
 {
-    potkind_t kind;
+    potcat_t cat;
     void *data;
     unsigned iloc, jloc;    // local indexes inside the potential, used in potentials like EAM
 } potpair_t;
@@ -53,24 +53,27 @@ typedef struct
     eam_element_t *eam_element;
 } atomkind_t;
 
-typedef struct list_t list_t;
-typedef struct bondkind_t bondkind_t;
+typedef struct _list list_t;
+typedef struct _bondkind bondkind_t;
 typedef bondkind_t *bondkindp_t;
+typedef struct _molkind molkind_t;
 
 typedef struct
 {
     unsigned atomkinds_num;
     atomkind_t *atomkinds;
     potpair_t **pottable;           // table of applied pots
-    list_t *potkinds;               // list of pot kinds that are present in pottable
-    unsigned potkinds_num;
+    list_t *potcats;                // list of pot kinds that are present in pottable
+    unsigned potcats_num;
     list_t *potlist;                // list of all pots, whether applied or not
     bondkindp_t *bondkinds;         // array of pointers to bondkinds that are defined
     unsigned bondkinds_num;         // size of 'bondkinds' array
+    molkind_t *molkinds;
+    unsigned  molkinds_num;
     fmd_bool_t hybridpasses[2];
 } potsys_t;
 
-typedef struct fmd_t fmd_t;
+typedef struct _fmd fmd_t;
 
 void fmd_potsys_free(fmd_t *md);
 void fmd_potsys_init(fmd_t *md);

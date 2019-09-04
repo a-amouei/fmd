@@ -115,7 +115,7 @@ fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
     lj->cutoff_sqr = SQR(cutoff);
 
     fmd_pot_t *pot = (fmd_pot_t *)malloc(sizeof(fmd_pot_t));
-    pot->kind = POTKIND_LJ_6_12;
+    pot->cat = POT_LJ_6_12;
     pot->data = lj;
 
     // add the pot to potlist

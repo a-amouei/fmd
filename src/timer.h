@@ -24,19 +24,19 @@
 
 typedef enum
 {
-    TIMERKIND_SIMPLE
-} timerkind_t;
+    TIMER_SIMPLE
+} timercat_t;
 
-typedef struct fmd_timer_t
+typedef struct _fmd_timer
 {
-    timerkind_t kind;
+    timercat_t cat;
     int enabled;
     double start;
     double stop;
     double interval;
 } fmd_timer_t;
 
-typedef struct fmd_t fmd_t;
+typedef struct _fmd fmd_t;
 
 void fmd_timer_sendTimerTickEvents(fmd_t *md);
 

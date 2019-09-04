@@ -358,7 +358,7 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath)
     eam_t *eam = load_DYNAMOsetfl(md, filePath);
 
     fmd_pot_t *pot = (fmd_pot_t *)malloc(sizeof(fmd_pot_t));
-    pot->kind = POTKIND_EAM_ALLOY;
+    pot->cat = POT_EAM_ALLOY;
     pot->data = eam;
 
     md->potsys.potlist = fmd_list_prepend(md->potsys.potlist, pot);
@@ -369,7 +369,7 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath)
 double fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot)
 {
     // TO-DO: handle error
-    assert(pot->kind == POTKIND_EAM_ALLOY);
+    assert(pot->cat == POT_EAM_ALLOY);
 
     return sqrt(((eam_t *)pot->data)->cutoff_sqr);
 }
@@ -400,7 +400,7 @@ void fmd_pot_eam_free(eam_t *eam)
 double fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element)
 {
     // TO-DO: handle error
-    assert(pot->kind == POTKIND_EAM_ALLOY);
+    assert(pot->cat == POT_EAM_ALLOY);
 
     eam_t *eam = (eam_t *)(pot->data);
     for (unsigned i=0; i < eam->elementsNo; i++)

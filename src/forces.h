@@ -40,7 +40,7 @@
     }                                                                        \
     r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
 
-typedef struct fmd_t fmd_t;
+typedef struct _fmd fmd_t;
 
 void fmd_dync_updateForces(fmd_t *md);
 

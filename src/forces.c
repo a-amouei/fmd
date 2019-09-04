@@ -79,7 +79,7 @@ static void compute_hybrid_pass1(fmd_t *md, double *FembSum_p)
                             if (item1_p != item2_p)
                             {
                                 atomkind2 = item2_p->P.elementID;
-                                if (pottable[atomkind1][atomkind2].kind == POTKIND_EAM_ALLOY)
+                                if (pottable[atomkind1][atomkind2].cat == POT_EAM_ALLOY)
                                     EAM_PAIR_UPDATE_rho_host;
                             }
                         }
@@ -167,17 +167,17 @@ static void compute_hybrid_pass0(fmd_t *md, double FembSum)
                             {
                                 atomkind2 = item2_p->P.elementID;
 
-                                switch (pottable[atomkind1][atomkind2].kind)
+                                switch (pottable[atomkind1][atomkind2].cat)
                                 {
-                                    case POTKIND_EAM_ALLOY:
+                                    case POT_EAM_ALLOY:
                                         EAM_PAIR_UPDATE_FORCE_AND_POTENERGY;
                                         break;
 
-                                    case POTKIND_LJ_6_12:
+                                    case POT_LJ_6_12:
                                         LJ_PAIR_UPDATE_FORCE_AND_POTENERGY;
                                         break;
 
-                                    case POTKIND_MORSE:
+                                    case POT_MORSE:
                                         MORSE_PAIR_UPDATE_FORCE_AND_POTENERGY;
                                         break;
                                 }
@@ -195,26 +195,26 @@ static void compute_hybrid_pass0(fmd_t *md, double FembSum)
 
 void fmd_dync_updateForces(fmd_t *md)
 {
-    if (md->potsys.potkinds == NULL)  // just for one time
+    if (md->potsys.potcats == NULL)  // just for one time
         fmd_pot_prepareForForceComp(md);
 
     fmd_ghostparticles_init(md);
 
-    if (md->potsys.potkinds_num == 1) // not hybrid mode
+    if (md->potsys.potcats_num == 1) // not hybrid mode
     {
-        potkind_t potkind = *(potkind_t *)(md->potsys.potkinds->data);
+        potcat_t potkind = *(potcat_t *)(md->potsys.potcats->data);
 
         switch (potkind)
         {
-            case POTKIND_LJ_6_12:
+            case POT_LJ_6_12:
                 fmd_computeLJ(md);
                 break;
 
-            case POTKIND_MORSE:
+            case POT_MORSE:
                 fmd_computeMorse(md);
                 break;
 
-            case POTKIND_EAM_ALLOY:
+            case POT_EAM_ALLOY:
                 if (md->CompLocOrdParam) compLocOrdParam(md);
                 double FembSum;
                 fmd_computeEAM_pass1(md, &FembSum);

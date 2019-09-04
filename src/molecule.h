@@ -28,7 +28,7 @@ typedef enum
     FMD_BOND_HARMONIC
 } fmd_bond_t;   // category of a bond
 
-typedef struct bondkind_t
+typedef struct _bondkind
 {
     fmd_bond_t cat;
 } bondkind_t;
@@ -42,20 +42,32 @@ typedef struct
     double r0;
 } bondkind_harmonic_t;
 
+typedef struct _list list_t;
+
 typedef struct
 {
+    unsigned LocalID;
     unsigned atomkind;
     double position[3];
-} molatom_t;
-
-typedef struct list_t list_t;
+    list_t *neighbors;
+} molkind_atom_t;
 
 typedef struct
+{
+    molkind_atom_t *atom;
+    bondkind_t *bond;
+} molkind_atom_neighbor_t;
+
+typedef struct _molkind
 {
     unsigned atoms_num;
     fmd_string_t name;
     unsigned **distances;
-    molatom_t *atoms;
+    molkind_atom_t *atoms;
 } molkind_t;
+
+typedef struct _fmd fmd_t;
+
+void fmd_bond_freeKinds(fmd_t *md);
 
 #endif /* MOLECULE_H */

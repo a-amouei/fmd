@@ -156,8 +156,8 @@ typedef enum
     FMD_SCM_VTF
 } fmd_SaveConfigMode_t;
 
-typedef struct fmd_t fmd_t;
-typedef struct fmd_timer_t fmd_timer_t;
+typedef struct _fmd fmd_t;
+typedef struct _fmd_timer fmd_timer_t;
 
 typedef enum
 {
@@ -166,7 +166,7 @@ typedef enum
 
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
 
-struct fmd_t
+struct _fmd
 {
     TSubDomain subDomain;
     potsys_t potsys;

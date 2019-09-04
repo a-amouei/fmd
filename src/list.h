@@ -24,9 +24,9 @@
 
 typedef int (*comparefunc_t)(const void *a, const void *b);
 
-typedef struct list_t list_t;
+typedef struct _list list_t;
 
-struct list_t
+struct _list
 {
     void *data;
     list_t *next;

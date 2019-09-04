@@ -28,7 +28,7 @@ unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double s
     // TO-DO: handle memory error
     assert(md->timers != NULL);
     md->timers[i].enabled = 1;
-    md->timers[i].kind = TIMERKIND_SIMPLE;
+    md->timers[i].cat = TIMER_SIMPLE;
     md->timers[i].start = start;
     md->timers[i].interval = interval;
     md->timers[i].stop = stop;
@@ -44,7 +44,7 @@ void fmd_timer_sendTimerTickEvents(fmd_t *md)
         if ( md->timers[i].enabled && md->mdTime >= md->timers[i].start &&
              !(md->mdTime > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
         {
-            if (md->timers[i].kind == TIMERKIND_SIMPLE)
+            if (md->timers[i].cat == TIMER_SIMPLE)
             {
                 if (fmod( fabs(md->mdTime - md->timers[i].start), md->timers[i].interval ) < md->delta_t)
                     md->eventHandler(md, FMD_EVENT_TIMERTICK, i);

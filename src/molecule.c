@@ -21,12 +21,12 @@
 #include "potential.h"
 #include "base.h"
 
-unsigned fmd_bond_define(fmd_t *md, fmd_bond_t cat, double coeffs[])
+unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, double coeffs[])
 {
-    unsigned i;
+    unsigned i = md->potsys.bondkinds_num;
 
     md->potsys.bondkinds = (bondkindp_t *)realloc(md->potsys.bondkinds,
-      ((i=md->potsys.bondkinds_num++)+1) * sizeof(bondkindp_t));
+      (i+1) * sizeof(bondkindp_t));
 
     switch (cat)
     {
@@ -41,5 +41,25 @@ unsigned fmd_bond_define(fmd_t *md, fmd_bond_t cat, double coeffs[])
         }
     }
 
+    md->potsys.bondkinds_num++;
+    return i;
+}
+
+void fmd_bond_freeKinds(fmd_t *md)
+{
+    for (unsigned i=0; i < md->potsys.bondkinds_num; i++)
+        free(md->potsys.bondkinds[i]);
+    free(md->potsys.bondkinds);
+    md->potsys.bondkinds_num = 0;
+}
+
+unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum, unsigned AtomKinds[])
+{
+    unsigned i = md->potsys.molkinds_num;
+
+    md->potsys.molkinds = (molkind_t *)realloc(md->potsys.molkinds,
+      (i+1) * sizeof(molkind_t));
+
+    md->potsys.molkinds_num++;
     return i;
 }

@@ -190,7 +190,7 @@ void compLocOrdParam(fmd_t *md)
 */
 }
 
-void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat)
+void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 {
     int ic[3];
     int d;
@@ -199,7 +199,7 @@ void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat)
     double x;
     int itemDestroyed;
 
-    if (useThermostat) velocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
+    if (UseThermostat) velocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
                        (md->desiredTemperature / md->globalTemperature - 1));
     ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
     {
@@ -225,7 +225,7 @@ void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat)
                     item_p->P.v_bak[d] = item_p->P.v[d];
                     item_p->P.x_bak[d] = item_p->P.x[d];
                 }
-                if (useThermostat) item_p->P.v[d] *= velocityScale;
+                if (UseThermostat) item_p->P.v[d] *= velocityScale;
                 item_p->P.v[d] += md->delta_t * 0.5 / mass * item_p->F[d];
                 x = item_p->P.x[d] + md->delta_t * item_p->P.v[d];
 
@@ -253,7 +253,7 @@ void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat)
     refreshGrid(md, 0);
 }
 
-int fmd_dync_velocityVerlet_takeLastStep(fmd_t *md)
+int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
 {
     int ic[3];
     int d;
@@ -1385,13 +1385,13 @@ void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration,
     while (md->mdTime < duration)
     {
         // take first step of velocity Verlet integrator
-        fmd_dync_velocityVerlet_takeFirstStep(md, 1);
+        fmd_dync_VelocityVerlet_startStep(md, 1);
 
         // compute forces
         fmd_dync_updateForces(md);
 
         // take last step of velocity Verlet integrator
-        fmd_dync_velocityVerlet_takeLastStep(md);
+        fmd_dync_VelocityVerlet_finishStep(md);
 
         md->mdTime += md->delta_t;
         if (md->eventHandler != NULL) fmd_timer_sendTimerTickEvents(md);

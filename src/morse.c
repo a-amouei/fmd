@@ -113,7 +113,7 @@ fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2
     morse->cutoff_sqr = SQR(cutoff);
 
     fmd_pot_t *pot = (fmd_pot_t *)malloc(sizeof(fmd_pot_t));
-    pot->kind = POTKIND_MORSE;
+    pot->cat = POT_MORSE;
     pot->data = morse;
 
     // add the pot to potlist

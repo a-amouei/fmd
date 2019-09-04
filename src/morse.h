@@ -52,7 +52,7 @@ typedef struct
     double cutoff_sqr;
 } morse_t;
 
-typedef struct fmd_t fmd_t;
+typedef struct _fmd fmd_t;
 
 void fmd_computeMorse(fmd_t *md);
 

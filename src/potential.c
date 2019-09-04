@@ -55,9 +55,9 @@ static void potlist_free(fmd_t *md)
     {
         fmd_pot_t *pot = (fmd_pot_t *)(potlist->data);
 
-        switch (pot->kind)
+        switch (pot->cat)
         {
-            case POTKIND_EAM_ALLOY:
+            case POT_EAM_ALLOY:
                 fmd_pot_eam_free((eam_t *)(pot->data));
                 break;
 
@@ -71,14 +71,6 @@ static void potlist_free(fmd_t *md)
     fmd_list_free(md->potsys.potlist);
 }
 
-static void bondkinds_free(fmd_t *md)
-{
-    for (unsigned i=0; i < md->potsys.bondkinds_num; i++)
-        free(md->potsys.bondkinds[i]);
-    free(md->potsys.bondkinds);
-    md->potsys.bondkinds_num = 0;
-}
-
 void fmd_potsys_free(fmd_t *md)
 {
     if (md->potsys.atomkinds != NULL)
@@ -87,11 +79,8 @@ void fmd_potsys_free(fmd_t *md)
         md->potsys.atomkinds = NULL;
     }
 
-    if (md->potsys.bondkinds != NULL)
-    {
-        bondkinds_free(md);
-        md->potsys.bondkinds = NULL;
-    }
+    if (md->potsys.bondkinds_num != 0)
+        fmd_bond_freeKinds(md);
 
     if (md->potsys.pottable != NULL)
     {
@@ -105,10 +94,10 @@ void fmd_potsys_free(fmd_t *md)
         md->potsys.potlist = NULL;
     }
 
-    if (md->potsys.potkinds != NULL)
+    if (md->potsys.potcats != NULL)
     {
-        fmd_list_free(md->potsys.potkinds);
-        md->potsys.potkinds = NULL;
+        fmd_list_free(md->potsys.potcats);
+        md->potsys.potcats = NULL;
     }
 }
 
@@ -117,9 +106,9 @@ void fmd_potsys_init(fmd_t *md)
     md->potsys.atomkinds = NULL;
     md->potsys.potlist = NULL;
     md->potsys.pottable = NULL;
-    md->potsys.potkinds = NULL;
-    md->potsys.bondkinds = NULL;
+    md->potsys.potcats = NULL;
     md->potsys.bondkinds_num = 0;
+    md->potsys.molkinds_num = 0;
 }
 
 static void pottable_create(fmd_t *md)
@@ -129,7 +118,7 @@ static void pottable_create(fmd_t *md)
                                                                   sizeof(potpair_t));
     for (unsigned i=0; i < md->potsys.atomkinds_num; i++)
         for (unsigned j=0; j <= i; j++)
-            md->potsys.pottable[i][j].kind = POTKIND_NONE;
+            md->potsys.pottable[i][j].cat = POT_NONE;
 }
 
 void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t *pot)
@@ -137,7 +126,7 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
     // create the pottable if doesn't exist
     if (md->potsys.pottable == NULL) pottable_create(md);
 
-    if (pot->kind == POTKIND_EAM_ALLOY)
+    if (pot->cat == POT_EAM_ALLOY)
     {
         // find the local indices
         unsigned loc1, loc2;
@@ -162,15 +151,15 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
     }
 
     //
-    md->potsys.pottable[atomkind1][atomkind2].kind =
-      md->potsys.pottable[atomkind2][atomkind1].kind = pot->kind;
+    md->potsys.pottable[atomkind1][atomkind2].cat =
+      md->potsys.pottable[atomkind2][atomkind1].cat = pot->cat;
     md->potsys.pottable[atomkind1][atomkind2].data =
       md->potsys.pottable[atomkind2][atomkind1].data = pot->data;
 }
 
-static int potkind_compare(const void *a, const void *b)
+static int potcat_compare(const void *a, const void *b)
 {
-    if ( *( (potkind_t *)a ) == *( (potkind_t *)b ) )
+    if ( *( (potcat_t *)a ) == *( (potcat_t *)b ) )
         return 0;
     else
         return 1;
@@ -181,36 +170,36 @@ static void pot_hybridpasses_update(fmd_t *md)
     // fill hybridpasses with zeros
     memset(md->potsys.hybridpasses, 0, sizeof(md->potsys.hybridpasses));
 
-    list_t *potkinds = md->potsys.potkinds;
-    while (potkinds != NULL)
+    list_t *potcats = md->potsys.potcats;
+    while (potcats != NULL)
     {
-        switch (*(potkind_t *)(potkinds->data))
+        switch (*(potcat_t *)(potcats->data))
         {
-            case POTKIND_MORSE:
+            case POT_MORSE:
                 md->potsys.hybridpasses[0] = 1;
                 break;
 
-            case POTKIND_LJ_6_12:
+            case POT_LJ_6_12:
                 md->potsys.hybridpasses[0] = 1;
                 break;
 
-            case POTKIND_EAM_ALLOY:
+            case POT_EAM_ALLOY:
                 md->potsys.hybridpasses[0] = 1;
                 md->potsys.hybridpasses[1] = 1;
                 break;
         }
 
-        potkinds = potkinds->next;
+        potcats = potcats->next;
     }
 }
 
-// TO-DO?: first, clean the potkinds list
+// TO-DO?: first, clean the potcats list
 void fmd_pot_prepareForForceComp(fmd_t *md)
 {
     // TO-DO: error should be handled here
     assert(md->potsys.pottable != NULL);
 
-    md->potsys.potkinds_num = 0;
+    md->potsys.potcats_num = 0;
 
     for (unsigned i=0; i < md->potsys.atomkinds_num; i++)
         for (unsigned j=0; j <= i; j++)
@@ -218,17 +207,17 @@ void fmd_pot_prepareForForceComp(fmd_t *md)
             potpair_t *potpair = &md->potsys.pottable[i][j];
 
             // TO-DO: error should be handled here
-            assert(potpair->kind != POTKIND_NONE);
+            assert(potpair->cat != POT_NONE);
 
-            // add the potkind to potkinds list, if isn't already included there
-            if (fmd_list_find_custom(md->potsys.potkinds, &potpair->kind, potkind_compare) == NULL)
+            // add the potcat to potcats list, if isn't already included there
+            if (fmd_list_find_custom(md->potsys.potcats, &potpair->cat, potcat_compare) == NULL)
             {
-                md->potsys.potkinds_num++;
-                md->potsys.potkinds = fmd_list_prepend(md->potsys.potkinds, &potpair->kind);
+                md->potsys.potcats_num++;
+                md->potsys.potcats = fmd_list_prepend(md->potsys.potcats, &potpair->cat);
             }
 
             // do these two atomkinds use EAM?
-            if (potpair->kind != POTKIND_EAM_ALLOY)
+            if (potpair->cat != POT_EAM_ALLOY)
                 md->potsys.atomkinds[i].eam_element =
                 md->potsys.atomkinds[j].eam_element = NULL;
         }

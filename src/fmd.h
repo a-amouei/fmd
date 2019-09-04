@@ -22,9 +22,9 @@
 
 // typedefs
 
-typedef struct fmd_t fmd_t;
+typedef struct _fmd fmd_t;
 
-typedef struct fmd_pot_t fmd_pot_t;
+typedef struct _fmd_pot fmd_pot_t;
 
 typedef enum
 {
@@ -51,20 +51,20 @@ typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param)
 
 // functions
 
-unsigned fmd_bond_define(fmd_t *md, fmd_bond_t cat, double coeffs[]);
+unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, double coeffs[]);
 
-void fmd_matt_addVelocity(fmd_t *md, int groupID, double vx, double vy, double vz);
-void fmd_matt_setActiveGroup(fmd_t *md, int groupID);
+void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double vz);
+void fmd_matt_setActiveGroup(fmd_t *md, int GroupID);
 void fmd_matt_setDesiredTemperature(fmd_t *md, double DesiredTemperature);
 void fmd_matt_makeCuboidFCC(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double latticeParameter, int elementID, int groupID);
+  int dimx, int dimy, int dimz, double LatticeParameter, int ElementID, int GroupID);
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double latticeParameter, double *proportions, int groupID);
+  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
 void fmd_matt_saveConfiguration(fmd_t *md);
 double fmd_matt_getTotalEnergy(fmd_t *md);
 double fmd_matt_getGlobalTemperature(fmd_t *md);
 void fmd_matt_distribute(fmd_t *md);
-void fmd_matt_giveTemperature(fmd_t *md, int groupID);
+void fmd_matt_giveTemperature(fmd_t *md, int GroupID);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[]);
 
 void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
@@ -102,15 +102,15 @@ void fmd_free(fmd_t *md);
 void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
 
 double fmd_dync_getTimeStep(fmd_t *md);
-void fmd_dync_setTimeStep(fmd_t *md, double timeStep);
+void fmd_dync_setTimeStep(fmd_t *md, double TimeStep);
 double fmd_dync_getTime(fmd_t *md);
 void fmd_dync_updateForces(fmd_t *md);
 void fmd_dync_updateForcesLJ(fmd_t *md);
 void fmd_dync_incTime(fmd_t *md);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
-void fmd_dync_velocityVerlet_takeFirstStep(fmd_t *md, fmd_bool_t useThermostat);
-int fmd_dync_velocityVerlet_takeLastStep(fmd_t *md);
-void fmd_dync_equilibrate(fmd_t *md, int groupID, double duration,
+void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat);
+int fmd_dync_VelocityVerlet_finishStep(fmd_t *md);
+void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
   double timestep, double strength, double temperature);
 
 #endif /* FMD_H */
