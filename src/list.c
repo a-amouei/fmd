@@ -69,6 +69,19 @@ list_t *fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func)
     return NULL;
 }
 
+// not needed at the moment
+/*list_t *fmd_list_find(list_t *list, const void *data)
+{
+    while (list != NULL)
+    {
+        if (list->data == data)
+            return list;
+        list = list->next;
+    }
+
+    return NULL;
+}*/
+
 void fmd_list_free(list_t *list)
 {
     while (list != NULL)

@@ -49,7 +49,7 @@ typedef struct
     unsigned LocalID;
     unsigned atomkind;
     double position[3];
-    list_t *neighbors;
+    list_t *neighbors;   // each data pointer in this list points to a molkind_atom_neighbor_t
 } molkind_atom_t;
 
 typedef struct

@@ -25,6 +25,7 @@
 #include "array.h"
 #include "list.h"
 #include "eam.h"
+#include "molecule.h"
 
 void fmd_pot_setCutoffRadius(fmd_t *md, double cutoff)
 {
@@ -168,14 +169,6 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
       md->potsys.pottable[atomkind2][atomkind1].data = pot->data;
 }
 
-static int potcat_compare(const void *a, const void *b)
-{
-    if ( *( (potcat_t *)a ) == *( (potcat_t *)b ) )
-        return 0;
-    else
-        return 1;
-}
-
 static void pot_hybridpasses_update(fmd_t *md)
 {
     // fill hybridpasses with zeros
@@ -202,6 +195,14 @@ static void pot_hybridpasses_update(fmd_t *md)
 
         potcats = potcats->next;
     }
+}
+
+static int potcat_compare(const void *a, const void *b)
+{
+    if ( *( (potcat_t *)a ) == *( (potcat_t *)b ) )
+        return 0;
+    else
+        return 1;
 }
 
 // TO-DO?: first, clean the potcats list
