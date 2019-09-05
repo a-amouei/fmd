@@ -1,6 +1,13 @@
+TO-DO:
+
+  #1    Review fmd_bond_apply()
+  #2    Write a function to update the field 'distances' in molkind_t
+  #3    Write a function to add molecule instances to the simulation box
+  #4    Add the ability to save bond data into VTF files (to view molecules with VMD)
+
 Questions:
 
-  #1.    Q: In fmd_pot_prepareForForceComp() at potential.c, can fmd_list_find_custom()
-         be replaced with fmd_list_find()?
+  #1    Q: In fmd_pot_prepareForForceComp() at potential.c, can fmd_list_find_custom()
+        be replaced with fmd_list_find()?
 
-         A: My first guess is that it can be done. But maybe needs more analysis.
+        A: My first guess is that it can be done. But maybe needs more analysis.
