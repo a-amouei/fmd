@@ -66,11 +66,11 @@ typedef struct
     list_t *potcats;                // list of pot categories that are present in pottable
     unsigned potcats_num;
     list_t *potlist;                // list of all pots, whether applied or not
+    fmd_bool_t hybridpasses[2];
     bondkindp_t *bondkinds;         // array of pointers to bondkinds that are defined
     unsigned bondkinds_num;         // size of 'bondkinds' array
     molkind_t *molkinds;
     unsigned  molkinds_num;
-    fmd_bool_t hybridpasses[2];
 } potsys_t;
 
 typedef struct _fmd fmd_t;
