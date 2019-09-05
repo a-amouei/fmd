@@ -73,14 +73,23 @@ static void potlist_free(fmd_t *md)
 
 void fmd_potsys_free(fmd_t *md)
 {
+    if (md->potsys.molkinds != NULL)
+    {
+        // TO-DO: call fmd_molecule_freeKinds()
+        md->potsys.molkinds = NULL;
+    }
+
     if (md->potsys.atomkinds != NULL)
     {
         free(md->potsys.atomkinds);
         md->potsys.atomkinds = NULL;
     }
 
-    if (md->potsys.bondkinds_num != 0)
+    if (md->potsys.bondkinds != NULL)
+    {
         fmd_bond_freeKinds(md);
+        md->potsys.bondkinds = NULL;
+    }
 
     if (md->potsys.pottable != NULL)
     {
@@ -107,7 +116,9 @@ void fmd_potsys_init(fmd_t *md)
     md->potsys.potlist = NULL;
     md->potsys.pottable = NULL;
     md->potsys.potcats = NULL;
+    md->potsys.bondkinds = NULL;    // first realloc() call needs this
     md->potsys.bondkinds_num = 0;
+    md->potsys.molkinds = NULL;     // first realloc() call needs this
     md->potsys.molkinds_num = 0;
 }
 

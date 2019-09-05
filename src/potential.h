@@ -63,7 +63,7 @@ typedef struct
     unsigned atomkinds_num;
     atomkind_t *atomkinds;
     potpair_t **pottable;           // table of applied pots
-    list_t *potcats;                // list of pot kinds that are present in pottable
+    list_t *potcats;                // list of pot categories that are present in pottable
     unsigned potcats_num;
     list_t *potlist;                // list of all pots, whether applied or not
     bondkindp_t *bondkinds;         // array of pointers to bondkinds that are defined

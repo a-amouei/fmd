@@ -52,6 +52,11 @@ typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param)
 // functions
 
 unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, double coeffs[]);
+void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
+  unsigned atom1, unsigned atom2);
+
+unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
+  unsigned AtomKinds[], double AtomPositions[][3]);
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double vz);
 void fmd_matt_setActiveGroup(fmd_t *md, int GroupID);
