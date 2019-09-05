@@ -1,0 +1,6 @@
+Questions:
+
+  #1.    Q: In fmd_pot_prepareForForceComp() at potential.c, can fmd_list_find_custom()
+         be replaced with fmd_list_find()?
+
+         A: My first guess is that it can be done. But maybe needs more analysis.
