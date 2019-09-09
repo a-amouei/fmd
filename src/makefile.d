@@ -14,5 +14,6 @@ morse.o: morse.c morse.h config.h base.h potential.h types.h forces.h \
  list.h
 potential.o: potential.c potential.h config.h types.h base.h array.h \
  list.h eam.h forces.h cspline.h molecule.h
-structure.o: structure.c base.h config.h potential.h types.h
+structure.o: structure.c base.h config.h potential.h types.h molecule.h \
+ array.h
 timer.o: timer.c timer.h config.h base.h potential.h types.h
