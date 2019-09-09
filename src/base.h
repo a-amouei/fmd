@@ -103,8 +103,12 @@ typedef struct
     double v_bak[3];
     float LocOrdParam;
     float x_avgd[3];
-    int elementID;
-    int groupID;
+    unsigned AtomID;
+    unsigned atomkind;
+    int GroupID;
+    unsigned molkind;
+    unsigned MolID;
+    unsigned AtomID_local;
 } TParticle;
 
 typedef struct TParticleListItem
@@ -114,7 +118,14 @@ typedef struct TParticleListItem
     double FembPrime;
     float LocOrdParamAvg;
     struct TParticleListItem *next_p;
+    list_t *neighbors;  // each data pointer in this list points to a mol_atom_neighbor_t
 } TParticleListItem;
+
+typedef struct
+{
+    TParticleListItem *atom;
+    bondkind_t *bond;
+} mol_atom_neighbor_t;
 
 typedef TParticleListItem *TCell;
 
@@ -122,14 +133,14 @@ typedef struct
 {
     float x[3];
     float var;
-    int elementID;
+    unsigned atomkind;
 } TXYZ_Struct;
 
 typedef struct
 {
     double x[3];
-    int elementID;
-    int groupID;
+    unsigned atomkind;
+    int GroupID;
 } TPosition_Struct;
 
 typedef struct
@@ -180,10 +191,11 @@ struct _fmd
     double cutoffRadius;
     double mdTime;
     double delta_t;
-    unsigned totalNoOfParticles;
+    unsigned TotalNoOfParticles;
+    unsigned TotalNoOfMolecules;
     double globalTemperature;
     fmd_bool_t isMDprocess;
-    fmd_bool_t isRootProcess;
+    fmd_bool_t Is_MD_comm_root;
     int LOPiteration;               // must be initialized with zero
     MPI_Comm MD_comm;
     double totalKineticEnergy;
@@ -191,7 +203,7 @@ struct _fmd
     double totalMDEnergy;
     int world_rank;
     int world_numprocs;
-    double desiredTemperature;
+    double DesiredTemperature;
     int PBC[3];
     int ns[3];                      // number of subdomains = ns[0] x ns[1] x ns[2]
     double l[3];                    // size of the simulation box
@@ -233,11 +245,11 @@ void handleFileOpenError(FILE *fp, char *filename);
 void loadStateFile(fmd_t *md, TCell ***global_grid);
 void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
-void insertInList(TParticleListItem **root_pp, TParticleListItem *item_p);
+void fmd_insertInList(TParticleListItem **root_pp, TParticleListItem *item_p);
 void removeFromList(TParticleListItem **item_pp);
 
 //
 
-extern const int threeZeros[3];
+extern const int fmd_ThreeZeros[3];
 
 #endif /* BASE_H */

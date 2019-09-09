@@ -62,9 +62,12 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double v
 void fmd_matt_setActiveGroup(fmd_t *md, int GroupID);
 void fmd_matt_setDesiredTemperature(fmd_t *md, double DesiredTemperature);
 void fmd_matt_makeCuboidFCC(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, int ElementID, int GroupID);
+  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
   int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
+void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, double xa,
+  double ya, double za, double xb, double yb, double zb, unsigned num,
+  int GroupID);
 void fmd_matt_saveConfiguration(fmd_t *md);
 double fmd_matt_getTotalEnergy(fmd_t *md);
 double fmd_matt_getGlobalTemperature(fmd_t *md);

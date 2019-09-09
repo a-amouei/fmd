@@ -43,10 +43,10 @@ void fmd_computeLJ(fmd_t *md)
                 // iterate over all items in cell ic
                 for (item1_p = md->subDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
                 {
-                    if (!(md->activeGroup == -1 || item1_p->P.groupID == md->activeGroup))
+                    if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
                         continue;
 
-                    unsigned atomkind1 = item1_p->P.elementID;
+                    unsigned atomkind1 = item1_p->P.atomkind;
 
                     for (d=0; d<3; d++)
                         item1_p->F[d] = 0.0;
@@ -64,12 +64,12 @@ void fmd_computeLJ(fmd_t *md)
                                 // iterate over all items in cell jc
                                 for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                                 {
-                                    if (!(md->activeGroup == -1 || item2_p->P.groupID == md->activeGroup))
+                                    if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
                                         continue;
 
                                     if (item1_p != item2_p)
                                     {
-                                        unsigned atomkind2 = item2_p->P.elementID;
+                                        unsigned atomkind2 = item2_p->P.atomkind;
 
                                         COMPUTE_rv_AND_r2;
 

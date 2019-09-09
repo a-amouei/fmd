@@ -111,6 +111,7 @@ void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
 void fmd_molecule_freeKinds()
 {
     // TO-DO
+    //free(md->potsys.molkinds + 1);  // the +1 shift is important here ( see fmd_molecule_addKind() )
 }
 
 unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
@@ -118,10 +119,11 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
 {
     unsigned i = md->potsys.molkinds_num;
 
-    md->potsys.molkinds = (molkind_t *)realloc(md->potsys.molkinds,
-      (i+1) * sizeof(molkind_t));
+    // molkinds data start from index 1 because molkind==0 has special meaning
+    molkind_t *genuine_pointer = (md->potsys.molkinds == NULL ? NULL : md->potsys.molkinds+1);
+    md->potsys.molkinds = (molkind_t *)realloc(genuine_pointer, (i+1) * sizeof(molkind_t)) - 1;
 
-    molkind_t *mk = &md->potsys.molkinds[i];
+    molkind_t *mk = &md->potsys.molkinds[i+1];
     mk->atoms_num = AtomsNum;
     size_t len = strlen(name);
     mk->name = (char *)malloc(len + 1);
@@ -139,5 +141,5 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     }
 
     md->potsys.molkinds_num++;
-    return i;
+    return i+1;
 }

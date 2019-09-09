@@ -62,7 +62,7 @@ static void particles_migrate_in_direction_d(
                 {
                     item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                     item_p->P = particles_receive[k++];
-                    insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
                 }
                 kreceive++;
             }
@@ -166,7 +166,7 @@ static void particles_migrate_in_direction_d(
                 {
                     item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                     item_p->P = particles_receive[k++];
-                    insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
                 }
                 kreceive++;
             }
@@ -240,7 +240,7 @@ static void particles_migrate_in_direction_d(
                 item_p->P = particles_receive[k++];
                 if (md->subDomain.is[d] == md->ns[d] - 1)
                     item_p->P.x[d] += md->l[d];
-                insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
             }
             kreceive++;
         }
@@ -292,7 +292,7 @@ static void particles_migrate_in_direction_d(
                 item_p->P = particles_receive[k++];
                 if (md->subDomain.is[d] == 0)
                     item_p->P.x[d] -= md->l[d];
-                insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
             }
             kreceive++;
         }
@@ -341,9 +341,9 @@ static void ghostparticles_init_in_direction_d(
                     item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                     for (dd=0; dd<3; dd++)
                         item_p->P.x[dd] = data_receive[k].x[dd];
-                    item_p->P.elementID = data_receive[k].elementID;
-                    item_p->P.groupID = data_receive[k--].groupID;
-                    insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    item_p->P.atomkind = data_receive[k].atomkind;
+                    item_p->P.GroupID = data_receive[k--].GroupID;
+                    fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
                 }
                 k += cells_length_receive[kreceive];
                 kreceive++;
@@ -370,8 +370,8 @@ static void ghostparticles_init_in_direction_d(
                 {
                     for (dd=0; dd<3; dd++)
                         data_send[k].x[dd] = item_p->P.x[dd];
-                    data_send[k].elementID = item_p->P.elementID;
-                    data_send[k++].groupID = item_p->P.groupID;
+                    data_send[k].atomkind = item_p->P.atomkind;
+                    data_send[k++].GroupID = item_p->P.GroupID;
                 }
             MPI_Send(data_send, sum_length_send, MPI_CHAR, md->subDomain.rank_of_upper_subd[d],
                      8, md->MD_comm);
@@ -402,8 +402,8 @@ static void ghostparticles_init_in_direction_d(
                 {
                     for (dd=0; dd<3; dd++)
                         data_send[k].x[dd] = item_p->P.x[dd];
-                    data_send[k].elementID = item_p->P.elementID;
-                    data_send[k++].groupID = item_p->P.groupID;
+                    data_send[k].atomkind = item_p->P.atomkind;
+                    data_send[k++].GroupID = item_p->P.GroupID;
                 }
             MPI_Send(data_send, sum_length_send, MPI_CHAR, md->subDomain.rank_of_lower_subd[d],
                      6, md->MD_comm);
@@ -426,9 +426,9 @@ static void ghostparticles_init_in_direction_d(
                     item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                     for (dd=0; dd<3; dd++)
                         item_p->P.x[dd] = data_receive[k].x[dd];
-                    item_p->P.elementID = data_receive[k].elementID;
-                    item_p->P.groupID = data_receive[k--].groupID;
-                    insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    item_p->P.atomkind = data_receive[k].atomkind;
+                    item_p->P.GroupID = data_receive[k--].GroupID;
+                    fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
                 }
                 k += cells_length_receive[kreceive];
                 kreceive++;
@@ -467,8 +467,8 @@ static void ghostparticles_init_in_direction_d(
             {
                 for (dd=0; dd<3; dd++)
                     data_send[k].x[dd] = item_p->P.x[dd];
-                data_send[k].elementID = item_p->P.elementID;
-                data_send[k++].groupID = item_p->P.groupID;
+                data_send[k].atomkind = item_p->P.atomkind;
+                data_send[k++].GroupID = item_p->P.GroupID;
             }
         MPI_Isend(data_send, sum_length_send, MPI_CHAR, md->subDomain.rank_of_lower_subd[d], 6,
                   md->MD_comm, &request);
@@ -486,11 +486,11 @@ static void ghostparticles_init_in_direction_d(
                 item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                 for (dd=0; dd<3; dd++)
                     item_p->P.x[dd] = data_receive[k].x[dd];
-                item_p->P.elementID = data_receive[k].elementID;
-                item_p->P.groupID = data_receive[k--].groupID;
+                item_p->P.atomkind = data_receive[k].atomkind;
+                item_p->P.GroupID = data_receive[k--].GroupID;
                 if (md->subDomain.is[d] == md->ns[d] - 1)
                     item_p->P.x[d] += md->l[d];
-                insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
             }
             k += cells_length_receive[kreceive];
             kreceive++;
@@ -520,8 +520,8 @@ static void ghostparticles_init_in_direction_d(
             {
                 for (dd=0; dd<3; dd++)
                     data_send[k].x[dd] = item_p->P.x[dd];
-                data_send[k].elementID = item_p->P.elementID;
-                data_send[k++].groupID = item_p->P.groupID;
+                data_send[k].atomkind = item_p->P.atomkind;
+                data_send[k++].GroupID = item_p->P.GroupID;
             }
         MPI_Isend(data_send, sum_length_send, MPI_CHAR, md->subDomain.rank_of_upper_subd[d], 8,
                   md->MD_comm, &request);
@@ -539,11 +539,11 @@ static void ghostparticles_init_in_direction_d(
                 item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                 for (dd=0; dd<3; dd++)
                     item_p->P.x[dd] = data_receive[k].x[dd];
-                item_p->P.elementID = data_receive[k].elementID;
-                item_p->P.groupID = data_receive[k--].groupID;
+                item_p->P.atomkind = data_receive[k].atomkind;
+                item_p->P.GroupID = data_receive[k--].GroupID;
                 if (md->subDomain.is[d] == 0)
                     item_p->P.x[d] -= md->l[d];
-                insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
             }
             k += cells_length_receive[kreceive];
             kreceive++;

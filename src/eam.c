@@ -80,7 +80,7 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
         // iterate over all items in cell ic
         for (item1_p = md->subDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
         {
-            if (!(md->activeGroup == -1 || item1_p->P.groupID == md->activeGroup))
+            if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
                 continue;
 
             for (d=0; d<3; d++)
@@ -88,7 +88,7 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
 
             eam_t *eam;
             unsigned atomkind1, atomkind2;
-            atomkind1 = item1_p->P.elementID;
+            atomkind1 = item1_p->P.atomkind;
 
             // iterate over neighbor cells of cell ic
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
@@ -103,12 +103,12 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
                         // iterate over all items in cell jc
                         for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                         {
-                            if (!(md->activeGroup == -1 || item2_p->P.groupID == md->activeGroup))
+                            if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
                                 continue;
 
                             if (item1_p != item2_p)
                             {
-                                atomkind2 = item2_p->P.elementID;
+                                atomkind2 = item2_p->P.atomkind;
                                 EAM_PAIR_UPDATE_FORCE_AND_POTENERGY;
                             }
                         }
@@ -154,12 +154,12 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
         // iterate over all items in cell ic
         for (item1_p = md->subDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
         {
-            if (!(md->activeGroup == -1 || item1_p->P.groupID == md->activeGroup))
+            if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
                 continue;
 
             eam_t *eam;
             unsigned atomkind1, atomkind2;
-            atomkind1 = item1_p->P.elementID;
+            atomkind1 = item1_p->P.atomkind;
 
             double rho_host = 0.0;
             // iterate over neighbor cells of cell ic
@@ -175,12 +175,12 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
                         // iterate over all items in cell jc
                         for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                         {
-                            if (!(md->activeGroup == -1 || item2_p->P.groupID == md->activeGroup))
+                            if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
                                 continue;
 
                             if (item1_p != item2_p)
                             {
-                                atomkind2 = item2_p->P.elementID;
+                                atomkind2 = item2_p->P.atomkind;
                                 EAM_PAIR_UPDATE_rho_host;
                             }
                         }
@@ -218,7 +218,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
 
     eam_t *eam = (eam_t *)malloc(sizeof(eam_t));
 
-    if (md->isRootProcess)
+    if (md->Is_MD_comm_root)
     {
         FILE *fp = fopen(filePath, "r");
         handleFileOpenError(fp, filePath);
@@ -329,7 +329,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         MPI_Bcast(&eam->elements[i].latticeParameter, 1, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
 
         unsigned namelen;
-        if (md->isRootProcess)
+        if (md->Is_MD_comm_root)
             namelen = strlen(eam->elements[i].name);
         MPI_Bcast(&namelen, 1, MPI_UNSIGNED, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
         if (md->subDomain.myrank != ROOTPROCESS(md->subDomain.numprocs))
