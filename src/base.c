@@ -17,13 +17,14 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stdarg.h>
 #include "base.h"
 #include "md_ghost.h"
 #include "forces.h"
 #ifdef USE_TTM
 #include "ttm.h"
 #endif
-#include <stdarg.h>
+#include "timer.h"
 
 const int fmd_ThreeZeros[3] = {0, 0, 0};
 
@@ -62,8 +63,8 @@ void compLocOrdParam(fmd_t *md)
     int i;
 
     if (md->LOPiteration == 0)
-        ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-            for (item1_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
+        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+            for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
             {
                 item1_p->P.LocOrdParam = 0.;
                 for (d=0; d<3; d++)
@@ -76,8 +77,8 @@ void compLocOrdParam(fmd_t *md)
         for (d=0; d<3; d++)
             q[i][d] *= 4.0 * M_PI / latticeParameter * q[i][d];
 
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item1_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
         {
             real = img = 0.;
             Z = 0;
@@ -92,7 +93,7 @@ void compLocOrdParam(fmd_t *md)
                     {
                         SET_jc_IN_DIRECTION(2)
                         // iterate over all items in cell jc
-                        for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                             if (item1_p != item2_p)
                             {
                                 for (d=0; d<3; d++)
@@ -136,8 +137,8 @@ void compLocOrdParam(fmd_t *md)
 
     fmd_ghostparticles_update_LocOrdParam(md);
 
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item1_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
         {
             real = item1_p->P.LocOrdParam;
             Z = 0;
@@ -152,7 +153,7 @@ void compLocOrdParam(fmd_t *md)
                     {
                         SET_jc_IN_DIRECTION(2)
                         // iterate over all items in cell jc
-                        for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                             if (item1_p != item2_p)
                             {
                                 for (d=0; d<3; d++)
@@ -200,11 +201,11 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
     int itemDestroyed;
 
     if (UseThermostat) velocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
-                       (md->DesiredTemperature / md->globalTemperature - 1));
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
+                       (md->DesiredTemperature / md->GlobalTemperature - 1));
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
         // iterate over all items in cell ic
-        item_pp = &md->subDomain.grid[ic[0]][ic[1]][ic[2]];
+        item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
         item_p = *item_pp;
         while (item_p != NULL)
         {
@@ -220,7 +221,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 
             for (d=0; d<3; d++)
             {
-                if (md->useAutoStep)
+                if (md->UseAutoStep)
                 {
                     item_p->P.v_bak[d] = item_p->P.v[d];
                     item_p->P.x_bak[d] = item_p->P.x[d];
@@ -235,7 +236,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
                     {
                         removeFromList(item_pp);
                         free(item_p);
-                        (md->subDomain.numberOfParticles)--;
+                        (md->SubDomain.NumberOfParticles)--;
                         itemDestroyed = 1;
                         break;
                     }
@@ -264,36 +265,11 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
     int particlesNum = 0;
     double momentumSum[3] = {0., 0., 0.};
 
-    for (ic[0] = md->subDomain.ic_start[0]; ic[0] < md->subDomain.ic_stop[0]; ic[0]++)
+    for (ic[0] = md->SubDomain.ic_start[0]; ic[0] < md->SubDomain.ic_stop[0]; ic[0]++)
     {
-#ifdef USE_TTM  // for non-reflecting boundary condition
-        int reduce = 0;
-        double amount;
-
-        if (ttm_useExtended)
-        {
-            int ic_global0 = ic[0] - md->subDomain.ic_start[0] + md->subDomain.ic_lower_global[0];
-            if (ic_global0 >= ttm_nonrefl_bound_begin)
-            {
-                int ttm_index;
-                double vcm;
-
-                reduce = 1;
-                ttm_index = ic[0] - md->subDomain.ic_start[0] + 1;
-                vcm = ttm_lattice_aux[ttm_index].v_cm[0];
-                amount = (ic_global0-ttm_nonrefl_bound_begin) * md->cellh[0] / ttm_nonrefl_bound_width;
-                if (amount>0.95)
-                    amount = vcm*0.99;
-                else
-                    amount = vcm*delta_t/delta_t_initial*1e-4*(3.*CUBE(amount)+1.5*amount+0.25);
-            }
-            else
-                reduce = 0;
-        }
-#endif
-        for (ic[1] = md->subDomain.ic_start[1]; ic[1] < md->subDomain.ic_stop[1]; ic[1]++)
-            for (ic[2] = md->subDomain.ic_start[2]; ic[2] < md->subDomain.ic_stop[2]; ic[2]++)
-                for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (ic[1] = md->SubDomain.ic_start[1]; ic[1] < md->SubDomain.ic_stop[1]; ic[1]++)
+            for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
+                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                 {
                     if (!(md->activeGroup == -1 || item_p->P.GroupID == md->activeGroup))
                         continue;
@@ -304,16 +280,13 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
                         item_p->P.v[d] += md->delta_t * 0.5 / mass * item_p->F[d];
                         momentumSum[d] += mass * item_p->P.v[d];
                     }
-#ifdef USE_TTM  // for non-reflecting boundary condition
-                    if (reduce) item_p->P.v[0] -= amount;
-#endif
                     m_vSqd_Sum += mass * ( SQR(item_p->P.v[0]) +
                                            SQR(item_p->P.v[1]) +
                                            SQR(item_p->P.v[2]) );
                 }
     }
     MPI_Reduce(momentumSum, md->totalMomentum, 3, MPI_DOUBLE, MPI_SUM,
-               ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+               ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
     MPI_Allreduce(&particlesNum, &(md->activeGroupParticlesNum), 1, MPI_INT, MPI_SUM, md->MD_comm);
 
     if (md->activeGroup == -1)
@@ -323,7 +296,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
     md->totalKineticEnergy = 0.5 * m_vSqd_SumSum;
     md->totalMDEnergy = md->totalKineticEnergy + md->totalPotentialEnergy;
 
-    if (md->useAutoStep)
+    if (md->UseAutoStep)
     {
         if (md->_oldTotalMDEnergy!=0. && fabs((md->totalMDEnergy-md->_oldTotalMDEnergy)/md->_oldTotalMDEnergy) > md->autoStepSensitivity)
         {
@@ -347,29 +320,29 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
         md->_prevFailedMDEnergy = 0.;
         md->_oldTotalMDEnergy = md->totalMDEnergy;
     }
-    md->globalTemperature = m_vSqd_SumSum / (3.0 * md->activeGroupParticlesNum * K_BOLTZMANN);
+    md->GlobalTemperature = m_vSqd_SumSum / (3.0 * md->activeGroupParticlesNum * K_BOLTZMANN);
 
     return returnVal;
 }
 
 // not correct under periodic boundary conditions
 // see [J. Chem. Phys. 131, 154107 (2009)]
-double compVirial_internal(fmd_t *md)
+static double compVirial_internal(fmd_t *md)
 {
     int ic[3];
     TParticleListItem *item_p;
     double virial = 0.0;
     double virial_global;
 
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
         {
             virial += item_p->P.x[0] * item_p->F[0] +
                       item_p->P.x[1] * item_p->F[1] +
                       item_p->P.x[2] * item_p->F[2];
         }
     MPI_Reduce(&virial, &virial_global, 1, MPI_DOUBLE, MPI_SUM,
-      ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+      ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
     return virial_global;
 }
@@ -412,27 +385,27 @@ TCell ***createGrid(int cell_num[3])
     return grid;
 }
 
-void findLimits(fmd_t *md, double lowerLimit[3], double upperLimit[3])
+void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
 {
     TParticleListItem *item_p;
     int ic[3];
     int d;
-    double localLower[3], localUpper[3];
+    double LocalLower[3], LocalUpper[3];
 
-    localLower[0] = localLower[1] = localLower[2] = DBL_MAX;
-    localUpper[0] = localUpper[1] = localUpper[2] = DBL_MIN;
+    LocalLower[0] = LocalLower[1] = LocalLower[2] = DBL_MAX;
+    LocalUpper[0] = LocalUpper[1] = LocalUpper[2] = DBL_MIN;
 
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
             for (d=0; d<3; d++)
             {
-                if (item_p->P.x[d] < localLower[d])
-                    localLower[d] = item_p->P.x[d];
-                if (item_p->P.x[d] > localUpper[d])
-                    localUpper[d] = item_p->P.x[d];
+                if (item_p->P.x[d] < LocalLower[d])
+                    LocalLower[d] = item_p->P.x[d];
+                if (item_p->P.x[d] > LocalUpper[d])
+                    LocalUpper[d] = item_p->P.x[d];
             }
-    MPI_Allreduce(localLower, lowerLimit, 3, MPI_DOUBLE, MPI_MIN, md->MD_comm);
-    MPI_Allreduce(localUpper, upperLimit, 3, MPI_DOUBLE, MPI_MAX, md->MD_comm);
+    MPI_Allreduce(LocalLower, LowerLimit, 3, MPI_DOUBLE, MPI_MIN, md->MD_comm);
+    MPI_Allreduce(LocalUpper, UpperLimit, 3, MPI_DOUBLE, MPI_MAX, md->MD_comm);
 }
 
 void freeGrid(TCell ***grid, int *cell_num)
@@ -451,10 +424,10 @@ void freeGrid(TCell ***grid, int *cell_num)
 
 void fmd_subd_free(fmd_t *md)
 {
-    if (md->subDomain.grid != NULL)
+    if (md->SubDomain.grid != NULL)
     {
-        freeGrid(md->subDomain.grid, md->subDomain.cell_num);
-        md->subDomain.grid = NULL;
+        freeGrid(md->SubDomain.grid, md->SubDomain.cell_num);
+        md->SubDomain.grid = NULL;
     }
 }
 
@@ -505,11 +478,11 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double v
     int ic[3];
     TParticleListItem *item_p;
 
-    if (md->particlesDistributed)
+    if (md->ParticlesDistributed)
     {
-        grid = md->subDomain.grid;
-        start = md->subDomain.ic_start;
-        stop = md->subDomain.ic_stop;
+        grid = md->SubDomain.grid;
+        start = md->SubDomain.ic_start;
+        stop = md->SubDomain.ic_stop;
     }
     else
     {
@@ -540,7 +513,7 @@ void fmd_matt_distribute(fmd_t *md)
     int ic[3], *ic_length;
     TParticle *is_particles;
 
-    if (md->subDomain.grid == NULL) fmd_subd_init(md);
+    if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
     if (md->Is_MD_comm_root)
     {
@@ -561,9 +534,9 @@ void fmd_matt_distribute(fmd_t *md)
                 for (d=0; d<3; d++)
                     m_vSqd_Sum += mass * SQR(item_p->P.v[d]);
             }
-        md->globalTemperature = m_vSqd_Sum / (3.0 * md->TotalNoOfParticles * K_BOLTZMANN);
+        md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->TotalNoOfParticles * K_BOLTZMANN);
 
-        for (i=0; i < ROOTPROCESS(md->subDomain.numprocs); i++)
+        for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
         {
             INVERSEINDEX(i, md->ns, is);
             nct = 1;
@@ -604,18 +577,19 @@ void fmd_matt_distribute(fmd_t *md)
             free(is_particles);
         }
 
-        md->subDomain.numberOfParticles = 0;
-        ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
+        md->SubDomain.NumberOfParticles = 0;
+        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         {
-            item_pp = &md->global_grid[ ic[0] - md->subDomain.ic_start[0] + md->subDomain.ic_global_firstcell[0] ]
-                                        [ ic[1] - md->subDomain.ic_start[1] + md->subDomain.ic_global_firstcell[1] ]
-                                        [ ic[2] - md->subDomain.ic_start[2] + md->subDomain.ic_global_firstcell[2] ];
+            item_pp = &md->global_grid[ ic[0] - md->SubDomain.ic_start[0] + md->SubDomain.ic_global_firstcell[0] ]
+                                      [ ic[1] - md->SubDomain.ic_start[1] + md->SubDomain.ic_global_firstcell[1] ]
+                                      [ ic[2] - md->SubDomain.ic_start[2] + md->SubDomain.ic_global_firstcell[2] ];
             item_p = *item_pp;
             while (item_p != NULL)
             {
                 removeFromList(item_pp);
-                fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
-                ++(md->subDomain.numberOfParticles);
+                item_p->neighbors = NULL;
+                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                ++(md->SubDomain.NumberOfParticles);
                 item_p = *item_pp;
             }
         }
@@ -631,23 +605,24 @@ void fmd_matt_distribute(fmd_t *md)
 #endif
         nct = 1;
         for (d=0; d<3; d++)
-            nct *= md->subDomain.ic_stop[d] - md->subDomain.ic_start[d];
+            nct *= md->SubDomain.cell_num_nonmarg[d];
         ic_length = (int *)malloc((nct+1) * sizeof(int));
-        MPI_Recv(ic_length, nct+1, MPI_INT, ROOTPROCESS(md->subDomain.numprocs),
+        MPI_Recv(ic_length, nct+1, MPI_INT, ROOTPROCESS(md->SubDomain.numprocs),
                  50, md->MD_comm, &status);
-        md->subDomain.numberOfParticles = sum_length = ic_length[nct];
+        md->SubDomain.NumberOfParticles = sum_length = ic_length[nct];
         sum_length *= sizeof(TParticle);
         is_particles = (TParticle *)malloc(sum_length);
         MPI_Recv(is_particles, sum_length, MPI_CHAR,
-                 ROOTPROCESS(md->subDomain.numprocs), 51, md->MD_comm, &status);
+                 ROOTPROCESS(md->SubDomain.numprocs), 51, md->MD_comm, &status);
         kreceive = k = 0;
-        ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
+        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         {
             for (i=0; i<ic_length[kreceive]; i++)
             {
                 item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
                 item_p->P = is_particles[k++];
-                fmd_insertInList(&md->subDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                item_p->neighbors = NULL;
+                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
             }
             kreceive++;
         }
@@ -655,14 +630,16 @@ void fmd_matt_distribute(fmd_t *md)
         free(is_particles);
     }
 
-    MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs),
+    MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs),
               md->MD_comm);
-    MPI_Bcast(&md->globalTemperature, 1, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs),
+    MPI_Bcast(&md->TotalNoOfMolecules, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs),
+              md->MD_comm);
+    MPI_Bcast(&md->GlobalTemperature, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs),
               md->MD_comm);
 
-    md->totalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->globalTemperature;
-    md->globalGridExists = 0;
-    md->particlesDistributed = 1;
+    md->totalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
+    md->GlobalGridExists = 0;
+    md->ParticlesDistributed = 1;
 }
 
 void fmd_subd_init(fmd_t *md)
@@ -670,41 +647,42 @@ void fmd_subd_init(fmd_t *md)
     int d;
 
     // initialize is
-    INVERSEINDEX(md->subDomain.myrank, md->ns, md->subDomain.is);
+    INVERSEINDEX(md->SubDomain.myrank, md->ns, md->SubDomain.is);
     // initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes)
     int istemp[3];
     for (d=0; d<3; d++)
-        istemp[d] = md->subDomain.is[d];
+        istemp[d] = md->SubDomain.is[d];
     for (d=0; d<3; d++)
     {
-        istemp[d] = (md->subDomain.is[d] - 1 + md->ns[d]) % md->ns[d];
-        md->subDomain.rank_of_lower_subd[d] = INDEX(istemp, md->ns);
-        istemp[d] = (md->subDomain.is[d] + 1) % md->ns[d];
-        md->subDomain.rank_of_upper_subd[d] = INDEX(istemp, md->ns);
-        istemp[d] = md->subDomain.is[d];
+        istemp[d] = (md->SubDomain.is[d] - 1 + md->ns[d]) % md->ns[d];
+        md->SubDomain.rank_of_lower_subd[d] = INDEX(istemp, md->ns);
+        istemp[d] = (md->SubDomain.is[d] + 1) % md->ns[d];
+        md->SubDomain.rank_of_upper_subd[d] = INDEX(istemp, md->ns);
+        istemp[d] = md->SubDomain.is[d];
     }
     //
     for (d=0; d<3; d++)
     {
         int r, w;
 
-        if (md->ns[d] == 1) md->subDomain.ic_start[d] = 0; else md->subDomain.ic_start[d] = 1;
+        if (md->ns[d] == 1) md->SubDomain.ic_start[d] = 0; else md->SubDomain.ic_start[d] = 1;
         r = md->nc[d] % md->ns[d];
         w = md->nc[d] / md->ns[d];
-        if (md->subDomain.is[d] < r)
+        if (md->SubDomain.is[d] < r)
         {
-            md->subDomain.ic_stop[d] = md->subDomain.ic_start[d] + w + 1;
-            md->subDomain.ic_global_firstcell[d] = md->subDomain.is[d] * (w + 1);
+            md->SubDomain.ic_stop[d] = md->SubDomain.ic_start[d] + w + 1;
+            md->SubDomain.ic_global_firstcell[d] = md->SubDomain.is[d] * (w + 1);
         }
         else
         {
-            md->subDomain.ic_stop[d] = md->subDomain.ic_start[d] + w;
-            md->subDomain.ic_global_firstcell[d] = md->subDomain.is[d] * w + r;
+            md->SubDomain.ic_stop[d] = md->SubDomain.ic_start[d] + w;
+            md->SubDomain.ic_global_firstcell[d] = md->SubDomain.is[d] * w + r;
         }
-        md->subDomain.cell_num[d] = md->subDomain.ic_stop[d] + md->subDomain.ic_start[d];
+        md->SubDomain.cell_num[d] = md->SubDomain.ic_stop[d] + md->SubDomain.ic_start[d];
+        md->SubDomain.cell_num_nonmarg[d] = md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d];
     }
 
-    md->subDomain.grid = createGrid(md->subDomain.cell_num);
+    md->SubDomain.grid = createGrid(md->SubDomain.cell_num);
 }
 
 void fmd_insertInList(TParticleListItem **root_pp, TParticleListItem *item_p)
@@ -746,7 +724,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
             md->l[1] = l1;
             md->l[2] = l2;
         }
-        MPI_Bcast(&md->l, 3, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&md->l, 3, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         md->boxSizeDetermined = 1;
     }
 
@@ -758,15 +736,15 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
             md->PBC[1] = PBC1;
             md->PBC[2] = PBC2;
         }
-        MPI_Bcast(&md->PBC, 3, MPI_INT, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&md->PBC, 3, MPI_INT, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         md->PBCdetermined = 1;
     }
 
-    if (!md->globalGridExists)
+    if (!md->GlobalGridExists)
         fmd_box_createGrid(md, md->cutoffRadius);
 
     if (useTime)
-        MPI_Bcast(&md->mdTime, 1, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&md->mdTime, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
@@ -799,23 +777,23 @@ static void refreshGrid(fmd_t *md, int reverse)
     TParticleListItem *item_p;
 
     // iterate over all cells(lists)
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
         // iterate over all items in cell ic
-        item_pp = &md->subDomain.grid[ic[0]][ic[1]][ic[2]];
+        item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
         item_p = *item_pp;
         while (item_p != NULL)
         {
             for (d=0; d<3; d++)
             {
-                jc[d] = (int)floor(item_p->P.x[d] / md->cellh[d]) - md->subDomain.ic_global_firstcell[d] + md->subDomain.ic_start[d];
+                jc[d] = (int)floor(item_p->P.x[d] / md->cellh[d]) - md->SubDomain.ic_global_firstcell[d] + md->SubDomain.ic_start[d];
                 if (jc[d] < 0)
                 {
                     if (reverse && md->PBC[d] && md->ns[d] > 1 &&
-                        md->subDomain.is[d]==md->ns[d]-1 && ic[d] >= md->subDomain.ic_stop[d]-md->subDomain.ic_start[d])
+                        md->SubDomain.is[d]==md->ns[d]-1 && ic[d] >= md->SubDomain.ic_stop[d]-md->SubDomain.ic_start[d])
                     {
                         item_p->P.x[d] += md->l[d];
-                        jc[d] = ic[d] + md->subDomain.ic_start[d];
+                        jc[d] = ic[d] + md->SubDomain.ic_start[d];
                     }
                     else
                     {
@@ -824,13 +802,13 @@ static void refreshGrid(fmd_t *md, int reverse)
                     }
                 }
                 else
-                    if (jc[d] >= md->subDomain.cell_num[d])
+                    if (jc[d] >= md->SubDomain.cell_num[d])
                     {
                         if (reverse && md->PBC[d] && md->ns[d] > 1 &&
-                            md->subDomain.is[d]==0 && ic[d] < 2*md->subDomain.ic_start[d])
+                            md->SubDomain.is[d]==0 && ic[d] < 2*md->SubDomain.ic_start[d])
                         {
                             item_p->P.x[d] -= md->l[d];
-                            jc[d] = ic[d] - md->subDomain.ic_start[d];
+                            jc[d] = ic[d] - md->SubDomain.ic_start[d];
                         }
                         else
                         {
@@ -843,7 +821,7 @@ static void refreshGrid(fmd_t *md, int reverse)
             if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
             {
                 removeFromList(item_pp);
-                fmd_insertInList(&md->subDomain.grid[jc[0]][jc[1]][jc[2]], item_p);
+                fmd_insertInList(&md->SubDomain.grid[jc[0]][jc[1]][jc[2]], item_p);
             }
             else
                 item_pp = &item_p->next_p;
@@ -868,13 +846,13 @@ void rescaleVelocities(fmd_t *md)
     TParticleListItem *item_p;
     double scale;
 
-    scale = sqrt(md->DesiredTemperature / md->globalTemperature);
+    scale = sqrt(md->DesiredTemperature / md->GlobalTemperature);
 
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
             for (d=0; d<3; d++)
                 item_p->P.v[d] *= scale;
-    md->globalTemperature = md->DesiredTemperature;
+    md->GlobalTemperature = md->DesiredTemperature;
 }
 
 void restoreBackups(fmd_t *md)
@@ -882,8 +860,8 @@ void restoreBackups(fmd_t *md)
     int ic[3], d;
     TParticleListItem *item_p;
 
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
         {
             for (d=0; d<3; d++)
             {
@@ -906,10 +884,10 @@ void fmd_matt_saveConfiguration(fmd_t *md)
     int *nums, *recvcounts, *displs;
     int k;
 
-    localData = (TXYZ_Struct *)malloc(md->subDomain.numberOfParticles * sizeof(TXYZ_Struct));
+    localData = (TXYZ_Struct *)malloc(md->SubDomain.NumberOfParticles * sizeof(TXYZ_Struct));
     k=0;
-    ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-        for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
         {
             if (md->CompLocOrdParam)
             {
@@ -928,11 +906,11 @@ void fmd_matt_saveConfiguration(fmd_t *md)
             k++;
         }
 
-    nums = (int *)malloc(md->subDomain.numprocs * sizeof(int));
-    MPI_Allgather(&md->subDomain.numberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
+    nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
+    MPI_Allgather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
         md->MD_comm);
     md->TotalNoOfParticles = 0;
-    for (k=0; k < md->subDomain.numprocs; k++)
+    for (k=0; k < md->SubDomain.numprocs; k++)
         md->TotalNoOfParticles += nums[k];
 
     if (md->Is_MD_comm_root)
@@ -940,9 +918,9 @@ void fmd_matt_saveConfiguration(fmd_t *md)
         int displ = 0;
 
         globalData = (TXYZ_Struct *)malloc(md->TotalNoOfParticles * sizeof(TXYZ_Struct));
-        recvcounts = (int *)malloc(md->subDomain.numprocs * sizeof(int));
-        displs     = (int *)malloc(md->subDomain.numprocs * sizeof(int));
-        for (k=0; k < md->subDomain.numprocs; k++)
+        recvcounts = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
+        displs     = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
+        for (k=0; k < md->SubDomain.numprocs; k++)
         {
             recvcounts[k] = nums[k] * sizeof(TXYZ_Struct);
             displs[k] = displ;
@@ -950,8 +928,8 @@ void fmd_matt_saveConfiguration(fmd_t *md)
         }
     }
     free(nums);
-    MPI_Gatherv(localData, md->subDomain.numberOfParticles * sizeof(TXYZ_Struct), MPI_CHAR,
-        globalData, recvcounts, displs, MPI_CHAR, ROOTPROCESS(md->subDomain.numprocs),
+    MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(TXYZ_Struct), MPI_CHAR,
+        globalData, recvcounts, displs, MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs),
         md->MD_comm);
     free(localData);
 
@@ -1070,11 +1048,11 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 
     if (md->Is_MD_comm_root)
     {
-        nums = (int *)malloc(md->subDomain.numprocs * sizeof(int));
-        MPI_Gather(&md->subDomain.numberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-            ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
+        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
+            ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         md->TotalNoOfParticles = 0;
-        for (k=0; k < md->subDomain.numprocs; k++)
+        for (k=0; k < md->SubDomain.numprocs; k++)
             md->TotalNoOfParticles += nums[k];
         sprintf(stateFilePath, "%s%s", md->saveDirectory, filename);
         fp = fopen(stateFilePath, "w");
@@ -1083,14 +1061,14 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         fprintf(fp, "%d\n", md->TotalNoOfParticles);
         fprintf(fp, "%.16e\t%.16e\t%.16e\n", md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
-        ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-            for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
             {
                 fprintf(fp, "%s %d\n", md->potsys.atomkinds[item_p->P.atomkind].name, item_p->P.GroupID);
                 fprintf(fp, "%.16e\t%.16e\t%.16e\n", item_p->P.x[0], item_p->P.x[1], item_p->P.x[2]);
                 fprintf(fp, "%.16e\t%.16e\t%.16e\n", item_p->P.v[0], item_p->P.v[1], item_p->P.v[2]);
             }
-        for (i=0; i < ROOTPROCESS(md->subDomain.numprocs); i++)
+        for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
         {
             is_particles = (TParticle *)malloc(nums[i] * sizeof(TParticle));
             MPI_Recv(is_particles, nums[i] * sizeof(TParticle), MPI_CHAR, i, 150,
@@ -1109,15 +1087,15 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     }
     else
     {
-        MPI_Gather(&md->subDomain.numberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-            ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
-        is_particles = (TParticle *)malloc(md->subDomain.numberOfParticles * sizeof(TParticle));
+        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
+            ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        is_particles = (TParticle *)malloc(md->SubDomain.NumberOfParticles * sizeof(TParticle));
         k = 0;
-        ITERATE(ic, md->subDomain.ic_start, md->subDomain.ic_stop)
-            for (item_p = md->subDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                 is_particles[k++] = item_p->P;
-        MPI_Send(is_particles, md->subDomain.numberOfParticles * sizeof(TParticle), MPI_CHAR,
-            ROOTPROCESS(md->subDomain.numprocs), 150, md->MD_comm);
+        MPI_Send(is_particles, md->SubDomain.NumberOfParticles * sizeof(TParticle), MPI_CHAR,
+            ROOTPROCESS(md->SubDomain.numprocs), 150, md->MD_comm);
         free(is_particles);
     }
 }
@@ -1144,9 +1122,9 @@ void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
     createCommunicators(md);
     if (md->isMDprocess)
     {
-        MPI_Comm_size(md->MD_comm, &md->subDomain.numprocs);
-        MPI_Comm_rank(md->MD_comm, &md->subDomain.myrank);
-        if (md->subDomain.myrank == ROOTPROCESS(md->subDomain.numprocs))
+        MPI_Comm_size(md->MD_comm, &md->SubDomain.numprocs);
+        MPI_Comm_rank(md->MD_comm, &md->SubDomain.myrank);
+        if (md->SubDomain.myrank == ROOTPROCESS(md->SubDomain.numprocs))
             md->Is_MD_comm_root = 1;
     }
 }
@@ -1169,16 +1147,16 @@ fmd_t *fmd_create()
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
     md->LOPiteration = 0;
-    md->useAutoStep = 0;
+    md->UseAutoStep = 0;
     md->mdTime = 0.0;
     md->saveDirectory[0] = '\0';
     md->CompLocOrdParam = 0;
-    md->subDomain.grid = NULL;
+    md->SubDomain.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
     md->activeGroup = -1;             // all groups are active by default
-    md->particlesDistributed = 0;
-    md->globalGridExists = 0;
+    md->ParticlesDistributed = 0;
+    md->GlobalGridExists = 0;
     md->boxSizeDetermined = 0;
     md->PBCdetermined = 0;
     md->Is_MD_comm_root = 0;
@@ -1201,7 +1179,7 @@ fmd_t *fmd_create()
 
 void fmd_box_setSize(fmd_t *md, double sx, double sy, double sz)
 {
-    if (!md->globalGridExists)
+    if (!md->GlobalGridExists)
     {
         md->l[0] = sx;
         md->l[1] = sy;
@@ -1242,7 +1220,7 @@ void fmd_box_createGrid(fmd_t *md, double cutoff)
 
     if (md->Is_MD_comm_root)
         md->global_grid = createGrid(md->nc);
-    md->globalGridExists = 1;
+    md->GlobalGridExists = 1;
     md->cutoffRadius = cutoff;
 }
 
@@ -1295,7 +1273,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
     md->mdTime = 0.0;
     md->delta_t = timestep;
     md->DesiredTemperature = temperature;
-    md->globalTemperature = temperature;
+    md->GlobalTemperature = temperature;
     md->BerendsenThermostatParam = strength;
     md->activeGroup = GroupID;
 
@@ -1350,11 +1328,11 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     int ic[3];
     TParticleListItem *item_p;
 
-    if (md->particlesDistributed)
+    if (md->ParticlesDistributed)
     {
-        grid = md->subDomain.grid;
-        start = md->subDomain.ic_start;
-        stop = md->subDomain.ic_stop;
+        grid = md->SubDomain.grid;
+        start = md->SubDomain.ic_start;
+        stop = md->SubDomain.ic_stop;
     }
     else
     {
@@ -1391,7 +1369,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
 
 double fmd_matt_getGlobalTemperature(fmd_t *md)
 {
-    return md->globalTemperature;
+    return md->GlobalTemperature;
 }
 
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter)

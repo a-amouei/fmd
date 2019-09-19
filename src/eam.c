@@ -70,15 +70,15 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
       ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
       shared(md,pottable) default(none) collapse(3) reduction(+:potEnergy) schedule(static,1)
 #endif
-    for (ic0 = md->subDomain.ic_start[0]; ic0 < md->subDomain.ic_stop[0]; ic0++)
-    for (ic1 = md->subDomain.ic_start[1]; ic1 < md->subDomain.ic_stop[1]; ic1++)
-    for (ic2 = md->subDomain.ic_start[2]; ic2 < md->subDomain.ic_stop[2]; ic2++)
+    for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
+    for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
+    for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
     {
 #ifdef USE_TTM
-        ttm_index = ic0 - md->subDomain.ic_start[0] + 1;
+        ttm_index = ic0 - md->SubDomain.ic_start[0] + 1;
 #endif
         // iterate over all items in cell ic
-        for (item1_p = md->subDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
+        for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
         {
             if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
                 continue;
@@ -101,7 +101,7 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
                     {
                         SET_jc_IN_DIRECTION(2)
                         // iterate over all items in cell jc
-                        for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                         {
                             if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
                                 continue;
@@ -147,12 +147,12 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
     #pragma omp parallel for private(ic0,ic1,ic2,item1_p,kc,jc,item2_p,d,rv,r2,h,ir2,ir2_h,a,b,rho, \
       rhoDD,F,F_DD,irho,irho_h) shared(md,pottable,atomkinds) default(none) collapse(3) reduction(+:Femb_sum) \
       schedule(static,1)
-    for (ic0 = md->subDomain.ic_start[0]; ic0 < md->subDomain.ic_stop[0]; ic0++)
-    for (ic1 = md->subDomain.ic_start[1]; ic1 < md->subDomain.ic_stop[1]; ic1++)
-    for (ic2 = md->subDomain.ic_start[2]; ic2 < md->subDomain.ic_stop[2]; ic2++)
+    for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
+    for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
+    for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
     {
         // iterate over all items in cell ic
-        for (item1_p = md->subDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
+        for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
         {
             if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
                 continue;
@@ -173,7 +173,7 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
                     {
                         SET_jc_IN_DIRECTION(2)
                         // iterate over all items in cell jc
-                        for (item2_p = md->subDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                         {
                             if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
                                 continue;
@@ -295,8 +295,8 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         fclose(fp);
     }
 
-    MPI_Bcast(eam, sizeof(eam_t), MPI_CHAR, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
-    if (md->subDomain.myrank != ROOTPROCESS(md->subDomain.numprocs))
+    MPI_Bcast(eam, sizeof(eam_t), MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+    if (md->SubDomain.myrank != ROOTPROCESS(md->SubDomain.numprocs))
     {
         eam->elements = (eam_element_t *)malloc(eam->elementsNo * sizeof(eam_element_t));
         for (i=0; i < eam->elementsNo; i++)
@@ -325,28 +325,28 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
 
     for (i=0; i < eam->elementsNo; i++)
     {
-        MPI_Bcast(&eam->elements[i].mass, 1, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
-        MPI_Bcast(&eam->elements[i].latticeParameter, 1, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&eam->elements[i].mass, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&eam->elements[i].latticeParameter, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
         unsigned namelen;
         if (md->Is_MD_comm_root)
             namelen = strlen(eam->elements[i].name);
-        MPI_Bcast(&namelen, 1, MPI_UNSIGNED, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
-        if (md->subDomain.myrank != ROOTPROCESS(md->subDomain.numprocs))
+        MPI_Bcast(&namelen, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        if (md->SubDomain.myrank != ROOTPROCESS(md->SubDomain.numprocs))
             eam->elements[i].name = (char *)malloc(namelen + 1);
-        MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
-        MPI_Bcast(eam->elements[i].F, eam->Nrho, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
-        MPI_Bcast(eam->elements[i].rho, eam->Nr2, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].F, eam->Nrho, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].rho, eam->Nr2, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         for (j=0; j<=i; j++)
             MPI_Bcast(eam->elements[i].phi[j], eam->Nr2, MPI_DOUBLE,
-                      ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+                      ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 #ifdef USE_CSPLINE
-        MPI_Bcast(eam->elements[i].F_DD, eam->Nrho, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
-        MPI_Bcast(eam->elements[i].rhoDD, eam->Nr2, MPI_DOUBLE, ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].F_DD, eam->Nrho, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].rhoDD, eam->Nr2, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         for (j=0; j<=i; j++)
             MPI_Bcast(eam->elements[i].phiDD[j], eam->Nr2, MPI_DOUBLE,
-                      ROOTPROCESS(md->subDomain.numprocs), md->MD_comm);
+                      ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 #endif
     }
 

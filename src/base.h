@@ -155,8 +155,9 @@ typedef struct
                                 // local index in the interior of the subdomain
     int ic_stop[3];             // first local index in the upper margin
     int cell_num[3];            // number of cells in subdomain, including margin
+    unsigned cell_num_nonmarg[3];
     int ic_global_firstcell[3]; // global index of the first cell of the subdomain
-    int numberOfParticles;
+    unsigned NumberOfParticles;
 } TSubDomain;
 
 typedef enum
@@ -179,13 +180,13 @@ typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param)
 
 struct _fmd
 {
-    TSubDomain subDomain;
+    TSubDomain SubDomain;
     potsys_t potsys;
     TCell ***global_grid;
     fmd_EventHandler_t eventHandler;
     unsigned timers_num;
     fmd_timer_t *timers;
-    fmd_bool_t globalGridExists;
+    fmd_bool_t GlobalGridExists;
     fmd_bool_t boxSizeDetermined;
     fmd_bool_t PBCdetermined;
     double cutoffRadius;
@@ -193,7 +194,7 @@ struct _fmd
     double delta_t;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
-    double globalTemperature;
+    double GlobalTemperature;
     fmd_bool_t isMDprocess;
     fmd_bool_t Is_MD_comm_root;
     int LOPiteration;               // must be initialized with zero
@@ -209,7 +210,7 @@ struct _fmd
     double l[3];                    // size of the simulation box
     int nc[3];                      // number of grid cells in the simulation box
     double cellh[3];                // size of one single grid cell
-    fmd_bool_t useAutoStep;
+    fmd_bool_t UseAutoStep;
     double autoStepSensitivity;
     char saveDirectory[MAX_PATH_LENGTH];
     double BerendsenThermostatParam;
@@ -221,7 +222,7 @@ struct _fmd
     int activeGroup;
     int activeGroupParticlesNum;
     double totalMomentum[3];
-    fmd_bool_t particlesDistributed;
+    fmd_bool_t ParticlesDistributed;
     fmd_bool_t MPI_initialized_by_me;
     int _oldNumberOfParticles;
     int _fileIndex;
@@ -238,7 +239,6 @@ void cleanGridSegment(TCell ***grid, int ic_from[3], int ic_to[3]);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
 TCell ***createGrid(int cell_num[3]);
-void findLimits(fmd_t *md, double lowerLimit[3], double upperLimit[3]);
 int getListLength(TParticleListItem *root_p);
 void identifyProcess(fmd_t *md);
 void handleFileOpenError(FILE *fp, char *filename);

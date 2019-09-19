@@ -119,7 +119,7 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
 {
     unsigned i = md->potsys.molkinds_num;
 
-    // molkinds data start from index 1 because molkind==0 has special meaning
+    // molkinds data start from index 1 because molkind=0 has special meaning
     molkind_t *genuine_pointer = (md->potsys.molkinds == NULL ? NULL : md->potsys.molkinds+1);
     md->potsys.molkinds = (molkind_t *)realloc(genuine_pointer, (i+1) * sizeof(molkind_t)) - 1;
 
@@ -142,4 +142,53 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
 
     md->potsys.molkinds_num++;
     return i+1;
+}
+
+static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned molkind, unsigned neighborID)
+{
+    // calculate maximum distance
+    unsigned max_dist = 0;
+    for (unsigned d=0; d<3; d++)
+    {
+        unsigned max_d;
+
+        if (md->PBC[d] && md->ns[d] == 1)
+            max_d = md->SubDomain.cell_num_nonmarg[d] / 2;
+        else
+        {
+            max_d = ic[d] - md->SubDomain.ic_start[d];             // left
+            unsigned tempo = md->SubDomain.ic_stop[d] - ic[d] - 1; // right
+            if (tempo > max_d) max_d = tempo;
+        }
+
+        if (max_d > max_dist) max_dist = max_d;
+    }
+
+    // treat dist=0 separately
+
+    // other dist values
+    for (unsigned dist=1; dist <= max_dist; dist++)
+    {
+    }
+}
+
+void fmd_matt_updateNeighbors(fmd_t *md)
+{
+    int ic[3];
+    TParticleListItem *item_p;
+
+    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        {
+            unsigned molkind = item_p->P.molkind;
+            list_t *mkln = md->potsys.molkinds[molkind].atoms[item_p->P.AtomID_local].neighbors;
+
+            while (mkln != NULL)
+            {
+                unsigned nblocal = ((molkind_atom_neighbor_t *)mkln->data)->atom->LocalID;
+                mkln = mkln->next;
+
+                find_neighbor(md, ic, molkind, nblocal);
+            }
+        }
 }
