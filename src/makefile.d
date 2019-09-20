@@ -1,6 +1,6 @@
 array.o: array.c array.h config.h
 base.o: base.c base.h config.h potential.h types.h md_ghost.h forces.h \
- timer.h
+ timer.h molecule.h
 cspline.o: cspline.c cspline.h config.h
 eam.o: eam.c eam.h config.h forces.h types.h cspline.h base.h potential.h \
  list.h

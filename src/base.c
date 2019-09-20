@@ -25,6 +25,7 @@
 #include "ttm.h"
 #endif
 #include "timer.h"
+#include "molecule.h"
 
 const int fmd_ThreeZeros[3] = {0, 0, 0};
 
@@ -636,6 +637,8 @@ void fmd_matt_distribute(fmd_t *md)
               md->MD_comm);
     MPI_Bcast(&md->GlobalTemperature, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs),
               md->MD_comm);
+
+    if (md->TotalNoOfMolecules > 0) fmd_matt_updateNeighbors(md);
 
     md->totalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
     md->GlobalGridExists = 0;

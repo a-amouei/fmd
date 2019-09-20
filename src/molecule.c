@@ -144,13 +144,63 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     return i+1;
 }
 
-static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned molkind, unsigned neighborID)
+#define FIND_NEIGHBOR_IN_jc(jc)                                                                             \
+    for (item_p = md->SubDomain.grid[(jc)[0]][(jc)[1]][(jc)[2]]; item_p != NULL; item_p = item_p->next_p)   \
+        if (item_p->P.MolID == MolID && item_p->P.AtomID_local == neighborID)                               \
+            break;
+
+#define MAP_kc_TO_jc(kc, jc, d)                                             \
+    if ((kc)[(d)] < md->SubDomain.ic_start[(d)])                            \
+    {                                                                       \
+        if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
+        {                                                                   \
+            (jc)[(d)] = (kc)[(d)] + md->nc[(d)];                            \
+            map_done=1;                                                     \
+        }                                                                   \
+        else                                                                \
+            map_done=0;                                                     \
+    }                                                                       \
+    else if ((kc)[(d)] >= md->SubDomain.ic_stop[(d)])                       \
+    {                                                                       \
+        if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
+        {                                                                   \
+            (jc)[(d)] = (kc)[(d)] - md->nc[(d)];                            \
+            map_done=1;                                                     \
+        }                                                                   \
+        else                                                                \
+            map_done=0;                                                     \
+    }                                                                       \
+    else                                                                    \
+    {                                                                       \
+        (jc)[(d)] = (kc)[(d)];                                              \
+        map_done=1;                                                         \
+    }
+
+#define MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, d)                                 \
+    if ((kc)[(d)] < md->SubDomain.ic_start[(d)])                            \
+    {                                                                       \
+        if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
+            (jc)[(d)] = (kc)[(d)] + md->nc[(d)];                            \
+        else                                                                \
+            continue;                                                       \
+    }                                                                       \
+    else if ((kc)[(d)] >= md->SubDomain.ic_stop[(d)])                       \
+    {                                                                       \
+        if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
+            (jc)[(d)] = (kc)[(d)] - md->nc[(d)];                            \
+        else                                                                \
+            continue;                                                       \
+    }                                                                       \
+    else                                                                    \
+        (jc)[(d)] = (kc)[(d)];
+
+static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, unsigned neighborID)
 {
     // calculate maximum distance
-    unsigned max_dist = 0;
-    for (unsigned d=0; d<3; d++)
+    int max_dist = 0;
+    for (int d=0; d<3; d++)
     {
-        unsigned max_d;
+        int max_d;
 
         if (md->PBC[d] && md->ns[d] == 1)
             max_d = md->SubDomain.cell_num_nonmarg[d] / 2;
@@ -164,12 +214,54 @@ static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned molkind, 
         if (max_d > max_dist) max_dist = max_d;
     }
 
+    TParticleListItem *item_p;
+
     // treat dist=0 separately
+    FIND_NEIGHBOR_IN_jc(ic);
+    if (item_p != NULL) return item_p;
 
     // other dist values
-    for (unsigned dist=1; dist <= max_dist; dist++)
+    for (int dist=1; dist <= max_dist; dist++)
     {
+        int jc[3], kc[3];
+        fmd_bool_t map_done;
+
+        // segment 1 out of 6
+        kc[0] = ic[0] + dist;
+        MAP_kc_TO_jc(kc, jc, 0);
+        if (map_done)
+            for (kc[1]=ic[1]-dist; kc[1]<=ic[1]+dist; kc[1]++)
+            {
+                MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 1);
+                for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
+                {
+                    MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
+                    FIND_NEIGHBOR_IN_jc(jc);
+                    if (item_p != NULL) return item_p;
+                }
+            }
+
+        // segment 2 out of 6
+        kc[0] = ic[0] - dist;
+        MAP_kc_TO_jc(kc, jc, 0);
+        if (map_done)
+            for (kc[1]=ic[1]-dist; kc[1]<=ic[1]+dist; kc[1]++)
+            {
+                MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 1);
+                for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
+                {
+                    MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
+                    FIND_NEIGHBOR_IN_jc(jc);
+                    if (item_p != NULL) return item_p;
+                }
+            }
+
+        // segment 3 out of 6
     }
+
+    printf("didn't found!\n");
+    printf("ic[] = {%d, %d, %d}\n", ic[0], ic[1], ic[2]);
+    return NULL;
 }
 
 void fmd_matt_updateNeighbors(fmd_t *md)
@@ -180,15 +272,15 @@ void fmd_matt_updateNeighbors(fmd_t *md)
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
         {
-            unsigned molkind = item_p->P.molkind;
-            list_t *mkln = md->potsys.molkinds[molkind].atoms[item_p->P.AtomID_local].neighbors;
+            list_t *mkln = md->potsys.molkinds[item_p->P.molkind].atoms[item_p->P.AtomID_local].neighbors;
 
             while (mkln != NULL)
             {
                 unsigned nblocal = ((molkind_atom_neighbor_t *)mkln->data)->atom->LocalID;
-                mkln = mkln->next;
 
-                find_neighbor(md, ic, molkind, nblocal);
+                find_neighbor(md, ic, item_p->P.MolID, nblocal);
+
+                mkln = mkln->next;
             }
         }
 }
