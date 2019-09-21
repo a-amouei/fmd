@@ -257,10 +257,66 @@ static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, un
             }
 
         // segment 3 out of 6
+        kc[1] = ic[1] + dist;
+        MAP_kc_TO_jc(kc, jc, 1);
+        if (map_done)
+            for (kc[0]=ic[0]-(dist-1); kc[0]<=ic[0]+(dist-1); kc[0]++)
+            {
+                MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 0);
+                for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
+                {
+                    MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
+                    FIND_NEIGHBOR_IN_jc(jc);
+                    if (item_p != NULL) return item_p;
+                }
+            }
+
+        // segment 4 out of 6
+        kc[1] = ic[1] - dist;
+        MAP_kc_TO_jc(kc, jc, 1);
+        if (map_done)
+            for (kc[0]=ic[0]-(dist-1); kc[0]<=ic[0]+(dist-1); kc[0]++)
+            {
+                MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 0);
+                for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
+                {
+                    MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
+                    FIND_NEIGHBOR_IN_jc(jc);
+                    if (item_p != NULL) return item_p;
+                }
+            }
+
+        // segment 5 out of 6
+        kc[2] = ic[2] + dist;
+        MAP_kc_TO_jc(kc, jc, 2);
+        if (map_done)
+            for (kc[0]=ic[0]-(dist-1); kc[0]<=ic[0]+(dist-1); kc[0]++)
+            {
+                MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 0);
+                for (kc[1]=ic[1]-(dist-1); kc[1]<=ic[1]+(dist-1); kc[1]++)
+                {
+                    MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 1);
+                    FIND_NEIGHBOR_IN_jc(jc);
+                    if (item_p != NULL) return item_p;
+                }
+            }
+
+        // segment 6 out of 6
+        kc[2] = ic[2] - dist;
+        MAP_kc_TO_jc(kc, jc, 2);
+        if (map_done)
+            for (kc[0]=ic[0]-(dist-1); kc[0]<=ic[0]+(dist-1); kc[0]++)
+            {
+                MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 0);
+                for (kc[1]=ic[1]-(dist-1); kc[1]<=ic[1]+(dist-1); kc[1]++)
+                {
+                    MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 1);
+                    FIND_NEIGHBOR_IN_jc(jc);
+                    if (item_p != NULL) return item_p;
+                }
+            }
     }
 
-    printf("didn't found!\n");
-    printf("ic[] = {%d, %d, %d}\n", ic[0], ic[1], ic[2]);
     return NULL;
 }
 
