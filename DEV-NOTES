@@ -12,3 +12,5 @@ Questions:
         be replaced with fmd_list_find()?
 
         A: My first guess is that it can be done. But maybe needs more analysis.
+
+  #2    Q: Can LocalID be finally removed from mol_atom_neighbor_t?
