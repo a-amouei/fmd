@@ -54,7 +54,7 @@ void fmd_bond_freeKinds(fmd_t *md)
     md->potsys.bondkinds_num = 0;
 }
 
-static int LocalID_compare(const void *a, const void *b)
+static int compare_LocalID_in_mkln(const void *a, const void *b)
 {
     if ( ((molkind_atom_neighbor_t *)a)->atom->LocalID == *( (unsigned *)b ) )
         return 0;
@@ -73,7 +73,7 @@ void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
     list_t *ln2 = mk->atoms[atom2].neighbors;
 
     // check one of the two 'neighbors' lists to see if it already contains the other atom
-    list_t *item1 = fmd_list_find_custom(ln1, &atom2, LocalID_compare);
+    list_t *item1 = fmd_list_find_custom(ln1, &atom2, compare_LocalID_in_mkln);
     list_t *item2;  // here in 'item1' & 'item2', '1' & '2' refer to list 1 & list 2
 
     if (item1 != NULL) // there is already a bond between the two atoms
@@ -81,7 +81,7 @@ void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
         // just find item2 as well and update the bond field of the
         // related molkind_atom_neighbor_t structures
 
-        item2 = fmd_list_find_custom(ln2, &atom1, LocalID_compare);
+        item2 = fmd_list_find_custom(ln2, &atom1, compare_LocalID_in_mkln);
         assert(item2 != NULL);
 
         ((molkind_atom_neighbor_t *)(item1->data))->bond = md->potsys.bondkinds[bondkind];
@@ -320,6 +320,14 @@ static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, un
     return NULL;
 }
 
+static int compare_LocalID_in_ln(const void *a, const void *b)
+{
+    if ( ((mol_atom_neighbor_t *)a)->LocalID == *( (unsigned *)b ) )
+        return 0;
+    else
+        return 1;
+}
+
 void fmd_matt_updateNeighbors(fmd_t *md)
 {
     int ic[3];
@@ -328,13 +336,47 @@ void fmd_matt_updateNeighbors(fmd_t *md)
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
         {
+            if (item_p->P.molkind == 0) continue;
             list_t *mkln = md->potsys.molkinds[item_p->P.molkind].atoms[item_p->P.AtomID_local].neighbors;
 
             while (mkln != NULL)
             {
                 unsigned nblocal = ((molkind_atom_neighbor_t *)mkln->data)->atom->LocalID;
 
-                find_neighbor(md, ic, item_p->P.MolID, nblocal);
+                list_t *res = fmd_list_find_custom(item_p->neighbors, &nblocal, compare_LocalID_in_ln);
+
+                if (res == NULL)
+                {
+                    mol_atom_neighbor_t *man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
+                    man->LocalID = nblocal;
+                    man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
+                    TParticleListItem *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
+                    man->atom = item_nb;
+                    item_p->neighbors = fmd_list_prepend(item_p->neighbors, man);
+
+                    if (item_nb != NULL)
+                    {
+                        man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
+                        man->LocalID = item_p->P.AtomID_local;
+                        man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
+                        man->atom = item_p;
+                        item_nb->neighbors = fmd_list_prepend(item_nb->neighbors, man);
+                    }
+                }
+                else
+                {
+                    if ( ((mol_atom_neighbor_t *)res->data)->atom == NULL )
+                    {
+                        TParticleListItem *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
+                        ((mol_atom_neighbor_t *)res->data)->atom = item_nb;
+
+                        if (item_nb != NULL)
+                        {
+                            list_t *f = fmd_list_find_custom(item_nb->neighbors, &item_p->P.AtomID_local, compare_LocalID_in_ln);
+                            ((mol_atom_neighbor_t *)f->data)->atom = item_p;
+                        }
+                    }
+                }
 
                 mkln = mkln->next;
             }

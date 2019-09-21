@@ -124,6 +124,7 @@ typedef struct TParticleListItem
 typedef struct
 {
     TParticleListItem *atom;
+    unsigned LocalID;
     bondkind_t *bond;
 } mol_atom_neighbor_t;
 
