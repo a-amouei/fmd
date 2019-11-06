@@ -76,6 +76,8 @@ void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
                     if (rn < prps_cumult[j]) break;
                 item_p->P.atomkind = j;
 
+                item_p->P.molkind = 0;
+
                 mass = md->potsys.atomkinds[j].mass;
                 StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
 

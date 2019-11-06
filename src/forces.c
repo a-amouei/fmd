@@ -24,6 +24,7 @@
 #include "base.h"
 #include "md_ghost.h"
 #include "list.h"
+#include "molecule.h"
 
 static void compute_hybrid_pass1(fmd_t *md, double *FembSum_p)
 {
@@ -236,6 +237,8 @@ void fmd_dync_updateForces(fmd_t *md)
         if (md->potsys.hybridpasses[0])
             compute_hybrid_pass0(md, FembSum);
     }
+
+    if (md->TotalNoOfMolecules > 0) fmd_dync_computeBondForce(md);   // TO-DO
 
     fmd_ghostparticles_delete(md);
 }

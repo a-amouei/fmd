@@ -1,7 +1,7 @@
 /*
    02_collision.c - an example showing how to use FMD in practice
 
-   Written in 2019 by the FMD authors
+   Written in 2019 by the authors of FMD
 
    To the extent possible under law, the author(s) have dedicated all
    copyright and related and neighboring rights to the current file to
@@ -40,20 +40,20 @@ int main(int argc, char *argv[])
     fmd_box_setPBC(md, 0, 0, 0);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
-    fmd_box_setSubDomains(md, 1, 1, 2);
+    fmd_box_setSubDomains(md, 1, 2, 1);
 
     /* sometimes the user launches more processes than the chosen number of subdomains; they're not needed here!
        the function fmd_proc_isMD() can be called only after fmd_box_setSubDomains() */
     if (! fmd_proc_isMD(md))
     {
-        fmd_free(md, 1);
+        fmd_free(md);
         return 0;
     }
 
     // let's have copper and argon atoms
     fmd_string_t names[2] = {"Cu", "Ar"};
     double masses[2] = {63.546, 39.948};
-    fmd_pot_setAtomKinds(md, 2, names, masses);
+    fmd_matt_setAtomKinds(md, 2, names, masses);
 
     // load the EAM file into memory; can be called only after fmd_box_setSubDomains()
     fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "../potentials/Cu01.eam.alloy");
@@ -67,9 +67,6 @@ int main(int argc, char *argv[])
 
     // create the grid
     fmd_box_createGrid(md, 2.5*3.40);
-
-    // set the desired temperature (in Kelvin)
-    fmd_matt_setDesiredTemperature(md, 40.0);
 
     // prepare some parameters
     double dc = 30.0;     // the initial distance between the colliding objects
@@ -103,9 +100,9 @@ int main(int argc, char *argv[])
 
     // equilibrate the two colliding objects
     fmd_io_printf(md, "equilibrating the copper object...\n");
-    fmd_dync_equilibrate(md, 0, 1.0, 2e-2);
+    fmd_dync_equilibrate(md, 0, 1.0, 2e-3, 2e-2, 40.0);
     fmd_io_printf(md, "equilibrating the argon object...\n");
-    fmd_dync_equilibrate(md, 1, 1.0, 2e-2);
+    fmd_dync_equilibrate(md, 1, 1.0, 2e-3, 2e-2, 40.0);
 
     // add some center-of-mass velocity to the atoms of the objects (groups 0 and 1)
     fmd_matt_addVelocity(md, 0, +8., 0., 0.);
@@ -132,14 +129,14 @@ int main(int argc, char *argv[])
         fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
                                       fmd_matt_getTotalEnergy(md));
 
-        // take first step of velocity Verlet integrator
-        fmd_dync_velocityVerlet_takeFirstStep(md, 0);
+        // use velocity Verlet integrator: start step
+        fmd_dync_VelocityVerlet_startStep(md, 0);
 
         // compute forces
         fmd_dync_updateForces(md);
 
-        // take last step of velocity Verlet integrator
-        fmd_dync_velocityVerlet_takeLastStep(md);
+        // use velocity Verlet integrator: finish step
+        fmd_dync_VelocityVerlet_finishStep(md);
 
         // increase internal time by one time step
         fmd_dync_incTime(md);
@@ -153,8 +150,7 @@ int main(int argc, char *argv[])
     fmd_io_printf(md, "The run took about %.3f seconds to finish.\n", fmd_proc_getWallTime(md));
 
     // release memory taken for the FMD instance (including subdomain and all particles)
-    // also finalize MPI
-    fmd_free(md, 1);
+    fmd_free(md);
 
     return 0;
 }

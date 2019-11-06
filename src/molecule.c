@@ -382,3 +382,61 @@ void fmd_matt_updateNeighbors(fmd_t *md)
             }
         }
 }
+
+#define _COMPUTE_rv_AND_r2(item1, item2, r0)                                 \
+    for (d=0; d<3; d++)                                                      \
+    {                                                                        \
+        rv[d] = (item1)->P.x[d] - (item2)->P.x[d];                           \
+        if (md->ns[d] == 1)                                                  \
+        {                                                                    \
+            if (rv[d] > 2*(r0))                                              \
+                rv[d] -= md->l[d];                                           \
+            else if (rv[d] < -2*(r0))                                        \
+                rv[d] += md->l[d];                                           \
+        }                                                                    \
+    }                                                                        \
+    r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
+
+void fmd_dync_computeBondForce(fmd_t *md)
+{
+    int ic0, ic1, ic2;
+    double PotEnergy = 0.0;
+
+    // iterate over all cells(lists)
+    #pragma omp parallel for private(ic0,ic1,ic2) \
+      shared(md) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
+    for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
+        for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
+            for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
+            {
+                // iterate over all items in cell ic
+                for (TParticleListItem *item1 = md->SubDomain.grid[ic0][ic1][ic2]; item1 != NULL; item1 = item1->next_p)
+                {
+                    if (item1->P.molkind != 0)
+                    {
+                        TParticleListItem *item2 = ((mol_atom_neighbor_t *)(item1->neighbors->data))->atom;
+
+                        if (item1->P.AtomID_local > item2->P.AtomID_local)
+                        {
+                            double r2, rv[3];
+                            int d;
+
+                            bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(item1->neighbors->data))->bond;
+                            double r0 = bond->r0;
+                            _COMPUTE_rv_AND_r2(item1, item2, r0);
+                            double k = bond->k;
+                            double r = sqrt(r2);
+                            double vek[3];
+                            for (d=0; d<3; d++)
+                            {
+                                vek[d] = -2*k*(r-r0)*rv[d]/r;
+                                item1->F[d] += vek[d];
+                                item2->F[d] -= vek[d];
+                            }
+                            PotEnergy += k*(r-r0)*(r-r0);
+                        }
+                    }
+                }
+            }
+    md->totalPotentialEnergy += PotEnergy;
+}

@@ -70,5 +70,6 @@ typedef struct _fmd fmd_t;
 
 void fmd_bond_freeKinds(fmd_t *md);
 void fmd_matt_updateNeighbors(fmd_t *md);
+void fmd_dync_computeBondForce(fmd_t *md);
 
 #endif /* MOLECULE_H */

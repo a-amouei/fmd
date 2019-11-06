@@ -67,6 +67,8 @@ void fmd_computeLJ(fmd_t *md)
                                     if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
                                         continue;
 
+                                    if (item1_p->P.molkind!=0 && item1_p->P.MolID==item2_p->P.MolID) continue;// TO-DO
+
                                     if (item1_p != item2_p)
                                     {
                                         unsigned atomkind2 = item2_p->P.atomkind;

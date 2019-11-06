@@ -25,13 +25,13 @@
 #define COMPUTE_rv_AND_r2                                                    \
     for (d=0; d<3; d++)                                                      \
     {                                                                        \
-        if (md->ns[d] == 1)                                                \
+        if (md->ns[d] == 1)                                                  \
         {                                                                    \
             if (kc[d]==-1)                                                   \
-                rv[d] = item1_p->P.x[d] - item2_p->P.x[d] + md->l[d];      \
+                rv[d] = item1_p->P.x[d] - item2_p->P.x[d] + md->l[d];        \
             else                                                             \
-                if (kc[d] == md->nc[d])                                    \
-                    rv[d] = item1_p->P.x[d] - item2_p->P.x[d] - md->l[d];  \
+                if (kc[d] == md->nc[d])                                      \
+                    rv[d] = item1_p->P.x[d] - item2_p->P.x[d] - md->l[d];    \
                 else                                                         \
                     rv[d] = item1_p->P.x[d] - item2_p->P.x[d];               \
         }                                                                    \

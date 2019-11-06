@@ -1,7 +1,7 @@
 /*
    01_argon.c - an example showing how to use FMD in practice
 
-   Written in 2019 by the FMD authors
+   Written in 2019 by the authors of FMD
 
    To the extent possible under law, the author(s) have dedicated all
    copyright and related and neighboring rights to the current file to
@@ -46,14 +46,14 @@ int main(int argc, char *argv[])
        the function fmd_proc_isMD() can be called only after fmd_box_setSubDomains() */
     if (! fmd_proc_isMD(md))
     {
-        fmd_free(md, 1);
+        fmd_free(md);
         return 0;
     }
 
     // let's have only argon atoms
     fmd_string_t name[1] = {"Ar"};
     double mass[1] = {39.948};
-    fmd_pot_setAtomKinds(md, 1, name, mass);
+    fmd_matt_setAtomKinds(md, 1, name, mass);
 
     // use a 12-6 Lennard-Jones potential for Argon atoms
     double sigma = 3.4, epsilon = 0.0104;
@@ -107,14 +107,14 @@ int main(int argc, char *argv[])
                                           fmd_matt_getGlobalTemperature(md),
                                           fmd_matt_getTotalEnergy(md));
 
-        // take first step of velocity Verlet integrator
-        fmd_dync_velocityVerlet_takeFirstStep(md, 1);
+        // use velocity Verlet integrator: start step
+        fmd_dync_VelocityVerlet_startStep(md, 1);
 
         // compute forces
         fmd_dync_updateForces(md);
 
-        // take last step of velocity Verlet integrator
-        fmd_dync_velocityVerlet_takeLastStep(md);
+        // use velocity Verlet integrator: finish step
+        fmd_dync_VelocityVerlet_finishStep(md);
 
         // increase internal time by one time step
         fmd_dync_incTime(md);
@@ -128,8 +128,7 @@ int main(int argc, char *argv[])
     fmd_io_printf(md, "The run took about %.3f seconds to finish.\n", fmd_proc_getWallTime(md));
 
     // release memory taken for the FMD instance (including subdomain and all particles)
-    // also finalize MPI
-    fmd_free(md, 1);
+    fmd_free(md);
 
     return 0;
 }
