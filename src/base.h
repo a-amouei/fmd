@@ -109,44 +109,44 @@ typedef struct
     unsigned molkind;
     unsigned MolID;
     unsigned AtomID_local;
-} TParticle;
+} particle_t;
 
-typedef struct TParticleListItem
+typedef struct ParticleListItem_t
 {
-    TParticle P;
+    particle_t P;
     double F[3];
     double FembPrime;
     float LocOrdParamAvg;
-    struct TParticleListItem *next_p;
+    struct ParticleListItem_t *next_p;
     list_t *neighbors;  // each data pointer in this list points to a mol_atom_neighbor_t
-} TParticleListItem;
+} ParticleListItem_t;
 
 typedef struct
 {
-    TParticleListItem *atom;
+    ParticleListItem_t *atom;
     unsigned LocalID;
     bondkind_t *bond;
 } mol_atom_neighbor_t;
 
-typedef TParticleListItem *TCell;
+typedef ParticleListItem_t *cell_t;
 
 typedef struct
 {
     float x[3];
     float var;
     unsigned atomkind;
-} TXYZ_Struct;
+} XYZ_struct_t;
 
 typedef struct
 {
     double x[3];
     unsigned atomkind;
     int GroupID;
-} TPosition_Struct;
+} position_struct_t;
 
 typedef struct
 {
-    TCell ***grid;              // where the particles lie
+    cell_t ***grid;             // where the particles lie
     int myrank;                 // rank of the local process in MD_comm
     int numprocs;               // number of processes in MD_comm
     int is[3];                  // position of subdomain in the subdomain grid
@@ -159,7 +159,7 @@ typedef struct
     unsigned cell_num_nonmarg[3];
     int ic_global_firstcell[3]; // global index of the first cell of the subdomain
     unsigned NumberOfParticles;
-} TSubDomain;
+} SubDomain_t;
 
 typedef enum
 {
@@ -181,28 +181,29 @@ typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param)
 
 struct _fmd
 {
-    TSubDomain SubDomain;
+    SubDomain_t SubDomain;
     potsys_t potsys;
-    TCell ***global_grid;
-    fmd_EventHandler_t eventHandler;
+    cell_t ***global_grid;
+    fmd_EventHandler_t EventHandler;
     unsigned timers_num;
     fmd_timer_t *timers;
     fmd_bool_t GlobalGridExists;
-    fmd_bool_t boxSizeDetermined;
+    fmd_bool_t BoxSizeDetermined;
     fmd_bool_t PBCdetermined;
-    double cutoffRadius;
-    double mdTime;
+    double CutoffRadius;
+    double MD_time;
     double delta_t;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
     double GlobalTemperature;
-    fmd_bool_t isMDprocess;
+    fmd_bool_t Is_MD_process;
     fmd_bool_t Is_MD_comm_root;
-    int LOPiteration;               // must be initialized with zero
+    int LOP_iteration;              // must be initialized with zero
+    int LOP_period;
     MPI_Comm MD_comm;
-    double totalKineticEnergy;
-    double totalPotentialEnergy;
-    double totalMDEnergy;
+    double TotalKineticEnergy;
+    double TotalPotentialEnergy;
+    double TotalMDEnergy;
     int world_rank;
     int world_numprocs;
     double DesiredTemperature;
@@ -212,23 +213,22 @@ struct _fmd
     int nc[3];                      // number of grid cells in the simulation box
     double cellh[3];                // size of one single grid cell
     fmd_bool_t UseAutoStep;
-    double autoStepSensitivity;
-    char saveDirectory[MAX_PATH_LENGTH];
+    double AutoStepSensitivity;
+    char SaveDirectory[MAX_PATH_LENGTH];
     double BerendsenThermostatParam;
     fmd_bool_t CompLocOrdParam;           // compute local order parameter?
-    int locOrdParamPeriod;
-    fmd_SaveConfigMode_t saveConfigMode;
-    FILE *configFilep;
-    double wallTimeOrigin;
-    int activeGroup;
-    int activeGroupParticlesNum;
-    double totalMomentum[3];
+    fmd_SaveConfigMode_t SaveConfigMode;
+    FILE *ConfigFilep;
+    double WallTimeOrigin;
+    int ActiveGroup;
+    int ActiveGroupParticlesNum;
+    double TotalMomentum[3];
     fmd_bool_t ParticlesDistributed;
     fmd_bool_t MPI_initialized_by_me;
-    int _oldNumberOfParticles;
-    int _fileIndex;
-    double _oldTotalMDEnergy;
-    double _prevFailedMDEnergy;
+    int _OldNumberOfParticles;
+    int _FileIndex;
+    double _OldTotalMDEnergy;
+    double _PrevFailedMDEnergy;
 };
 
 // Functions
@@ -236,18 +236,18 @@ struct _fmd
 void fmd_subd_init(fmd_t *md);
 void fmd_box_createGrid(fmd_t *md, double cutoff);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
-void cleanGridSegment(TCell ***grid, int ic_from[3], int ic_to[3]);
+void cleanGridSegment(cell_t ***grid, int ic_from[3], int ic_to[3]);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
-TCell ***createGrid(int cell_num[3]);
-int getListLength(TParticleListItem *root_p);
+cell_t ***createGrid(int cell_num[3]);
+int getListLength(ParticleListItem_t *root_p);
 void identifyProcess(fmd_t *md);
 void handleFileOpenError(FILE *fp, char *filename);
-void loadStateFile(fmd_t *md, TCell ***global_grid);
+void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
-void fmd_insertInList(TParticleListItem **root_pp, TParticleListItem *item_p);
-void removeFromList(TParticleListItem **item_pp);
+void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p);
+void removeFromList(ParticleListItem_t **item_pp);
 
 //
 

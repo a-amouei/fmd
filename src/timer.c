@@ -41,13 +41,13 @@ void fmd_timer_sendTimerTickEvents(fmd_t *md)
 {
     for (unsigned i=0; i < md->timers_num; i++)
     {
-        if ( md->timers[i].enabled && md->mdTime >= md->timers[i].start &&
-             !(md->mdTime > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
+        if ( md->timers[i].enabled && md->MD_time >= md->timers[i].start &&
+             !(md->MD_time > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
         {
             if (md->timers[i].cat == TIMER_SIMPLE)
             {
-                if (fmod( fabs(md->mdTime - md->timers[i].start), md->timers[i].interval ) < md->delta_t)
-                    md->eventHandler(md, FMD_EVENT_TIMERTICK, i);
+                if (fmod( fabs(md->MD_time - md->timers[i].start), md->timers[i].interval ) < md->delta_t)
+                    md->EventHandler(md, FMD_EVENT_TIMERTICK, i);
             }
         }
     }

@@ -194,7 +194,7 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     else                                                                    \
         (jc)[(d)] = (kc)[(d)];
 
-static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, unsigned neighborID)
+static ParticleListItem_t *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, unsigned neighborID)
 {
     // calculate maximum distance
     int max_dist = 0;
@@ -214,7 +214,7 @@ static TParticleListItem *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, un
         if (max_d > max_dist) max_dist = max_d;
     }
 
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
 
     // treat dist=0 separately
     FIND_NEIGHBOR_IN_jc(ic);
@@ -331,7 +331,7 @@ static int compare_LocalID_in_ln(const void *a, const void *b)
 void fmd_matt_updateNeighbors(fmd_t *md)
 {
     int ic[3];
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
 
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -350,7 +350,7 @@ void fmd_matt_updateNeighbors(fmd_t *md)
                     mol_atom_neighbor_t *man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
                     man->LocalID = nblocal;
                     man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
-                    TParticleListItem *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
+                    ParticleListItem_t *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
                     man->atom = item_nb;
                     item_p->neighbors = fmd_list_prepend(item_p->neighbors, man);
 
@@ -367,7 +367,7 @@ void fmd_matt_updateNeighbors(fmd_t *md)
                 {
                     if ( ((mol_atom_neighbor_t *)res->data)->atom == NULL )
                     {
-                        TParticleListItem *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
+                        ParticleListItem_t *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
                         ((mol_atom_neighbor_t *)res->data)->atom = item_nb;
 
                         if (item_nb != NULL)
@@ -410,11 +410,11 @@ void fmd_dync_computeBondForce(fmd_t *md)
             for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
             {
                 // iterate over all items in cell ic
-                for (TParticleListItem *item1 = md->SubDomain.grid[ic0][ic1][ic2]; item1 != NULL; item1 = item1->next_p)
+                for (ParticleListItem_t *item1 = md->SubDomain.grid[ic0][ic1][ic2]; item1 != NULL; item1 = item1->next_p)
                 {
                     if (item1->P.molkind != 0)
                     {
-                        TParticleListItem *item2 = ((mol_atom_neighbor_t *)(item1->neighbors->data))->atom;
+                        ParticleListItem_t *item2 = ((mol_atom_neighbor_t *)(item1->neighbors->data))->atom;
 
                         if (item1->P.AtomID_local > item2->P.AtomID_local)
                         {
@@ -438,5 +438,5 @@ void fmd_dync_computeBondForce(fmd_t *md)
                     }
                 }
             }
-    md->totalPotentialEnergy += PotEnergy;
+    md->TotalPotentialEnergy += PotEnergy;
 }

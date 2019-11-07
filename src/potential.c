@@ -29,7 +29,7 @@
 
 void fmd_pot_setCutoffRadius(fmd_t *md, double cutoff)
 {
-    md->cutoffRadius = cutoff;
+    md->CutoffRadius = cutoff;
 }
 
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[])

@@ -41,7 +41,7 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
 {
     int jc[3], kc[3];
     int d, ir2, ir2_h;
-    TParticleListItem *item1_p, *item2_p;
+    ParticleListItem_t *item1_p, *item2_p;
     double r2, rv[3];
     double *rho_i, *rho_j, *phi;
     double *rho_iDD, *rho_jDD, *phiDD;
@@ -80,7 +80,7 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
         // iterate over all items in cell ic
         for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
         {
-            if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
+            if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
                 continue;
 
             for (d=0; d<3; d++)
@@ -103,7 +103,7 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
                         // iterate over all items in cell jc
                         for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                         {
-                            if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
+                            if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
                                 continue;
 
                             if (item1_p != item2_p)
@@ -127,14 +127,14 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
 #endif
 
     potEnergy = 0.5 * potEnergy + FembSum;
-    MPI_Allreduce(&potEnergy, &md->totalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
 }
 
 void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
 {
     int jc[3], kc[3];
     int d, ir2, irho, ir2_h, irho_h;
-    TParticleListItem *item1_p, *item2_p;
+    ParticleListItem_t *item1_p, *item2_p;
     double r2, rv[3];
     double *rho, *rhoDD, *F, *F_DD;
     double a, b, h;
@@ -154,7 +154,7 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
         // iterate over all items in cell ic
         for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
         {
-            if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
+            if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
                 continue;
 
             eam_t *eam;
@@ -175,7 +175,7 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
                         // iterate over all items in cell jc
                         for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                         {
-                            if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
+                            if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
                                 continue;
 
                             if (item1_p != item2_p)

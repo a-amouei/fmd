@@ -27,7 +27,7 @@ void fmd_computeLJ(fmd_t *md)
 {
     int jc[3], kc[3];
     int d;
-    TParticleListItem *item1_p, *item2_p;
+    ParticleListItem_t *item1_p, *item2_p;
     double r2, rv[3];
     int ic0, ic1, ic2;
     double potEnergy = 0.0;
@@ -43,7 +43,7 @@ void fmd_computeLJ(fmd_t *md)
                 // iterate over all items in cell ic
                 for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
                 {
-                    if (!(md->activeGroup == -1 || item1_p->P.GroupID == md->activeGroup))
+                    if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
                         continue;
 
                     unsigned atomkind1 = item1_p->P.atomkind;
@@ -64,7 +64,7 @@ void fmd_computeLJ(fmd_t *md)
                                 // iterate over all items in cell jc
                                 for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
                                 {
-                                    if (!(md->activeGroup == -1 || item2_p->P.GroupID == md->activeGroup))
+                                    if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
                                         continue;
 
                                     if (item1_p->P.molkind!=0 && item1_p->P.MolID==item2_p->P.MolID) continue;// TO-DO
@@ -105,7 +105,7 @@ void fmd_computeLJ(fmd_t *md)
             }
 
     potEnergy *= 2.0;
-    MPI_Allreduce(&potEnergy, &md->totalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
 }
 
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,

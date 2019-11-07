@@ -25,7 +25,7 @@
 
 static void removeRemainingMomentum(fmd_t *md, int GroupID, double *MomentumSum, unsigned AtomsNum)
 {
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     int ic[3];
 
     ITERATE(ic, fmd_ThreeZeros, md->nc)
@@ -51,7 +51,7 @@ void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
         double r_fcc[4][3] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
                               {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
         double MomentumSum[3] = {0.0, 0.0, 0.0};
-        TParticleListItem *item_p;
+        ParticleListItem_t *item_p;
         int dims[3] = {dimx, dimy, dimz};
         double r0[3] = {x, y, z};
         int i, d;
@@ -68,7 +68,7 @@ void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
         ITERATE(CrystalCell, fmd_ThreeZeros, dims)
             for (i=0; i<4; i++)
             {
-                item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
 
                 double rn = prps_sum * gsl_rng_uniform(rng);
                 int j;
@@ -173,13 +173,13 @@ void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, double xa,
         // TO-DO: error handling
         assert(trycount < 1000);
 
-        TParticleListItem *item_p;
+        ParticleListItem_t *item_p;
         int ic[3];
 
         // create the atoms in memory and initialize them
         for (j=0; j < mk->atoms_num; j++)
         {
-            item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+            item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
             item_p->P.AtomID_local = j;
             item_p->P.atomkind = mk->atoms[j].atomkind;
             item_p->P.MolID = md->TotalNoOfMolecules;

@@ -31,10 +31,10 @@ const int fmd_ThreeZeros[3] = {0, 0, 0};
 
 static void refreshGrid(fmd_t *md, int reverse);
 
-void cleanGridSegment(TCell ***grid, int ic_from[3], int ic_to[3])
+void cleanGridSegment(cell_t ***grid, int ic_from[3], int ic_to[3])
 {
     int ic[3];
-    TParticleListItem *item_p, **item_pp;
+    ParticleListItem_t *item_p, **item_pp;
 
     ITERATE(ic, ic_from, ic_to)
     {
@@ -56,14 +56,14 @@ void compLocOrdParam(fmd_t *md)
     float rCutSqd = SQR(1.32 * latticeParameter);
     int ic[3], jc[3], kc[3];
     int d;
-    TParticleListItem *item1_p, *item2_p;
+    ParticleListItem_t *item1_p, *item2_p;
     float arg, real, img;
     int Z;
     float r2, rv[3];
     float q[6][3] = {{1,0,0},{0,1,0},{0,0,1},{1,1,0},{0,1,1},{1,0,1}};
     int i;
 
-    if (md->LOPiteration == 0)
+    if (md->LOP_iteration == 0)
         ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
             for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
             {
@@ -72,7 +72,7 @@ void compLocOrdParam(fmd_t *md)
                     item1_p->P.x_avgd[d] = 0.0;
             }
 
-    (md->LOPiteration)++;
+    (md->LOP_iteration)++;
 
     for (i=0; i<6; i++)
         for (d=0; d<3; d++)
@@ -134,7 +134,7 @@ void compLocOrdParam(fmd_t *md)
                 item1_p->P.x_avgd[d] += item1_p->P.x[d];
         }
 
-    if (md->LOPiteration != md->locOrdParamPeriod) return;
+    if (md->LOP_iteration != md->LOP_period) return;
 
     fmd_ghostparticles_update_LocOrdParam(md);
 
@@ -183,12 +183,12 @@ void compLocOrdParam(fmd_t *md)
                     }
                 }
             }
-            item1_p->LocOrdParamAvg = real / ((Z+1) * 36 * md->locOrdParamPeriod);
+            item1_p->LocOrdParamAvg = real / ((Z+1) * 36 * md->LOP_period);
             for (d=0; d<3; d++)
-                item1_p->P.x_avgd[d] /= md->locOrdParamPeriod;
+                item1_p->P.x_avgd[d] /= md->LOP_period;
         }
 
-    md->LOPiteration = 0;
+    md->LOP_iteration = 0;
 */
 }
 
@@ -196,7 +196,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 {
     int ic[3];
     int d;
-    TParticleListItem *item_p, **item_pp;
+    ParticleListItem_t *item_p, **item_pp;
     double velocityScale, mass;
     double x;
     int itemDestroyed;
@@ -210,7 +210,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
         item_p = *item_pp;
         while (item_p != NULL)
         {
-            if (!(md->activeGroup == -1 || item_p->P.GroupID == md->activeGroup))
+            if (!(md->ActiveGroup == -1 || item_p->P.GroupID == md->ActiveGroup))
             {
                 item_pp = &item_p->next_p;
                 item_p = *item_pp;
@@ -259,7 +259,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
 {
     int ic[3];
     int d;
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     double m_vSqd_Sum = 0, m_vSqd_SumSum;
     double mass;
     int returnVal = 0;
@@ -272,7 +272,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
             for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
                 for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                 {
-                    if (!(md->activeGroup == -1 || item_p->P.GroupID == md->activeGroup))
+                    if (!(md->ActiveGroup == -1 || item_p->P.GroupID == md->ActiveGroup))
                         continue;
                     particlesNum++;
                     mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
@@ -286,22 +286,22 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
                                            SQR(item_p->P.v[2]) );
                 }
     }
-    MPI_Reduce(momentumSum, md->totalMomentum, 3, MPI_DOUBLE, MPI_SUM,
+    MPI_Reduce(momentumSum, md->TotalMomentum, 3, MPI_DOUBLE, MPI_SUM,
                ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-    MPI_Allreduce(&particlesNum, &(md->activeGroupParticlesNum), 1, MPI_INT, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&particlesNum, &(md->ActiveGroupParticlesNum), 1, MPI_INT, MPI_SUM, md->MD_comm);
 
-    if (md->activeGroup == -1)
-        md->TotalNoOfParticles = md->activeGroupParticlesNum;
+    if (md->ActiveGroup == -1)
+        md->TotalNoOfParticles = md->ActiveGroupParticlesNum;
 
     MPI_Allreduce(&m_vSqd_Sum, &m_vSqd_SumSum, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
-    md->totalKineticEnergy = 0.5 * m_vSqd_SumSum;
-    md->totalMDEnergy = md->totalKineticEnergy + md->totalPotentialEnergy;
+    md->TotalKineticEnergy = 0.5 * m_vSqd_SumSum;
+    md->TotalMDEnergy = md->TotalKineticEnergy + md->TotalPotentialEnergy;
 
     if (md->UseAutoStep)
     {
-        if (md->_oldTotalMDEnergy!=0. && fabs((md->totalMDEnergy-md->_oldTotalMDEnergy)/md->_oldTotalMDEnergy) > md->autoStepSensitivity)
+        if (md->_OldTotalMDEnergy!=0. && fabs((md->TotalMDEnergy-md->_OldTotalMDEnergy)/md->_OldTotalMDEnergy) > md->AutoStepSensitivity)
         {
-            if (md->_prevFailedMDEnergy!=0. && fabs((md->totalMDEnergy-md->_prevFailedMDEnergy)/md->_prevFailedMDEnergy) < md->autoStepSensitivity)
+            if (md->_PrevFailedMDEnergy!=0. && fabs((md->TotalMDEnergy-md->_PrevFailedMDEnergy)/md->_PrevFailedMDEnergy) < md->AutoStepSensitivity)
             {  // was jump in energy due to escape of some energetic particle(s) from simulation box?
                 if (md->Is_MD_comm_root)
                     printf("Maybe the jump was caused by departure of some energetic particle(s). Increasing time step...\n");
@@ -312,16 +312,16 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
                 if (md->Is_MD_comm_root)
                 {
                     printf("current delta_t = %e\n", md->delta_t);
-                    printf("Jump in total MD energy (old=%e new=%e)! Decreasing time step...\n", md->_oldTotalMDEnergy, md->totalMDEnergy);
+                    printf("Jump in total MD energy (old=%e new=%e)! Decreasing time step...\n", md->_OldTotalMDEnergy, md->TotalMDEnergy);
                 }
-                md->_prevFailedMDEnergy = md->totalMDEnergy;
+                md->_PrevFailedMDEnergy = md->TotalMDEnergy;
                 return 1;
             }
         }
-        md->_prevFailedMDEnergy = 0.;
-        md->_oldTotalMDEnergy = md->totalMDEnergy;
+        md->_PrevFailedMDEnergy = 0.;
+        md->_OldTotalMDEnergy = md->TotalMDEnergy;
     }
-    md->GlobalTemperature = m_vSqd_SumSum / (3.0 * md->activeGroupParticlesNum * K_BOLTZMANN);
+    md->GlobalTemperature = m_vSqd_SumSum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
 
     return returnVal;
 }
@@ -331,7 +331,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
 static double compVirial_internal(fmd_t *md)
 {
     int ic[3];
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     double virial = 0.0;
     double virial_global;
 
@@ -367,18 +367,18 @@ void createCommunicators(fmd_t *md)
     free(ranks);
 }
 
-TCell ***createGrid(int cell_num[3])
+cell_t ***createGrid(int cell_num[3])
 {
-    TCell ***grid;
+    cell_t ***grid;
     int i, j, k;
 
-    grid = (TCell ***)malloc(cell_num[0]*sizeof(TCell **));
+    grid = (cell_t ***)malloc(cell_num[0]*sizeof(cell_t **));
     for (i=0; i < cell_num[0]; i++)
     {
-        grid[i] = (TCell **)malloc(cell_num[1]*sizeof(TCell *));
+        grid[i] = (cell_t **)malloc(cell_num[1]*sizeof(cell_t *));
         for (j=0; j < cell_num[1]; j++)
         {
-            grid[i][j] = (TCell *)malloc(cell_num[2]*sizeof(TCell));
+            grid[i][j] = (cell_t *)malloc(cell_num[2]*sizeof(cell_t));
             for (k=0; k < cell_num[2]; k++)
                 grid[i][j][k] = NULL;
         }
@@ -388,7 +388,7 @@ TCell ***createGrid(int cell_num[3])
 
 void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
 {
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     int ic[3];
     int d;
     double LocalLower[3], LocalUpper[3];
@@ -409,7 +409,7 @@ void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
     MPI_Allreduce(LocalUpper, UpperLimit, 3, MPI_DOUBLE, MPI_MAX, md->MD_comm);
 }
 
-void freeGrid(TCell ***grid, int *cell_num)
+void freeGrid(cell_t ***grid, int *cell_num)
 {
     int i, j;
 
@@ -432,7 +432,7 @@ void fmd_subd_free(fmd_t *md)
     }
 }
 
-int getListLength(TParticleListItem *root_p)
+int getListLength(ParticleListItem_t *root_p)
 {
     int i = 0;
 
@@ -456,9 +456,9 @@ void identifyProcess(fmd_t *md)
 
     mdnum = md->ns[0] * md->ns[1] * md->ns[2];
     if (md->world_rank < mdnum)
-        md->isMDprocess = 1;
+        md->Is_MD_process = 1;
     else
-        md->isMDprocess = 0;
+        md->Is_MD_process = 0;
 #ifdef USE_TTM
     if (ttm_useExtended && md->world_rank == mdnum)
         ttm_is_extended_process = 1;
@@ -469,15 +469,15 @@ void identifyProcess(fmd_t *md)
 
 void fmd_matt_setActiveGroup(fmd_t *md, int GroupID)
 {
-    md->activeGroup = GroupID;
+    md->ActiveGroup = GroupID;
 }
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double vz)
 {
-    TCell ***grid;
+    cell_t ***grid;
     int *start, *stop;
     int ic[3];
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
 
     if (md->ParticlesDistributed)
     {
@@ -509,10 +509,10 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double v
 
 void fmd_matt_distribute(fmd_t *md)
 {
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     int i, k, d, nct, sum_length;
     int ic[3], *ic_length;
-    TParticle *is_particles;
+    particle_t *is_particles;
 
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
@@ -520,7 +520,7 @@ void fmd_matt_distribute(fmd_t *md)
     {
         int r, w;
         int is[3], global_icstart[3], global_icstop[3];
-        TParticleListItem **item_pp;
+        ParticleListItem_t **item_pp;
         double m_vSqd_Sum = 0.0;
         double mass;
 
@@ -568,8 +568,8 @@ void fmd_matt_distribute(fmd_t *md)
             ic_length[nct] = sum_length;
             MPI_Send(ic_length, nct+1, MPI_INT, i, 50, md->MD_comm);
             free(ic_length);
-            sum_length *= sizeof(TParticle);
-            is_particles = (TParticle *)malloc(sum_length);
+            sum_length *= sizeof(particle_t);
+            is_particles = (particle_t *)malloc(sum_length);
             k = 0;
             ITERATE(ic, global_icstart, global_icstop)
                 for (item_p=md->global_grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -611,8 +611,8 @@ void fmd_matt_distribute(fmd_t *md)
         MPI_Recv(ic_length, nct+1, MPI_INT, ROOTPROCESS(md->SubDomain.numprocs),
                  50, md->MD_comm, &status);
         md->SubDomain.NumberOfParticles = sum_length = ic_length[nct];
-        sum_length *= sizeof(TParticle);
-        is_particles = (TParticle *)malloc(sum_length);
+        sum_length *= sizeof(particle_t);
+        is_particles = (particle_t *)malloc(sum_length);
         MPI_Recv(is_particles, sum_length, MPI_CHAR,
                  ROOTPROCESS(md->SubDomain.numprocs), 51, md->MD_comm, &status);
         kreceive = k = 0;
@@ -620,7 +620,7 @@ void fmd_matt_distribute(fmd_t *md)
         {
             for (i=0; i<ic_length[kreceive]; i++)
             {
-                item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                 item_p->P = is_particles[k++];
                 item_p->neighbors = NULL;
                 fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
@@ -640,7 +640,7 @@ void fmd_matt_distribute(fmd_t *md)
 
     if (md->TotalNoOfMolecules > 0) fmd_matt_updateNeighbors(md);
 
-    md->totalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
+    md->TotalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
     md->GlobalGridExists = 0;
     md->ParticlesDistributed = 1;
 }
@@ -688,7 +688,7 @@ void fmd_subd_init(fmd_t *md)
     md->SubDomain.grid = createGrid(md->SubDomain.cell_num);
 }
 
-void fmd_insertInList(TParticleListItem **root_pp, TParticleListItem *item_p)
+void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p)
 {
     item_p->next_p = *root_pp;
     *root_pp = item_p;
@@ -696,7 +696,7 @@ void fmd_insertInList(TParticleListItem **root_pp, TParticleListItem *item_p)
 
 void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
 {
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     FILE *fp;
     char name[3];
     int i, j, d;
@@ -712,14 +712,14 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
         handleFileOpenError(fp, file);
         fscanf(fp, "%lf", &stateFileTime);
         if (useTime)
-            md->mdTime = stateFileTime;
+            md->MD_time = stateFileTime;
         fscanf(fp, "%d\n", &particlesNum);
         md->TotalNoOfParticles += particlesNum;
         fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2);
         fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2);
     }
 
-    if (!md->boxSizeDetermined)
+    if (!md->BoxSizeDetermined)
     {
         if (md->Is_MD_comm_root)
         {
@@ -728,7 +728,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
             md->l[2] = l2;
         }
         MPI_Bcast(&md->l, 3, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        md->boxSizeDetermined = 1;
+        md->BoxSizeDetermined = 1;
     }
 
     if (!md->PBCdetermined)
@@ -744,16 +744,16 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
     }
 
     if (!md->GlobalGridExists)
-        fmd_box_createGrid(md, md->cutoffRadius);
+        fmd_box_createGrid(md, md->CutoffRadius);
 
     if (useTime)
-        MPI_Bcast(&md->mdTime, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&md->MD_time, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
         for (i=0; i < particlesNum; i++)
         {
-            item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+            item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
             fscanf(fp, "%s%d", name, &item_p->P.GroupID);
             for (j=0; j < md->potsys.atomkinds_num; j++)
                 if (strcmp(name, md->potsys.atomkinds[j].name) == 0)
@@ -776,8 +776,8 @@ static void refreshGrid(fmd_t *md, int reverse)
 {
     int ic[3], jc[3];
     int d;
-    TParticleListItem **item_pp;
-    TParticleListItem *item_p;
+    ParticleListItem_t **item_pp;
+    ParticleListItem_t *item_p;
 
     // iterate over all cells(lists)
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -837,7 +837,7 @@ static void refreshGrid(fmd_t *md, int reverse)
     fmd_particles_migrate(md);
 }
 
-void removeFromList(TParticleListItem **item_pp)
+void removeFromList(ParticleListItem_t **item_pp)
 {
     *item_pp = (*item_pp)->next_p;
 }
@@ -846,7 +846,7 @@ void rescaleVelocities(fmd_t *md)
 {
     int ic[3];
     int d;
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     double scale;
 
     scale = sqrt(md->DesiredTemperature / md->GlobalTemperature);
@@ -861,7 +861,7 @@ void rescaleVelocities(fmd_t *md)
 void restoreBackups(fmd_t *md)
 {
     int ic[3], d;
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
 
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -882,12 +882,12 @@ void restoreBackups(fmd_t *md)
 void fmd_matt_saveConfiguration(fmd_t *md)
 {
     int ic[3];
-    TParticleListItem *item_p;
-    TXYZ_Struct *localData, *globalData;
+    ParticleListItem_t *item_p;
+    XYZ_struct_t *localData, *globalData;
     int *nums, *recvcounts, *displs;
     int k;
 
-    localData = (TXYZ_Struct *)malloc(md->SubDomain.NumberOfParticles * sizeof(TXYZ_Struct));
+    localData = (XYZ_struct_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t));
     k=0;
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -920,18 +920,18 @@ void fmd_matt_saveConfiguration(fmd_t *md)
     {
         int displ = 0;
 
-        globalData = (TXYZ_Struct *)malloc(md->TotalNoOfParticles * sizeof(TXYZ_Struct));
+        globalData = (XYZ_struct_t *)malloc(md->TotalNoOfParticles * sizeof(XYZ_struct_t));
         recvcounts = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
         displs     = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
         for (k=0; k < md->SubDomain.numprocs; k++)
         {
-            recvcounts[k] = nums[k] * sizeof(TXYZ_Struct);
+            recvcounts[k] = nums[k] * sizeof(XYZ_struct_t);
             displs[k] = displ;
             displ += recvcounts[k];
         }
     }
     free(nums);
-    MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(TXYZ_Struct), MPI_CHAR,
+    MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t), MPI_CHAR,
         globalData, recvcounts, displs, MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs),
         md->MD_comm);
     free(localData);
@@ -945,34 +945,34 @@ void fmd_matt_saveConfiguration(fmd_t *md)
         free(recvcounts);
         free(displs);
 
-        switch (md->saveConfigMode)
+        switch (md->SaveConfigMode)
         {
             case FMD_SCM_XYZ_PARTICLESNUM:
-                if (md->TotalNoOfParticles != md->_oldNumberOfParticles)
+                if (md->TotalNoOfParticles != md->_OldNumberOfParticles)
                 {
-                    if (md->_oldNumberOfParticles != -1) fclose(md->configFilep);
-                    sprintf(configPath, "%s%d.xyz", md->saveDirectory, md->TotalNoOfParticles);
-                    md->configFilep = fopen(configPath, "w");
-                    handleFileOpenError(md->configFilep, configPath);
-                    md->_oldNumberOfParticles = md->TotalNoOfParticles;
+                    if (md->_OldNumberOfParticles != -1) fclose(md->ConfigFilep);
+                    sprintf(configPath, "%s%d.xyz", md->SaveDirectory, md->TotalNoOfParticles);
+                    md->ConfigFilep = fopen(configPath, "w");
+                    handleFileOpenError(md->ConfigFilep, configPath);
+                    md->_OldNumberOfParticles = md->TotalNoOfParticles;
                 }
                 break;
 
             case FMD_SCM_XYZ_SEPARATE:
-                sprintf(configPath, "%s%05d.xyz", md->saveDirectory, md->_fileIndex++);
-                md->configFilep = fopen(configPath, "w");
-                handleFileOpenError(md->configFilep, configPath);
+                sprintf(configPath, "%s%05d.xyz", md->SaveDirectory, md->_FileIndex++);
+                md->ConfigFilep = fopen(configPath, "w");
+                handleFileOpenError(md->ConfigFilep, configPath);
                 break;
 
             case FMD_SCM_CSV:
-                sprintf(configPath, "%s%05d.csv", md->saveDirectory, md->_fileIndex++);
-                md->configFilep = fopen(configPath, "w");
-                handleFileOpenError(md->configFilep, configPath);
+                sprintf(configPath, "%s%05d.csv", md->SaveDirectory, md->_FileIndex++);
+                md->ConfigFilep = fopen(configPath, "w");
+                handleFileOpenError(md->ConfigFilep, configPath);
                 for (i=0; i < md->potsys.atomkinds_num; i++)
                 {
                     for (k=0; k < md->TotalNoOfParticles; k++)
                         if (globalData[k].atomkind == i)
-                            fprintf(md->configFilep, "%.2f, %.2f, %.2f, %d, %.4f\n",
+                            fprintf(md->ConfigFilep, "%.2f, %.2f, %.2f, %d, %.4f\n",
                                 globalData[k].x[0], globalData[k].x[1],
                                 globalData[k].x[2], i, globalData[k].var);
                 }
@@ -981,16 +981,16 @@ void fmd_matt_saveConfiguration(fmd_t *md)
             case FMD_SCM_VTF:
             {
                 int atomID = 0;
-                sprintf(configPath, "%s%05d.vtf", md->saveDirectory, md->_fileIndex++);
-                md->configFilep = fopen(configPath, "w");
-                handleFileOpenError(md->configFilep, configPath);
+                sprintf(configPath, "%s%05d.vtf", md->SaveDirectory, md->_FileIndex++);
+                md->ConfigFilep = fopen(configPath, "w");
+                handleFileOpenError(md->ConfigFilep, configPath);
                 for (i=0; i < md->potsys.atomkinds_num; i++)
                 {
                     int count = 0;
                     for (k=0; k < md->TotalNoOfParticles; k++)
                         if (globalData[k].atomkind == i)
                             count++;
-                    fprintf(md->configFilep, "atom %d:%d\tname %s\n", atomID,
+                    fprintf(md->ConfigFilep, "atom %d:%d\tname %s\n", atomID,
                      atomID+count-1, md->potsys.atomkinds[i].name);
                     atomID += count;
                 }
@@ -1000,17 +1000,17 @@ void fmd_matt_saveConfiguration(fmd_t *md)
                     for (k=0; k < md->TotalNoOfParticles; k++)
                         if (globalData[k].atomkind == i)
                         {
-                            fprintf(md->configFilep, "%d\tbeta %.4f\n", atomID,
+                            fprintf(md->ConfigFilep, "%d\tbeta %.4f\n", atomID,
                              globalData[k].var);
                             atomID++;
                         }
                 }
-                fprintf(md->configFilep, "timestep\n");
+                fprintf(md->ConfigFilep, "timestep\n");
                 for (i=0; i < md->potsys.atomkinds_num; i++)
                 {
                     for (k=0; k < md->TotalNoOfParticles; k++)
                         if (globalData[k].atomkind == i)
-                            fprintf(md->configFilep, "%.2f\t%.2f\t%.2f\n",
+                            fprintf(md->ConfigFilep, "%.2f\t%.2f\t%.2f\n",
                                 globalData[k].x[0], globalData[k].x[1],
                                 globalData[k].x[2]);
                 }
@@ -1018,33 +1018,33 @@ void fmd_matt_saveConfiguration(fmd_t *md)
             }
         }
 
-        if (md->saveConfigMode == FMD_SCM_XYZ_SEPARATE || md->saveConfigMode == FMD_SCM_XYZ_PARTICLESNUM)
+        if (md->SaveConfigMode == FMD_SCM_XYZ_SEPARATE || md->SaveConfigMode == FMD_SCM_XYZ_PARTICLESNUM)
         {
-            fprintf(md->configFilep, "%d\n\n", md->TotalNoOfParticles);
+            fprintf(md->ConfigFilep, "%d\n\n", md->TotalNoOfParticles);
             for (i=0; i < md->potsys.atomkinds_num; i++)
             {
                 elementName = md->potsys.atomkinds[i].name;
                 for (k=0; k < md->TotalNoOfParticles; k++)
                     if (globalData[k].atomkind == i)
-                        fprintf(md->configFilep, "%s\t%.2f\t%.2f\t%.2f\n",
+                        fprintf(md->ConfigFilep, "%s\t%.2f\t%.2f\t%.2f\n",
                             elementName, globalData[k].x[0], globalData[k].x[1],
                             globalData[k].x[2]);
             }
         }
         free(globalData);
 
-        if (md->saveConfigMode == FMD_SCM_XYZ_SEPARATE || md->saveConfigMode == FMD_SCM_CSV ||
-         md->saveConfigMode == FMD_SCM_VTF)
-            fclose(md->configFilep);
+        if (md->SaveConfigMode == FMD_SCM_XYZ_SEPARATE || md->SaveConfigMode == FMD_SCM_CSV ||
+         md->SaveConfigMode == FMD_SCM_VTF)
+            fclose(md->ConfigFilep);
     }
 }
 
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 {
-    TParticle *is_particles, *P_p;
+    particle_t *is_particles, *P_p;
     int *nums;
     int i, k, ic[3];
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     char stateFilePath[MAX_PATH_LENGTH];
     FILE *fp;
     MPI_Status status;
@@ -1057,10 +1057,10 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         md->TotalNoOfParticles = 0;
         for (k=0; k < md->SubDomain.numprocs; k++)
             md->TotalNoOfParticles += nums[k];
-        sprintf(stateFilePath, "%s%s", md->saveDirectory, filename);
+        sprintf(stateFilePath, "%s%s", md->SaveDirectory, filename);
         fp = fopen(stateFilePath, "w");
         handleFileOpenError(fp, stateFilePath);
-        fprintf(fp, "%.16e\n", md->mdTime);
+        fprintf(fp, "%.16e\n", md->MD_time);
         fprintf(fp, "%d\n", md->TotalNoOfParticles);
         fprintf(fp, "%.16e\t%.16e\t%.16e\n", md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
@@ -1073,8 +1073,8 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
             }
         for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
         {
-            is_particles = (TParticle *)malloc(nums[i] * sizeof(TParticle));
-            MPI_Recv(is_particles, nums[i] * sizeof(TParticle), MPI_CHAR, i, 150,
+            is_particles = (particle_t *)malloc(nums[i] * sizeof(particle_t));
+            MPI_Recv(is_particles, nums[i] * sizeof(particle_t), MPI_CHAR, i, 150,
                 md->MD_comm, &status);
             for (k=0; k < nums[i]; k++)
             {
@@ -1092,12 +1092,12 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     {
         MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
             ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        is_particles = (TParticle *)malloc(md->SubDomain.NumberOfParticles * sizeof(TParticle));
+        is_particles = (particle_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(particle_t));
         k = 0;
         ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
             for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                 is_particles[k++] = item_p->P;
-        MPI_Send(is_particles, md->SubDomain.NumberOfParticles * sizeof(TParticle), MPI_CHAR,
+        MPI_Send(is_particles, md->SubDomain.NumberOfParticles * sizeof(particle_t), MPI_CHAR,
             ROOTPROCESS(md->SubDomain.numprocs), 150, md->MD_comm);
         free(is_particles);
     }
@@ -1123,7 +1123,7 @@ void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
     md->ns[2] = dimz;
     identifyProcess(md);
     createCommunicators(md);
-    if (md->isMDprocess)
+    if (md->Is_MD_process)
     {
         MPI_Comm_size(md->MD_comm, &md->SubDomain.numprocs);
         MPI_Comm_rank(md->MD_comm, &md->SubDomain.myrank);
@@ -1149,33 +1149,33 @@ fmd_t *fmd_create()
 
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
-    md->LOPiteration = 0;
+    md->LOP_iteration = 0;
     md->UseAutoStep = 0;
-    md->mdTime = 0.0;
-    md->saveDirectory[0] = '\0';
+    md->MD_time = 0.0;
+    md->SaveDirectory[0] = '\0';
     md->CompLocOrdParam = 0;
     md->SubDomain.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
-    md->activeGroup = -1;             // all groups are active by default
+    md->ActiveGroup = -1;             // all groups are active by default
     md->ParticlesDistributed = 0;
     md->GlobalGridExists = 0;
-    md->boxSizeDetermined = 0;
+    md->BoxSizeDetermined = 0;
     md->PBCdetermined = 0;
     md->Is_MD_comm_root = 0;
-    md->eventHandler = NULL;
+    md->EventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
     md->DesiredTemperature = 300.0;
-    md->saveConfigMode = FMD_SCM_XYZ_PARTICLESNUM;
-    md->_oldNumberOfParticles = -1;
-    md->_fileIndex = 0;
-    md->_oldTotalMDEnergy = 0.0;
-    md->_prevFailedMDEnergy = 0.0;
+    md->SaveConfigMode = FMD_SCM_XYZ_PARTICLESNUM;
+    md->_OldNumberOfParticles = -1;
+    md->_FileIndex = 0;
+    md->_OldTotalMDEnergy = 0.0;
+    md->_PrevFailedMDEnergy = 0.0;
     fmd_potsys_init(md);
 
     // this must be the last statement before return
-    md->wallTimeOrigin = MPI_Wtime();
+    md->WallTimeOrigin = MPI_Wtime();
 
     return md;
 }
@@ -1187,18 +1187,18 @@ void fmd_box_setSize(fmd_t *md, double sx, double sy, double sz)
         md->l[0] = sx;
         md->l[1] = sy;
         md->l[2] = sz;
-        md->boxSizeDetermined = 1;
+        md->BoxSizeDetermined = 1;
     }
 }
 
 double fmd_proc_getWallTime(fmd_t *md)
 {
-    return (MPI_Wtime() - md->wallTimeOrigin);
+    return (MPI_Wtime() - md->WallTimeOrigin);
 }
 
 fmd_bool_t fmd_proc_isMD(fmd_t *md)
 {
-    return md->isMDprocess;
+    return md->Is_MD_process;
 }
 
 fmd_bool_t fmd_proc_isRoot(fmd_t *md)
@@ -1224,17 +1224,17 @@ void fmd_box_createGrid(fmd_t *md, double cutoff)
     if (md->Is_MD_comm_root)
         md->global_grid = createGrid(md->nc);
     md->GlobalGridExists = 1;
-    md->cutoffRadius = cutoff;
+    md->CutoffRadius = cutoff;
 }
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory)
 {
-    strcpy(md->saveDirectory, directory);
+    strcpy(md->SaveDirectory, directory);
 }
 
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode)
 {
-    md->saveConfigMode = mode;
+    md->SaveConfigMode = mode;
 }
 
 void fmd_dync_setTimeStep(fmd_t *md, double timeStep)
@@ -1249,13 +1249,13 @@ double fmd_dync_getTimeStep(fmd_t *md)
 
 double fmd_dync_getTime(fmd_t *md)
 {
-    return md->mdTime;
+    return md->MD_time;
 }
 
 void fmd_dync_incTime(fmd_t *md)
 {
-    md->mdTime += md->delta_t;
-    if (md->eventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
+    md->MD_time += md->delta_t;
+    if (md->EventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
 }
 
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
@@ -1266,24 +1266,24 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
     int bak_activeGroup;
 
     // make backups
-    bak_mdTime = md->mdTime;
+    bak_mdTime = md->MD_time;
     bak_delta_t = md->delta_t;
     bak_BerendsenThermostatParam = md->BerendsenThermostatParam;
     bak_DesiredTemperature = md->DesiredTemperature;
-    bak_activeGroup = md->activeGroup;
+    bak_activeGroup = md->ActiveGroup;
 
     // initialize
-    md->mdTime = 0.0;
+    md->MD_time = 0.0;
     md->delta_t = timestep;
     md->DesiredTemperature = temperature;
     md->GlobalTemperature = temperature;
     md->BerendsenThermostatParam = strength;
-    md->activeGroup = GroupID;
+    md->ActiveGroup = GroupID;
 
     // compute forces for the first time
     fmd_dync_updateForces(md);
 
-    while (md->mdTime < duration)
+    while (md->MD_time < duration)
     {
         // take first step of velocity Verlet integrator
         fmd_dync_VelocityVerlet_startStep(md, 1);
@@ -1294,22 +1294,22 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
         // take last step of velocity Verlet integrator
         fmd_dync_VelocityVerlet_finishStep(md);
 
-        md->mdTime += md->delta_t;
-        if (md->eventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
+        md->MD_time += md->delta_t;
+        if (md->EventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
     }
     // end of the time loop
 
     // restore backups
-    md->mdTime = bak_mdTime;
+    md->MD_time = bak_mdTime;
     md->delta_t = bak_delta_t;
     md->DesiredTemperature = bak_DesiredTemperature;
     md->BerendsenThermostatParam = bak_BerendsenThermostatParam;
-    md->activeGroup = bak_activeGroup;
+    md->ActiveGroup = bak_activeGroup;
 }
 
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 {
-    if (md->isMDprocess && md->Is_MD_comm_root)
+    if (md->Is_MD_process && md->Is_MD_comm_root)
     {
         va_list argptr;
 
@@ -1321,15 +1321,15 @@ void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 
 double fmd_matt_getTotalEnergy(fmd_t *md)
 {
-    return md->totalKineticEnergy + md->totalPotentialEnergy;
+    return md->TotalKineticEnergy + md->TotalPotentialEnergy;
 }
 
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
 {
-    TCell ***grid;
+    cell_t ***grid;
     int *start, *stop;
     int ic[3];
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
 
     if (md->ParticlesDistributed)
     {
@@ -1395,5 +1395,5 @@ void fmd_free(fmd_t *md)
 
 void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func)
 {
-    md->eventHandler = func;
+    md->EventHandler = func;
 }

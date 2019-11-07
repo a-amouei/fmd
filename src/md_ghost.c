@@ -34,9 +34,9 @@ static void particles_migrate_in_direction_d(
     int sum_length_send, sum_length_receive;
     int k, kreceive, cells_num;
     int *cells_length_send, *cells_length_receive, ic[3];
-    TParticle *particles_send, *particles_receive;
+    particle_t *particles_send, *particles_receive;
     int dd;
-    TParticleListItem *item_p, **item_pp;
+    ParticleListItem_t *item_p, **item_pp;
     int cc;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
@@ -51,8 +51,8 @@ static void particles_migrate_in_direction_d(
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_upper_subd[d],
                      1, md->MD_comm, &status);
             md->SubDomain.NumberOfParticles += cells_length_receive[cells_num];
-            sum_length_receive = cells_length_receive[cells_num] * sizeof(TParticle);
-            particles_receive = (TParticle *)malloc(sum_length_receive);
+            sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
+            particles_receive = (particle_t *)malloc(sum_length_receive);
             MPI_Recv(particles_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_upper_subd[d], 2, md->MD_comm, &status);
             kreceive = k = 0;
@@ -60,7 +60,7 @@ static void particles_migrate_in_direction_d(
             {
                 for (cc=0; cc<cells_length_receive[kreceive]; cc++)
                 {
-                    item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                     item_p->P = particles_receive[k++];
                     fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
                 }
@@ -94,8 +94,8 @@ static void particles_migrate_in_direction_d(
                      md->MD_comm);
             free(cells_length_send);
             md->SubDomain.NumberOfParticles -= sum_length_send;
-            sum_length_send *= sizeof(TParticle);
-            particles_send = (TParticle *)malloc(sum_length_send);
+            sum_length_send *= sizeof(particle_t);
+            particles_send = (particle_t *)malloc(sum_length_send);
             k = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             {
@@ -132,8 +132,8 @@ static void particles_migrate_in_direction_d(
                      md->MD_comm);
             free(cells_length_send);
             md->SubDomain.NumberOfParticles -= sum_length_send;
-            sum_length_send *= sizeof(TParticle);
-            particles_send = (TParticle *)malloc(sum_length_send);
+            sum_length_send *= sizeof(particle_t);
+            particles_send = (particle_t *)malloc(sum_length_send);
             k = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             {
@@ -155,8 +155,8 @@ static void particles_migrate_in_direction_d(
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 3,
                      md->MD_comm, &status);
             md->SubDomain.NumberOfParticles += cells_length_receive[cells_num];
-            sum_length_receive = cells_length_receive[cells_num] * sizeof(TParticle);
-            particles_receive = (TParticle *)malloc(sum_length_receive);
+            sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
+            particles_receive = (particle_t *)malloc(sum_length_receive);
             MPI_Recv(particles_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_lower_subd[d], 4, md->MD_comm, &status);
             kreceive = k = 0;
@@ -164,7 +164,7 @@ static void particles_migrate_in_direction_d(
             {
                 for (cc=0; cc<cells_length_receive[kreceive]; cc++)
                 {
-                    item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                     item_p->P = particles_receive[k++];
                     fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
                 }
@@ -208,10 +208,10 @@ static void particles_migrate_in_direction_d(
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         md->SubDomain.NumberOfParticles += cells_length_receive[cells_num] - sum_length_send;
-        sum_length_send *= sizeof(TParticle);
-        particles_send = (TParticle *)malloc(sum_length_send);
-        sum_length_receive = cells_length_receive[cells_num] * sizeof(TParticle);
-        particles_receive = (TParticle *)malloc(sum_length_receive);
+        sum_length_send *= sizeof(particle_t);
+        particles_send = (particle_t *)malloc(sum_length_send);
+        sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
+        particles_receive = (particle_t *)malloc(sum_length_receive);
         k = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
         {
@@ -236,7 +236,7 @@ static void particles_migrate_in_direction_d(
         {
             for (cc=0; cc<cells_length_receive[kreceive]; cc++)
             {
-                item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                 item_p->P = particles_receive[k++];
                 if (md->SubDomain.is[d] == md->ns[d] - 1)
                     item_p->P.x[d] += md->l[d];
@@ -260,10 +260,10 @@ static void particles_migrate_in_direction_d(
         MPI_Wait(&request, &status);
         free(cells_length_send);
         md->SubDomain.NumberOfParticles += cells_length_receive[cells_num] - sum_length_send;
-        sum_length_send *= sizeof(TParticle);
-        particles_send = (TParticle *)malloc(sum_length_send);
-        sum_length_receive = cells_length_receive[cells_num] * sizeof(TParticle);
-        particles_receive = (TParticle *)malloc(sum_length_receive);
+        sum_length_send *= sizeof(particle_t);
+        particles_send = (particle_t *)malloc(sum_length_send);
+        sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
+        particles_receive = (particle_t *)malloc(sum_length_receive);
         k = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
         {
@@ -288,7 +288,7 @@ static void particles_migrate_in_direction_d(
         {
             for (cc=0; cc<cells_length_receive[kreceive]; cc++)
             {
-                item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                 item_p->P = particles_receive[k++];
                 if (md->SubDomain.is[d] == 0)
                     item_p->P.x[d] -= md->l[d];
@@ -311,9 +311,9 @@ static void ghostparticles_init_in_direction_d(
     int sum_length_send, sum_length_receive;
     int k, kreceive, cells_num;
     int *cells_length_send, *cells_length_receive, ic[3];
-    TPosition_Struct *data_send, *data_receive;
+    position_struct_t *data_send, *data_receive;
     int dd;
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     int cc;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
@@ -327,8 +327,8 @@ static void ghostparticles_init_in_direction_d(
             cells_length_receive = (int *)malloc((cells_num+1) * sizeof(int));
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 5,
                      md->MD_comm, &status);
-            sum_length_receive = sizeof(TPosition_Struct) * cells_length_receive[cells_num];
-            data_receive = (TPosition_Struct *)malloc(sum_length_receive);
+            sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
+            data_receive = (position_struct_t *)malloc(sum_length_receive);
             MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_upper_subd[d], 6, md->MD_comm, &status);
             kreceive = 0;
@@ -338,7 +338,7 @@ static void ghostparticles_init_in_direction_d(
                 k += cells_length_receive[kreceive];
                 for (cc=0; cc<cells_length_receive[kreceive]; cc++)
                 {
-                    item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                     for (dd=0; dd<3; dd++)
                         item_p->P.x[dd] = data_receive[k].x[dd];
                     item_p->P.atomkind = data_receive[k].atomkind;
@@ -362,8 +362,8 @@ static void ghostparticles_init_in_direction_d(
             MPI_Send(cells_length_send, cells_num+1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 7,
                      md->MD_comm);
             free(cells_length_send);
-            sum_length_send *= sizeof(TPosition_Struct);
-            data_send = (TPosition_Struct *)malloc(sum_length_send);
+            sum_length_send *= sizeof(position_struct_t);
+            data_send = (position_struct_t *)malloc(sum_length_send);
             k = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
                 for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -394,8 +394,8 @@ static void ghostparticles_init_in_direction_d(
             MPI_Send(cells_length_send, cells_num+1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 5,
                      md->MD_comm);
             free(cells_length_send);
-            sum_length_send *= sizeof(TPosition_Struct);
-            data_send = (TPosition_Struct *)malloc(sum_length_send);
+            sum_length_send *= sizeof(position_struct_t);
+            data_send = (position_struct_t *)malloc(sum_length_send);
             k = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
                 for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -412,8 +412,8 @@ static void ghostparticles_init_in_direction_d(
             cells_length_receive = (int *)malloc((cells_num+1) * sizeof(int));
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 7,
                      md->MD_comm, &status);
-            sum_length_receive = sizeof(TPosition_Struct) * cells_length_receive[cells_num];
-            data_receive = (TPosition_Struct *)malloc(sum_length_receive);
+            sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
+            data_receive = (position_struct_t *)malloc(sum_length_receive);
             MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_lower_subd[d], 8, md->MD_comm, &status);
             kreceive = 0;
@@ -423,7 +423,7 @@ static void ghostparticles_init_in_direction_d(
                 k += cells_length_receive[kreceive];
                 for (cc=0; cc<cells_length_receive[kreceive]; cc++)
                 {
-                    item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                     for (dd=0; dd<3; dd++)
                         item_p->P.x[dd] = data_receive[k].x[dd];
                     item_p->P.atomkind = data_receive[k].atomkind;
@@ -457,10 +457,10 @@ static void ghostparticles_init_in_direction_d(
         MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 5,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
-        sum_length_send *= sizeof(TPosition_Struct);
-        data_send = (TPosition_Struct *)malloc(sum_length_send);
-        sum_length_receive = sizeof(TPosition_Struct) * cells_length_receive[cells_num];
-        data_receive = (TPosition_Struct *)malloc(sum_length_receive);
+        sum_length_send *= sizeof(position_struct_t);
+        data_send = (position_struct_t *)malloc(sum_length_send);
+        sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
+        data_receive = (position_struct_t *)malloc(sum_length_receive);
         k = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -483,7 +483,7 @@ static void ghostparticles_init_in_direction_d(
             k += cells_length_receive[kreceive];
             for (cc=0; cc<cells_length_receive[kreceive]; cc++)
             {
-                item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                 for (dd=0; dd<3; dd++)
                     item_p->P.x[dd] = data_receive[k].x[dd];
                 item_p->P.atomkind = data_receive[k].atomkind;
@@ -510,10 +510,10 @@ static void ghostparticles_init_in_direction_d(
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(cells_length_send);
-        sum_length_send *= sizeof(TPosition_Struct);
-        data_send = (TPosition_Struct *)malloc(sum_length_send);
-        sum_length_receive = sizeof(TPosition_Struct) * cells_length_receive[cells_num];
-        data_receive = (TPosition_Struct *)malloc(sum_length_receive);
+        sum_length_send *= sizeof(position_struct_t);
+        data_send = (position_struct_t *)malloc(sum_length_send);
+        sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
+        data_receive = (position_struct_t *)malloc(sum_length_receive);
         k = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
@@ -536,7 +536,7 @@ static void ghostparticles_init_in_direction_d(
             k += cells_length_receive[kreceive];
             for (cc=0; cc<cells_length_receive[kreceive]; cc++)
             {
-                item_p = (TParticleListItem *)malloc(sizeof(TParticleListItem));
+                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
                 for (dd=0; dd<3; dd++)
                     item_p->P.x[dd] = data_receive[k].x[dd];
                 item_p->P.atomkind = data_receive[k].atomkind;
@@ -564,7 +564,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
     int sum_length_send, sum_length_receive;
     int ic[3];
     double *data_receive, *data_send;
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     int k;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
@@ -694,7 +694,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
     int sum_length_send, sum_length_receive;
     int ic[3];
     float *data_receive, *data_send;
-    TParticleListItem *item_p;
+    ParticleListItem_t *item_p;
     int k;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
@@ -814,7 +814,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
 }
 
 static void particles_prepare_migration_in_direction_d(
-    TSubDomain *s_p, int d, int ic_start_send_lower[3],
+    SubDomain_t *s_p, int d, int ic_start_send_lower[3],
     int ic_stop_send_lower[3], int ic_start_receive_lower[3],
     int ic_stop_receive_lower[3], int ic_start_send_upper[3], int ic_stop_send_upper[3],
     int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
