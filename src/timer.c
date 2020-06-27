@@ -20,6 +20,16 @@
 #include "timer.h"
 #include "base.h"
 
+void fmd_timer_free(fmd_t *md)
+{
+    if (md->timers != NULL)
+    {
+        free(md->timers);
+        md->timers = NULL;
+        md->timers_num = 0;
+    }
+}
+
 unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double stop)
 {
     int i = md->timers_num;

@@ -38,6 +38,7 @@ typedef struct _fmd_timer
 
 typedef struct _fmd fmd_t;
 
+void fmd_timer_free(fmd_t *md);
 void fmd_timer_sendTimerTickEvents(fmd_t *md);
 
 #endif /* TIMER_H */

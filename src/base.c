@@ -1384,7 +1384,10 @@ void fmd_free(fmd_t *md)
 {
     fmd_subd_free(md);
     fmd_potsys_free(md);
+    fmd_timer_free(md);
+
     free(md);
+
     if (md->MPI_initialized_by_me)
     {
         int Is_MPI_Finalized;
