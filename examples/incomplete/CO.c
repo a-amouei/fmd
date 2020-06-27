@@ -1,5 +1,5 @@
 /*
-   molecule.c - an example showing how to use FMD in practice
+   CO.c - an example showing how to use FMD in practice
 
    Written in 2019 by the authors of FMD
 
@@ -15,11 +15,11 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc molecule.c -lfmd -O3 -o molecule.x
+   $ gcc CO.c -lfmd -O3 -o CO.x
 
    and can be executed by
 
-   $ mpirun -n 2 ./molecule.x
+   $ mpirun -n 2 ./CO.x
 */
 
 #include <fmd.h>
