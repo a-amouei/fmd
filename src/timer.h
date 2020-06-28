@@ -21,6 +21,7 @@
 #define TIMER_H
 
 #include "config.h"
+#include "types.h"
 
 typedef enum
 {
@@ -30,7 +31,7 @@ typedef enum
 typedef struct _fmd_timer
 {
     timercat_t cat;
-    int enabled;
+    fmd_bool_t enabled;
     double start;
     double stop;
     double interval;
