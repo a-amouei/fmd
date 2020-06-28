@@ -36,8 +36,8 @@ int main(int argc, char *argv[])
     double lx, ly, lz;
     fmd_box_setSize(md, lx=250.0, ly=250.0, lz=250.0);
 
-    // set periodic boundary conditions in three dimensions (0 = no PBC)
-    fmd_box_setPBC(md, 0, 0, 0);
+    // set periodic boundary conditions in three dimensions
+    fmd_box_setPBC(md, FMD_FALSE, FMD_FALSE, FMD_FALSE);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
     fmd_box_setSubDomains(md, 1, 2, 1);
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
                                       fmd_matt_getTotalEnergy(md));
 
         // use velocity Verlet integrator: start step
-        fmd_dync_VelocityVerlet_startStep(md, 0);
+        fmd_dync_VelocityVerlet_startStep(md, FMD_FALSE);
 
         // compute forces
         fmd_dync_updateForces(md);

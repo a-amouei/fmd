@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 
     fmd_box_setSize(md, 50., 50., 50.);
 
-    fmd_box_setPBC(md, 1, 1, 1);
+    fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
 
     fmd_box_setSubDomains(md, 1, 1, 1);
 
