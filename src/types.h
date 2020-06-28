@@ -22,6 +22,9 @@
 
 #include "config.h"
 
+#define FMD_TRUE 1
+#define FMD_FALSE 0
+
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 

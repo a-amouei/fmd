@@ -20,6 +20,9 @@
 #ifndef FMD_H
 #define FMD_H
 
+#define FMD_TRUE 1
+#define FMD_FALSE 0
+
 // typedefs
 
 typedef struct _fmd fmd_t;
