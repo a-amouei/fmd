@@ -37,7 +37,7 @@ unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double s
     md->timers = (fmd_timer_t *)realloc(md->timers, (i+1) * sizeof(fmd_timer_t));
     // TO-DO: handle memory error
     assert(md->timers != NULL);
-    md->timers[i].enabled = 1;
+    md->timers[i].enabled = FMD_TRUE;
     md->timers[i].cat = TIMER_SIMPLE;
     md->timers[i].start = start;
     md->timers[i].interval = interval;
