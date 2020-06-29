@@ -456,9 +456,9 @@ void identifyProcess(fmd_t *md)
 
     mdnum = md->ns[0] * md->ns[1] * md->ns[2];
     if (md->world_rank < mdnum)
-        md->Is_MD_process = 1;
+        md->Is_MD_process = FMD_TRUE;
     else
-        md->Is_MD_process = 0;
+        md->Is_MD_process = FMD_FALSE;
 #ifdef USE_TTM
     if (ttm_useExtended && md->world_rank == mdnum)
         ttm_is_extended_process = 1;
@@ -641,8 +641,8 @@ void fmd_matt_distribute(fmd_t *md)
     if (md->TotalNoOfMolecules > 0) fmd_matt_updateNeighbors(md);
 
     md->TotalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
-    md->GlobalGridExists = 0;
-    md->ParticlesDistributed = 1;
+    md->GlobalGridExists = FMD_FALSE;
+    md->ParticlesDistributed = FMD_TRUE;
 }
 
 void fmd_subd_init(fmd_t *md)
@@ -1113,7 +1113,7 @@ void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz
     md->PBC[0] = PBCx;
     md->PBC[1] = PBCy;
     md->PBC[2] = PBCz;
-    md->PBCdetermined = 1;
+    md->PBCdetermined = FMD_TRUE;
 }
 
 void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
@@ -1128,7 +1128,7 @@ void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
         MPI_Comm_size(md->MD_comm, &md->SubDomain.numprocs);
         MPI_Comm_rank(md->MD_comm, &md->SubDomain.myrank);
         if (md->SubDomain.myrank == ROOTPROCESS(md->SubDomain.numprocs))
-            md->Is_MD_comm_root = 1;
+            md->Is_MD_comm_root = FMD_TRUE;
     }
 }
 
@@ -1136,13 +1136,13 @@ fmd_t *fmd_create()
 {
     fmd_t *md = (fmd_t *)malloc(sizeof(fmd_t));
 
-    md->MPI_initialized_by_me = 0;
+    md->MPI_initialized_by_me = FMD_FALSE;
     int isMPIInitialized;
     MPI_Initialized(&isMPIInitialized);
     if (!isMPIInitialized)
     {
         MPI_Init(NULL, NULL);
-        md->MPI_initialized_by_me = 1;
+        md->MPI_initialized_by_me = FMD_TRUE;
     }
 
     omp_set_num_threads(1);
@@ -1150,19 +1150,19 @@ fmd_t *fmd_create()
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
     md->LOP_iteration = 0;
-    md->UseAutoStep = 0;
+    md->UseAutoStep = FMD_FALSE;
     md->MD_time = 0.0;
     md->SaveDirectory[0] = '\0';
-    md->CompLocOrdParam = 0;
+    md->CompLocOrdParam = FMD_FALSE;
     md->SubDomain.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
     md->ActiveGroup = -1;             // all groups are active by default
-    md->ParticlesDistributed = 0;
-    md->GlobalGridExists = 0;
-    md->BoxSizeDetermined = 0;
-    md->PBCdetermined = 0;
-    md->Is_MD_comm_root = 0;
+    md->ParticlesDistributed = FMD_FALSE;
+    md->GlobalGridExists = FMD_FALSE;
+    md->BoxSizeDetermined = FMD_FALSE;
+    md->PBCdetermined = FMD_FALSE;
+    md->Is_MD_comm_root = FMD_FALSE;
     md->EventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
@@ -1187,7 +1187,7 @@ void fmd_box_setSize(fmd_t *md, double sx, double sy, double sz)
         md->l[0] = sx;
         md->l[1] = sy;
         md->l[2] = sz;
-        md->BoxSizeDetermined = 1;
+        md->BoxSizeDetermined = FMD_TRUE;
     }
 }
 
@@ -1223,7 +1223,7 @@ void fmd_box_createGrid(fmd_t *md, double cutoff)
 
     if (md->Is_MD_comm_root)
         md->global_grid = createGrid(md->nc);
-    md->GlobalGridExists = 1;
+    md->GlobalGridExists = FMD_TRUE;
     md->CutoffRadius = cutoff;
 }
 
@@ -1286,7 +1286,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
     while (md->MD_time < duration)
     {
         // take first step of velocity Verlet integrator
-        fmd_dync_VelocityVerlet_startStep(md, 1);
+        fmd_dync_VelocityVerlet_startStep(md, FMD_TRUE);
 
         // compute forces
         fmd_dync_updateForces(md);
