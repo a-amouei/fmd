@@ -22,4 +22,26 @@
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 {
+    int i = md->turies_num;
+
+    md->turies = (turi_t *)realloc(md->turies, (i+1) * sizeof(turi_t));
+    // TO-DO: handle memory error
+    assert(md->turies != NULL);
+
+    md->turies[i].cat = cat;
+    switch (cat)
+    {
+        case FMD_TURI_CUSTOM:
+            md->turies[i].fields = NULL;
+            md->turies[i].fields_num = 0;
+            break;
+    }
+
+    md->turies[i].tdims_global[0] = dimx;
+    md->turies[i].tdims_global[1] = dimy;
+    md->turies[i].tdims_global[2] = dimz;
+
+    md->turies_num++;
+
+    return i;
 }
