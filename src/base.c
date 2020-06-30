@@ -367,7 +367,7 @@ void createCommunicators(fmd_t *md)
     free(ranks);
 }
 
-cell_t ***createGrid(int cell_num[3])
+cell_t ***fmd_internal_createGrid(int cell_num[3])
 {
     cell_t ***grid;
     int i, j, k;
@@ -409,7 +409,7 @@ void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
     MPI_Allreduce(LocalUpper, UpperLimit, 3, MPI_DOUBLE, MPI_MAX, md->MD_comm);
 }
 
-void freeGrid(cell_t ***grid, int *cell_num)
+void fmd_internal_freeGrid(cell_t ***grid, int *cell_num)
 {
     int i, j;
 
@@ -421,15 +421,6 @@ void freeGrid(cell_t ***grid, int *cell_num)
         free(grid[i]);
     }
     free(grid);
-}
-
-void fmd_subd_free(fmd_t *md)
-{
-    if (md->SubDomain.grid != NULL)
-    {
-        freeGrid(md->SubDomain.grid, md->SubDomain.cell_num);
-        md->SubDomain.grid = NULL;
-    }
 }
 
 int getListLength(ParticleListItem_t *root_p)
@@ -585,6 +576,7 @@ void fmd_matt_distribute(fmd_t *md)
                                       [ ic[1] - md->SubDomain.ic_start[1] + md->SubDomain.ic_global_firstcell[1] ]
                                       [ ic[2] - md->SubDomain.ic_start[2] + md->SubDomain.ic_global_firstcell[2] ];
             item_p = *item_pp;
+
             while (item_p != NULL)
             {
                 removeFromList(item_pp);
@@ -593,8 +585,10 @@ void fmd_matt_distribute(fmd_t *md)
                 ++(md->SubDomain.NumberOfParticles);
                 item_p = *item_pp;
             }
+
+
         }
-        freeGrid(md->global_grid, md->nc);
+        fmd_internal_freeGrid(md->global_grid, md->nc);
     }
     else
     {
@@ -643,49 +637,6 @@ void fmd_matt_distribute(fmd_t *md)
     md->TotalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
     md->GlobalGridExists = FMD_FALSE;
     md->ParticlesDistributed = FMD_TRUE;
-}
-
-void fmd_subd_init(fmd_t *md)
-{
-    int d;
-
-    // initialize is
-    INVERSEINDEX(md->SubDomain.myrank, md->ns, md->SubDomain.is);
-    // initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes)
-    int istemp[3];
-    for (d=0; d<3; d++)
-        istemp[d] = md->SubDomain.is[d];
-    for (d=0; d<3; d++)
-    {
-        istemp[d] = (md->SubDomain.is[d] - 1 + md->ns[d]) % md->ns[d];
-        md->SubDomain.rank_of_lower_subd[d] = INDEX(istemp, md->ns);
-        istemp[d] = (md->SubDomain.is[d] + 1) % md->ns[d];
-        md->SubDomain.rank_of_upper_subd[d] = INDEX(istemp, md->ns);
-        istemp[d] = md->SubDomain.is[d];
-    }
-    //
-    for (d=0; d<3; d++)
-    {
-        int r, w;
-
-        if (md->ns[d] == 1) md->SubDomain.ic_start[d] = 0; else md->SubDomain.ic_start[d] = 1;
-        r = md->nc[d] % md->ns[d];
-        w = md->nc[d] / md->ns[d];
-        if (md->SubDomain.is[d] < r)
-        {
-            md->SubDomain.ic_stop[d] = md->SubDomain.ic_start[d] + w + 1;
-            md->SubDomain.ic_global_firstcell[d] = md->SubDomain.is[d] * (w + 1);
-        }
-        else
-        {
-            md->SubDomain.ic_stop[d] = md->SubDomain.ic_start[d] + w;
-            md->SubDomain.ic_global_firstcell[d] = md->SubDomain.is[d] * w + r;
-        }
-        md->SubDomain.cell_num[d] = md->SubDomain.ic_stop[d] + md->SubDomain.ic_start[d];
-        md->SubDomain.cell_num_nonmarg[d] = md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d];
-    }
-
-    md->SubDomain.grid = createGrid(md->SubDomain.cell_num);
 }
 
 void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p)
@@ -1224,7 +1175,7 @@ void fmd_box_createGrid(fmd_t *md, double cutoff)
     }
 
     if (md->Is_MD_comm_root)
-        md->global_grid = createGrid(md->nc);
+        md->global_grid = fmd_internal_createGrid(md->nc);
     md->GlobalGridExists = FMD_TRUE;
     md->CutoffRadius = cutoff;
 }

@@ -36,6 +36,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 #include "potential.h"
+#include "subdomain.h"
 
 // Global macroes and symbolic constants
 
@@ -111,13 +112,13 @@ typedef struct
     unsigned AtomID_local;
 } particle_t;
 
-typedef struct ParticleListItem_t
+typedef struct _ParticleListItem
 {
     particle_t P;
     double F[3];
     double FembPrime;
     float LocOrdParamAvg;
-    struct ParticleListItem_t *next_p;
+    struct _ParticleListItem *next_p;
     list_t *neighbors;  // each data pointer in this list points to a mol_atom_neighbor_t
 } ParticleListItem_t;
 
@@ -143,23 +144,6 @@ typedef struct
     unsigned atomkind;
     int GroupID;
 } position_struct_t;
-
-typedef struct
-{
-    cell_t ***grid;             // where the particles lie
-    int myrank;                 // rank of the local process in MD_comm
-    int numprocs;               // number of processes in MD_comm
-    int is[3];                  // position of subdomain in the subdomain grid
-    int rank_of_lower_subd[3];  // rank of the neighbor processes
-    int rank_of_upper_subd[3];
-    int ic_start[3];            // width of margin, corresponds to the first
-                                // local index in the interior of the subdomain
-    int ic_stop[3];             // first local index in the upper margin
-    int cell_num[3];            // number of cells in subdomain, including margin
-    unsigned cell_num_nonmarg[3];
-    int ic_global_firstcell[3]; // global index of the first cell of the subdomain
-    unsigned NumberOfParticles;
-} SubDomain_t;
 
 typedef enum
 {
@@ -243,7 +227,6 @@ void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
 void cleanGridSegment(cell_t ***grid, int ic_from[3], int ic_to[3]);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
-cell_t ***createGrid(int cell_num[3]);
 int getListLength(ParticleListItem_t *root_p);
 void identifyProcess(fmd_t *md);
 void handleFileOpenError(FILE *fp, char *filename);
@@ -252,6 +235,8 @@ void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
 void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p);
 void removeFromList(ParticleListItem_t **item_pp);
+cell_t ***fmd_internal_createGrid(int cell_num[3]);
+void fmd_internal_freeGrid(cell_t ***grid, int *cell_num);
 
 //
 
