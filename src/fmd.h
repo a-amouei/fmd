@@ -42,6 +42,12 @@ typedef enum
     FMD_BOND_HARMONIC
 } fmd_bond_t;
 
+typedef enum
+{
+    FMD_TURI_CUSTOM,
+    FMD_TURI_TTM
+} fmd_turi_t;
+
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 
