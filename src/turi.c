@@ -22,6 +22,8 @@
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 {
+    if (md->SubDomain.grid == NULL) fmd_subd_init(md);
+
     int ti = md->turies_num;
 
     md->turies = (turi_t *)realloc(md->turies, (ti+1) * sizeof(turi_t));
@@ -40,9 +42,8 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 
         double xlo = md->SubDomain.ic_global_firstcell[d] * md->cellh[d];
         t->tcell_first[d] = (int)(xlo / t->tcellh[d]);
-        double xhi = xlo + (md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d]) *
-                           md->cellh[d];
-        t->tcell_last[d] = (int)(xhi / t->tcellh[d]);
+        double xhi = xlo + md->SubDomain.cell_num_nonmarg[d] * md->cellh[d];
+        t->tcell_last[d] = (int)ceil(xhi / t->tcellh[d]) - 1;
 
         t->tdims[d] = t->tcell_last[d] - t->tcell_first[d] + 1;
     }
@@ -57,6 +58,23 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
     }
 
     md->turies_num++;
+
+    /* only for test purpose */
+    for (int i=0; i < md->ns[0]; i++)
+        for (int j=0; j < md->ns[1]; j++)
+            for (int k=0; k < md->ns[2]; k++)
+            {
+                MPI_Barrier(md->MD_comm);
+                if (md->SubDomain.is[0] == i &&
+                    md->SubDomain.is[1] == j &&
+                    md->SubDomain.is[2] == k)
+                {
+                    printf("subdomain(%d, %d, %d)\n", i, j, k);
+                    printf("tcell_first = {%d, %d, %d}\n", t->tcell_first[0], t->tcell_first[1], t->tcell_first[2]);
+                    printf("tcell_last = {%d, %d, %d}\n", t->tcell_last[0], t->tcell_last[1], t->tcell_last[2]);
+                    printf("tdims = {%d, %d, %d}\n\n", t->tdims[0], t->tdims[1], t->tdims[2]);
+                }
+            }
 
     return ti;
 }
