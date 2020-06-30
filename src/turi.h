@@ -43,10 +43,19 @@ typedef enum
 typedef struct _turi
 {
     fmd_turi_t cat;
-    int tdims_global[3];
-    int tdims[3];               /* dimenstions of the turi */
+    int tdims_global[3];        /* global dimenstions of the turi */
+    int tdims[3];               /* dimenstions of the turi in current subdomain.
+                                   The subdomain may share some of its turi-cells with
+                                   neighbor subdomains. */
+    int tcell_first[3];         /* global index of the first turi-cell in current subdomain */
+    int tcell_last[3];          /* global index of the last turi-cell in current subdomain */
+    double tcellh[3];           /* size of each cell of the turi (global) */
     unsigned fields_num;
     field_t *fields;
 } turi_t;
+
+typedef struct _fmd fmd_t;
+
+unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
 
 #endif /* TURI_H */

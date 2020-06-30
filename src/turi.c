@@ -22,26 +22,41 @@
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 {
-    int i = md->turies_num;
+    int ti = md->turies_num;
 
-    md->turies = (turi_t *)realloc(md->turies, (i+1) * sizeof(turi_t));
+    md->turies = (turi_t *)realloc(md->turies, (ti+1) * sizeof(turi_t));
     // TO-DO: handle memory error
     assert(md->turies != NULL);
 
-    md->turies[i].cat = cat;
+    turi_t *t = &md->turies[ti];
+
+    t->tdims_global[0] = dimx;
+    t->tdims_global[1] = dimy;
+    t->tdims_global[2] = dimz;
+
+    for (int d=0; d<3; d++)
+    {
+        t->tcellh[d] = md->l[d] / t->tdims_global[d];
+
+        double xlo = md->SubDomain.ic_global_firstcell[d] * md->cellh[d];
+        t->tcell_first[d] = (int)(xlo / t->tcellh[d]);
+        double xhi = xlo + (md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d]) *
+                           md->cellh[d];
+        t->tcell_last[d] = (int)(xhi / t->tcellh[d]);
+
+        t->tdims[d] = t->tcell_last[d] - t->tcell_first[d] + 1;
+    }
+
+    t->cat = cat;
     switch (cat)
     {
         case FMD_TURI_CUSTOM:
-            md->turies[i].fields = NULL;
-            md->turies[i].fields_num = 0;
+            t->fields = NULL;
+            t->fields_num = 0;
             break;
     }
 
-    md->turies[i].tdims_global[0] = dimx;
-    md->turies[i].tdims_global[1] = dimy;
-    md->turies[i].tdims_global[2] = dimz;
-
     md->turies_num++;
 
-    return i;
+    return ti;
 }

@@ -18,3 +18,4 @@ potential.o: potential.c potential.h config.h types.h base.h array.h \
 structure.o: structure.c base.h config.h potential.h types.h molecule.h \
  array.h
 timer.o: timer.c timer.h config.h types.h base.h potential.h
+turi.o: turi.c turi.h config.h base.h potential.h types.h

@@ -124,4 +124,6 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
   double timestep, double strength, double temperature);
 
+unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
+
 #endif /* FMD_H */
