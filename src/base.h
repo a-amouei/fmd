@@ -179,6 +179,8 @@ typedef enum
 
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
 
+typedef struct _turi turi_t;
+
 struct _fmd
 {
     SubDomain_t SubDomain;
@@ -187,6 +189,8 @@ struct _fmd
     fmd_EventHandler_t EventHandler;
     unsigned timers_num;
     fmd_timer_t *timers;
+    unsigned turies_num;
+    turi_t *turies;
     fmd_bool_t GlobalGridExists;
     fmd_bool_t BoxSizeDetermined;
     fmd_bool_t PBCdetermined;

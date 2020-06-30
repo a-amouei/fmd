@@ -1166,6 +1166,8 @@ fmd_t *fmd_create()
     md->EventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
+    md->turies = NULL;
+    md->turies_num = 0;
     md->DesiredTemperature = 300.0;
     md->SaveConfigMode = FMD_SCM_XYZ_PARTICLESNUM;
     md->_OldNumberOfParticles = -1;
