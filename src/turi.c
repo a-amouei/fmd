@@ -19,6 +19,48 @@
 
 #include "turi.h"
 #include "base.h"
+#include "subdomain.h"
+
+/* This function receives the index of a turi-cell and returns the number
+   of processes that share it. The ranks of those processes in MD_comm
+   will be written in pset. */
+static unsigned identify_tcell_processes_set(fmd_t *md, double tcellh[3],
+  const int itc[3], int *pset[])
+{
+    double tc_edge_lo[3], tc_edge_hi[3];
+
+    for (int d=0; d<3; d++)
+    {
+        tc_edge_lo[d] = itc[d] * tcellh[d];
+        tc_edge_hi[d] = (itc[d] + 1) * tcellh[d];
+    }
+
+    double slo[3], shi[3];
+    _fmd_convert_pos_to_subd_coord(md, tc_edge_lo, slo);
+    _fmd_convert_pos_to_subd_coord(md, tc_edge_hi, shi);
+
+    int is_start[3], is_stop[3];
+    unsigned np = 1; /* number of processes */
+
+    for (int d=0; d<3; d++)
+    {
+        is_start[d] = (int)slo[d];
+        is_stop[d] = (int)ceil(shi[d]);
+        np *= is_stop[d] - is_start[d];
+    }
+
+    *pset = (int *)malloc(np * sizeof(int));
+    /* TO-DO: handle memory error */
+    assert(*pset != NULL);
+
+    int is[3];
+    int i=0;
+
+    ITERATE(is, is_start, is_stop)
+        (*pset)[i++] = INDEX(is, md->ns);
+
+    return np;
+}
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 {
@@ -27,7 +69,7 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
     int ti = md->turies_num;
 
     md->turies = (turi_t *)realloc(md->turies, (ti+1) * sizeof(turi_t));
-    // TO-DO: handle memory error
+    /* TO-DO: handle memory error */
     assert(md->turies != NULL);
 
     turi_t *t = &md->turies[ti];
@@ -60,6 +102,7 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
     md->turies_num++;
 
     /* only for test purpose */
+    /*
     for (int i=0; i < md->ns[0]; i++)
         for (int j=0; j < md->ns[1]; j++)
             for (int k=0; k < md->ns[2]; k++)
@@ -75,6 +118,7 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
                     printf("tdims = {%d, %d, %d}\n\n", t->tdims[0], t->tdims[1], t->tdims[2]);
                 }
             }
+    */
 
     return ti;
 }

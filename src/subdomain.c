@@ -25,7 +25,7 @@
    For example if for a pos[] value we obtain s[] = {1.5, 0.5, 3.5}, it
    means that pos[] is placed right in the center of the subdomain with
    index of is[] = {1, 0, 3}. */
-void _fmd_convert_pos_to_subd_coord(fmd_t *md, double pos[3], double s[3])
+void _fmd_convert_pos_to_subd_coord(fmd_t *md, const double pos[3], double s[3])
 {
     double pos2[3], ref2[3], width1[3];
 

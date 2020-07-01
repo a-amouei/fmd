@@ -49,7 +49,7 @@ typedef struct _fmd fmd_t;
 
 void fmd_subd_init(fmd_t *md);
 void fmd_subd_free(fmd_t *md);
-void _fmd_convert_pos_to_subd_coord(fmd_t *md, double pos[3], double s[3]);
+void _fmd_convert_pos_to_subd_coord(fmd_t *md, const double pos[3], double s[3]);
 
 
 #endif /* SUBDOMAIN_H */
