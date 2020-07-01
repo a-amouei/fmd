@@ -41,11 +41,11 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
         t->tcellh[d] = md->l[d] / t->tdims_global[d];
 
         double xlo = md->SubDomain.ic_global_firstcell[d] * md->cellh[d];
-        t->tcell_first[d] = (int)(xlo / t->tcellh[d]);
+        t->tcell_start[d] = (int)(xlo / t->tcellh[d]);
         double xhi = xlo + md->SubDomain.cell_num_nonmarg[d] * md->cellh[d];
-        t->tcell_last[d] = (int)ceil(xhi / t->tcellh[d]) - 1;
+        t->tcell_stop[d] = (int)ceil(xhi / t->tcellh[d]);
 
-        t->tdims[d] = t->tcell_last[d] - t->tcell_first[d] + 1;
+        t->tdims[d] = t->tcell_stop[d] - t->tcell_start[d];
     }
 
     t->cat = cat;
@@ -70,8 +70,8 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
                     md->SubDomain.is[2] == k)
                 {
                     printf("subdomain(%d, %d, %d)\n", i, j, k);
-                    printf("tcell_first = {%d, %d, %d}\n", t->tcell_first[0], t->tcell_first[1], t->tcell_first[2]);
-                    printf("tcell_last = {%d, %d, %d}\n", t->tcell_last[0], t->tcell_last[1], t->tcell_last[2]);
+                    printf("tcell_start = {%d, %d, %d}\n", t->tcell_start[0], t->tcell_start[1], t->tcell_start[2]);
+                    printf("tcell_stop = {%d, %d, %d}\n", t->tcell_stop[0], t->tcell_stop[1], t->tcell_stop[2]);
                     printf("tdims = {%d, %d, %d}\n\n", t->tdims[0], t->tdims[1], t->tdims[2]);
                 }
             }

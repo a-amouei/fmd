@@ -47,8 +47,8 @@ typedef struct _turi
     int tdims[3];               /* dimenstions of the turi in current subdomain.
                                    The subdomain may share some of its turi-cells with
                                    neighbor subdomains. */
-    int tcell_first[3];         /* global index of the first turi-cell in current subdomain */
-    int tcell_last[3];          /* global index of the last turi-cell in current subdomain */
+    int tcell_start[3];         /* global index of the first turi-cell in current subdomain */
+    int tcell_stop[3];          /* global index of the first turi-cell outside current subdomain */
     double tcellh[3];           /* size of each cell of the turi (global) */
     unsigned fields_num;
     field_t *fields;

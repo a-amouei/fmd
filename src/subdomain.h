@@ -41,11 +41,15 @@ typedef struct
     unsigned cell_num_nonmarg[3];
     int ic_global_firstcell[3]; // global index of the first cell of the subdomain
     unsigned NumberOfParticles;
+    int r[3];                   /* r[d] = fmd_t.nc[d] % fmd_t.ns[d]; */
+    int w[3];                   /* w[d] = fmd_t.nc[d] % fmd_t.ns[d]; */
 } SubDomain_t;
 
 typedef struct _fmd fmd_t;
 
 void fmd_subd_init(fmd_t *md);
 void fmd_subd_free(fmd_t *md);
+void _fmd_convert_pos_to_subd_coord(fmd_t *md, double pos[3], double s[3]);
+
 
 #endif /* SUBDOMAIN_H */

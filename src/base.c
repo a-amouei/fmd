@@ -367,7 +367,7 @@ void createCommunicators(fmd_t *md)
     free(ranks);
 }
 
-cell_t ***fmd_internal_createGrid(int cell_num[3])
+cell_t ***_fmd_createGrid(int cell_num[3])
 {
     cell_t ***grid;
     int i, j, k;
@@ -409,7 +409,7 @@ void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
     MPI_Allreduce(LocalUpper, UpperLimit, 3, MPI_DOUBLE, MPI_MAX, md->MD_comm);
 }
 
-void fmd_internal_freeGrid(cell_t ***grid, int *cell_num)
+void _fmd_freeGrid(cell_t ***grid, int *cell_num)
 {
     int i, j;
 
@@ -588,7 +588,7 @@ void fmd_matt_distribute(fmd_t *md)
 
 
         }
-        fmd_internal_freeGrid(md->global_grid, md->nc);
+        _fmd_freeGrid(md->global_grid, md->nc);
     }
     else
     {
@@ -1175,7 +1175,7 @@ void fmd_box_createGrid(fmd_t *md, double cutoff)
     }
 
     if (md->Is_MD_comm_root)
-        md->global_grid = fmd_internal_createGrid(md->nc);
+        md->global_grid = _fmd_createGrid(md->nc);
     md->GlobalGridExists = FMD_TRUE;
     md->CutoffRadius = cutoff;
 }

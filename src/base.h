@@ -235,8 +235,8 @@ void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
 void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p);
 void removeFromList(ParticleListItem_t **item_pp);
-cell_t ***fmd_internal_createGrid(int cell_num[3]);
-void fmd_internal_freeGrid(cell_t ***grid, int *cell_num);
+cell_t ***_fmd_createGrid(int cell_num[3]);
+void _fmd_freeGrid(cell_t ***grid, int *cell_num);
 
 //
 
