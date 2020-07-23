@@ -42,7 +42,7 @@ typedef struct
     int ic_global_firstcell[3]; // global index of the first cell of the subdomain
     unsigned NumberOfParticles;
     int r[3];                   /* r[d] = fmd_t.nc[d] % fmd_t.ns[d]; */
-    int w[3];                   /* w[d] = fmd_t.nc[d] % fmd_t.ns[d]; */
+    int w[3];                   /* w[d] = fmd_t.nc[d] / fmd_t.ns[d]; */
 } SubDomain_t;
 
 typedef struct _fmd fmd_t;
