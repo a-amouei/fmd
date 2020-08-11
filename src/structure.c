@@ -23,6 +23,8 @@
 
 #define RESERVED_GROUP  -2
 
+typedef enum {LATTICE_FCC, LATTICE_BCC, LATTICE_SC} lattice_t;
+
 static void removeRemainingMomentum(fmd_t *md, int GroupID, double *MomentumSum, unsigned AtomsNum)
 {
     ParticleListItem_t *item_p;
@@ -41,65 +43,138 @@ static void removeRemainingMomentum(fmd_t *md, int GroupID, double *MomentumSum,
         }
 }
 
+static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID)
+{
+    double mass, StdDevVelocity;
+    int CrystalCell[3], ic[3];
+
+    const double r_fcc[4][3] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
+                                {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
+    const double r_bcc[2][3] = {{0.0, 0.0, 0.0}, {0.5, 0.5, 0.5}};
+    const double r_sc[1][3] = {{0.0, 0.0, 0.0}};
+
+    double MomentumSum[3] = {0.0, 0.0, 0.0};
+    ParticleListItem_t *item_p;
+    int dims[3] = {dimx, dimy, dimz};
+    double r0[3] = {x, y, z};
+    int i, d;
+
+    double *prps_cumult = (double *)malloc(md->potsys.atomkinds_num * sizeof(double));
+    double prps_sum = 0.0;
+    for (i=0; i < md->potsys.atomkinds_num; i++)
+        prps_cumult[i] = (prps_sum += proportions[i]);
+
+    gsl_rng *rng;
+    rng = gsl_rng_alloc(gsl_rng_mt19937);
+    gsl_rng_set(rng, time(NULL));
+
+    int points_per_cell;
+    double *rp;
+
+    switch (lt)
+    {
+        case LATTICE_SC:
+            points_per_cell = 1;
+            rp = r_sc;
+            break;
+        case LATTICE_FCC:
+            points_per_cell = 4;
+            rp = r_fcc;
+            break;
+        case LATTICE_BCC:
+            points_per_cell = 2;
+            rp = r_bcc;
+            break;
+    }
+
+    ITERATE(CrystalCell, fmd_ThreeZeros, dims)
+        for (i=0; i<points_per_cell; i++)
+        {
+            item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
+
+            double rn = prps_sum * gsl_rng_uniform(rng);
+            int j;
+            for (j=0; j < md->potsys.atomkinds_num; j++)
+                if (rn < prps_cumult[j]) break;
+            item_p->P.atomkind = j;
+
+            item_p->P.molkind = 0;
+
+            mass = md->potsys.atomkinds[j].mass;
+            StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
+
+            item_p->P.GroupID = RESERVED_GROUP;
+            item_p->P.AtomID = md->TotalNoOfParticles++;
+
+            for (d=0; d<3; d++)
+            {
+                item_p->P.x[d] = r0[d] + (CrystalCell[d] + .25 + rp[i*3+d]) * LatticeParameter;
+                item_p->P.v[d] = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
+                MomentumSum[d] += mass * item_p->P.v[d];
+                ic[d] = (int)floor(item_p->P.x[d] / md->cellh[d]);
+            }
+            fmd_insertInList(&md->global_grid[ic[0]][ic[1]][ic[2]], item_p);
+        }
+
+    gsl_rng_free(rng);
+
+    removeRemainingMomentum(md, GroupID, MomentumSum, points_per_cell * dimx * dimy * dimz);
+
+    free(prps_cumult);
+}
+
+void fmd_matt_makeCuboidSC_alloy(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID)
+{
+    if (!md->Is_MD_comm_root) return;
+
+    fmd_matt_makeCuboid_alloy(md, LATTICE_SC, x, y, z, dimx, dimy, dimz,
+      LatticeParameter, proportions, GroupID);
+}
+
+void fmd_matt_makeCuboidSC(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID)
+{
+    if (!md->Is_MD_comm_root) return;
+
+    double *proportions = (double *)calloc(md->potsys.atomkinds_num, sizeof(double));
+    proportions[atomkind] = 1.0;
+
+    fmd_matt_makeCuboid_alloy(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
+
+    free(proportions);
+}
+
+void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID)
+{
+    if (!md->Is_MD_comm_root) return;
+
+    fmd_matt_makeCuboid_alloy(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz,
+      LatticeParameter, proportions, GroupID);
+}
+
+void fmd_matt_makeCuboidBCC(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID)
+{
+    if (!md->Is_MD_comm_root) return;
+
+    double *proportions = (double *)calloc(md->potsys.atomkinds_num, sizeof(double));
+    proportions[atomkind] = 1.0;
+
+    fmd_matt_makeCuboid_alloy(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
+
+    free(proportions);
+}
+
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
   int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID)
 {
-    if (md->Is_MD_comm_root)
-    {
-        double mass, StdDevVelocity;
-        int CrystalCell[3], ic[3];
-        double r_fcc[4][3] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
-                              {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
-        double MomentumSum[3] = {0.0, 0.0, 0.0};
-        ParticleListItem_t *item_p;
-        int dims[3] = {dimx, dimy, dimz};
-        double r0[3] = {x, y, z};
-        int i, d;
+    if (!md->Is_MD_comm_root) return;
 
-        double *prps_cumult = (double *)malloc(md->potsys.atomkinds_num * sizeof(double));
-        double prps_sum = 0.0;
-        for (i=0; i < md->potsys.atomkinds_num; i++)
-            prps_cumult[i] = (prps_sum += proportions[i]);
-
-        gsl_rng *rng;
-        rng = gsl_rng_alloc(gsl_rng_mt19937);
-        gsl_rng_set(rng, time(NULL));
-
-        ITERATE(CrystalCell, fmd_ThreeZeros, dims)
-            for (i=0; i<4; i++)
-            {
-                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-
-                double rn = prps_sum * gsl_rng_uniform(rng);
-                int j;
-                for (j=0; j < md->potsys.atomkinds_num; j++)
-                    if (rn < prps_cumult[j]) break;
-                item_p->P.atomkind = j;
-
-                item_p->P.molkind = 0;
-
-                mass = md->potsys.atomkinds[j].mass;
-                StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
-
-                item_p->P.GroupID = RESERVED_GROUP;
-                item_p->P.AtomID = md->TotalNoOfParticles++;
-
-                for (d=0; d<3; d++)
-                {
-                    item_p->P.x[d] = r0[d] + (CrystalCell[d] + .25 + r_fcc[i][d]) * LatticeParameter;
-                    item_p->P.v[d] = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
-                    MomentumSum[d] += mass * item_p->P.v[d];
-                    ic[d] = (int)floor(item_p->P.x[d] / md->cellh[d]);
-                }
-                fmd_insertInList(&md->global_grid[ic[0]][ic[1]][ic[2]], item_p);
-            }
-
-        gsl_rng_free(rng);
-
-        removeRemainingMomentum(md, GroupID, MomentumSum, 4 * dimx * dimy * dimz);
-
-        free(prps_cumult);
-    }
+    fmd_matt_makeCuboid_alloy(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz,
+      LatticeParameter, proportions, GroupID);
 }
 
 void fmd_matt_makeCuboidFCC(fmd_t *md, double x, double y, double z,
@@ -110,7 +185,7 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, double x, double y, double z,
     double *proportions = (double *)calloc(md->potsys.atomkinds_num, sizeof(double));
     proportions[atomkind] = 1.0;
 
-    fmd_matt_makeCuboidFCC_alloy(md, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
+    fmd_matt_makeCuboid_alloy(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
 
     free(proportions);
 }

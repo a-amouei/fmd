@@ -70,6 +70,14 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double vz);
 void fmd_matt_setActiveGroup(fmd_t *md, int GroupID);
 void fmd_matt_setDesiredTemperature(fmd_t *md, double DesiredTemperature);
+void fmd_matt_makeCuboidSC(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
+void fmd_matt_makeCuboidSC_alloy(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
+void fmd_matt_makeCuboidBCC(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
+void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, double x, double y, double z,
+  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
 void fmd_matt_makeCuboidFCC(fmd_t *md, double x, double y, double z,
   int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
