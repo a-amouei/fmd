@@ -62,6 +62,53 @@ static unsigned identify_tcell_processes_set(fmd_t *md, double tcellh[3],
     return np;
 }
 
+static int find_this_pset_in_comms(int np, int *pset, int comms_num, turi_comm_t *comms)
+{
+    for (int i=0; i<comms_num; i++)
+        if (np == comms[i].commsize)
+        {
+            int *pset2 = comms[i].pset;
+            int j;
+
+            for (j=0; pset[j] == pset2[j] && j<np; j++) ;
+
+            if (j==np) return i;
+        }
+
+    return -1; /* it is not there! */
+}
+
+static void prepare_for_communication(fmd_t *md, turi_t *t)
+{
+    t->comms_num = 0;
+    t->comms = NULL;
+
+    int itc[3];
+
+    ITERATE(itc, t->tcell_start, t->tcell_stop)
+    {
+        int *pset, np;
+
+        np = identify_tcell_processes_set(md, t->tcellh, itc, &pset);
+        int icomm = find_this_pset_in_comms(np, pset, t->comms_num, t->comms);
+
+        if (icomm == -1) /* if this is a new pset */
+        {
+            /* add it to t->comms */
+
+            t->comms = (turi_comm_t *)realloc(t->comms, (t->comms_num+1) * sizeof(turi_comm_t));
+            /* TO-DO: handle memory error */
+            assert(t->comms != NULL);
+
+            turi_comm_t *tcomm = &t->comms[t->comms_num++];
+            tcomm->commsize = np;
+            tcomm->pset = pset;
+        }
+        else
+            free(pset);
+    }
+}
+
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 {
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
@@ -100,6 +147,8 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
     }
 
     md->turies_num++;
+
+    prepare_for_communication(md, t);
 
     /* only for test purpose */
     /*

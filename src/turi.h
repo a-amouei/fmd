@@ -21,6 +21,7 @@
 #define TURI_H
 
 #include "config.h"
+#include <mpi.h>
 
 typedef enum
 {
@@ -40,6 +41,13 @@ typedef enum
     FMD_TURI_TTM
 } fmd_turi_t; /* category of the turi */
 
+typedef struct
+{
+    MPI_Comm comm;
+    unsigned commsize;
+    int *pset;                  /* ranks of the processes of this comm in MD_comm */
+} turi_comm_t;
+
 typedef struct _turi
 {
     fmd_turi_t cat;
@@ -52,6 +60,8 @@ typedef struct _turi
     double tcellh[3];           /* size of each cell of the turi (global) */
     unsigned fields_num;
     field_t *fields;
+    unsigned comms_num;         /* number of communicators = number of elements of the following array */
+    turi_comm_t *comms;
 } turi_t;
 
 typedef struct _fmd fmd_t;
