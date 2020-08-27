@@ -83,6 +83,10 @@ static void prepare_for_communication(fmd_t *md, turi_t *t)
     t->comms_num = 0;
     t->comms = NULL;
 
+    MPI_Group worldgroup, newgroup;
+
+    MPI_Comm_group(MPI_COMM_WORLD, &worldgroup);
+
     int itc[3];
 
     ITERATE(itc, t->tcell_start, t->tcell_stop)
@@ -103,10 +107,20 @@ static void prepare_for_communication(fmd_t *md, turi_t *t)
             turi_comm_t *tcomm = &t->comms[t->comms_num++];
             tcomm->commsize = np;
             tcomm->pset = pset;
+
+            if (np > 1) /* create MPI communicator */
+            {
+                MPI_Group_incl(worldgroup, np, pset, &newgroup);
+                int res = MPI_Comm_create_group(md->MD_comm, newgroup, 0, &tcomm->comm);
+                assert(res == MPI_SUCCESS);
+                MPI_Group_free(&newgroup);
+            }
         }
         else
             free(pset);
     }
+
+    MPI_Group_free(&worldgroup);
 }
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
