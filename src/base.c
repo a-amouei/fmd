@@ -26,12 +26,13 @@
 #endif
 #include "timer.h"
 #include "molecule.h"
+#include "array.h"
 
 const int fmd_ThreeZeros[3] = {0, 0, 0};
 
 static void refreshGrid(fmd_t *md, int reverse);
 
-void cleanGridSegment(cell_t ***grid, int ic_from[3], int ic_to[3])
+void _fmd_cleanGridSegment(cell_t ***grid, const int ic_from[3], const int ic_to[3])
 {
     int ic[3];
     ParticleListItem_t *item_p, **item_pp;
@@ -367,25 +368,6 @@ void createCommunicators(fmd_t *md)
     free(ranks);
 }
 
-cell_t ***_fmd_createGrid(int cell_num[3])
-{
-    cell_t ***grid;
-    int i, j, k;
-
-    grid = (cell_t ***)malloc(cell_num[0]*sizeof(cell_t **));
-    for (i=0; i < cell_num[0]; i++)
-    {
-        grid[i] = (cell_t **)malloc(cell_num[1]*sizeof(cell_t *));
-        for (j=0; j < cell_num[1]; j++)
-        {
-            grid[i][j] = (cell_t *)malloc(cell_num[2]*sizeof(cell_t));
-            for (k=0; k < cell_num[2]; k++)
-                grid[i][j][k] = NULL;
-        }
-    }
-    return grid;
-}
-
 void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
 {
     ParticleListItem_t *item_p;
@@ -409,18 +391,10 @@ void findLimits(fmd_t *md, double LowerLimit[3], double UpperLimit[3])
     MPI_Allreduce(LocalUpper, UpperLimit, 3, MPI_DOUBLE, MPI_MAX, md->MD_comm);
 }
 
-void _fmd_freeGrid(cell_t ***grid, int *cell_num)
+static void freeGlobalGrid(cell_t ***grid, int *cell_num)
 {
-    int i, j;
-
-    cleanGridSegment(grid, fmd_ThreeZeros, cell_num);
-    for (i=0; i < cell_num[0]; i++)
-    {
-        for (j=0; j < cell_num[1]; j++)
-            free(grid[i][j]);
-        free(grid[i]);
-    }
-    free(grid);
+    _fmd_cleanGridSegment(grid, fmd_ThreeZeros, cell_num);
+    _fmd_array_ordinary3d_pointer_free((fmd_pointer_t ***)grid, cell_num[0], cell_num[1], cell_num[2]);
 }
 
 int getListLength(ParticleListItem_t *root_p)
@@ -588,7 +562,7 @@ void fmd_matt_distribute(fmd_t *md)
 
 
         }
-        _fmd_freeGrid(md->global_grid, md->nc);
+        freeGlobalGrid(md->global_grid, md->nc);
     }
     else
     {
@@ -1175,7 +1149,11 @@ void fmd_box_createGrid(fmd_t *md, double cutoff)
     }
 
     if (md->Is_MD_comm_root)
-        md->global_grid = _fmd_createGrid(md->nc);
+    {
+        md->global_grid = (cell_t ***)_fmd_array_ordinary3d_pointer_create(md->nc[0], md->nc[1], md->nc[2]);
+        assert(md->global_grid != NULL);
+        /* TO-DO: handle memory error */
+    }
     md->GlobalGridExists = FMD_TRUE;
     md->CutoffRadius = cutoff;
 }

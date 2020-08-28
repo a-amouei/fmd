@@ -21,6 +21,7 @@
 #define SUBDOMAIN_H
 
 #include "config.h"
+#include "array.h"
 
 typedef struct _ParticleListItem ParticleListItem_t;
 
@@ -29,6 +30,7 @@ typedef ParticleListItem_t *cell_t;
 typedef struct
 {
     cell_t ***grid;             // where the particles lie
+    array_kind_t grid_arraykind; // is it a neat 3d array or ... ?
     int myrank;                 // rank of the local process in MD_comm
     int numprocs;               // number of processes in MD_comm
     int is[3];                  // position of subdomain in the subdomain grid

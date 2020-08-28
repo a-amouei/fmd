@@ -221,10 +221,8 @@ struct _fmd
 
 // Functions
 
-void fmd_subd_init(fmd_t *md);
 void fmd_box_createGrid(fmd_t *md, double cutoff);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
-void cleanGridSegment(cell_t ***grid, int ic_from[3], int ic_to[3]);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
 int getListLength(ParticleListItem_t *root_p);
@@ -235,8 +233,7 @@ void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
 void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p);
 void removeFromList(ParticleListItem_t **item_pp);
-cell_t ***_fmd_createGrid(int cell_num[3]);
-void _fmd_freeGrid(cell_t ***grid, int *cell_num);
+void _fmd_cleanGridSegment(cell_t ***grid, const int ic_from[3], const int ic_to[3]);
 
 //
 

@@ -46,7 +46,12 @@ void fmd_subd_free(fmd_t *md)
 {
     if (md->SubDomain.grid != NULL)
     {
-        _fmd_freeGrid(md->SubDomain.grid, md->SubDomain.cell_num);
+        _fmd_cleanGridSegment(md->SubDomain.grid, fmd_ThreeZeros, md->SubDomain.cell_num);
+        _fmd_array_3d_pointer_free((fmd_pointer_t ***)md->SubDomain.grid,
+                                   md->SubDomain.grid_arraykind,
+                                   md->SubDomain.cell_num[0],
+                                   md->SubDomain.cell_num[1],
+                                   md->SubDomain.cell_num[2]);
         md->SubDomain.grid = NULL;
     }
 }
@@ -94,5 +99,8 @@ void fmd_subd_init(fmd_t *md)
         md->SubDomain.cell_num_nonmarg[d] = md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d];
     }
 
-    md->SubDomain.grid = _fmd_createGrid(md->SubDomain.cell_num);
+    md->SubDomain.grid = (cell_t ***)_fmd_array_3d_pointer_create(md->SubDomain.cell_num[0],
+                                                                  md->SubDomain.cell_num[1],
+                                                                  md->SubDomain.cell_num[2],
+                                                                  &md->SubDomain.grid_arraykind);
 }

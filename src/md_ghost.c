@@ -992,9 +992,9 @@ void fmd_ghostparticles_delete(fmd_t *md)
     for (d=0; d<3; d++)
     {
         jc[d] = md->SubDomain.ic_start[d];
-        cleanGridSegment(md->SubDomain.grid, ic_from, jc);
+        _fmd_cleanGridSegment(md->SubDomain.grid, ic_from, jc);
         ic_from[d] = md->SubDomain.ic_stop[d];
-        cleanGridSegment(md->SubDomain.grid, ic_from, ic_to);
+        _fmd_cleanGridSegment(md->SubDomain.grid, ic_from, ic_to);
         ic_from[d] = md->SubDomain.ic_start[d];
         jc[d] = ic_to[d] = md->SubDomain.ic_stop[d];
     }

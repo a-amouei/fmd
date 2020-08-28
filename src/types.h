@@ -27,5 +27,6 @@
 
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
+typedef void *fmd_pointer_t;
 
 #endif /* TYPES_H */
