@@ -94,7 +94,7 @@ void fmd_potsys_free(fmd_t *md)
 
     if (md->potsys.pottable != NULL)
     {
-        fmd_array_neat2d_free((void **)md->potsys.pottable);
+        _fmd_array_neat2d_free((void **)md->potsys.pottable);
         md->potsys.pottable = NULL;
     }
 
@@ -125,9 +125,9 @@ void fmd_potsys_init(fmd_t *md)
 
 static void pottable_create(fmd_t *md)
 {
-    md->potsys.pottable = (potpair_t **)fmd_array_neat2d_create(md->potsys.atomkinds_num,
-                                                                  md->potsys.atomkinds_num,
-                                                                  sizeof(potpair_t));
+    md->potsys.pottable = (potpair_t **)_fmd_array_neat2d_create(md->potsys.atomkinds_num,
+                                                                 md->potsys.atomkinds_num,
+                                                                 sizeof(potpair_t));
     for (unsigned i=0; i < md->potsys.atomkinds_num; i++)
         for (unsigned j=0; j <= i; j++)
             md->potsys.pottable[i][j].cat = POT_NONE;

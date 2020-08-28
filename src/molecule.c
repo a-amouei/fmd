@@ -128,7 +128,7 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     size_t len = strlen(name);
     mk->name = (char *)malloc(len + 1);
     strcpy(mk->name, name);
-    mk->distances = (unsigned **)fmd_array_neat2d_create(AtomsNum, AtomsNum, sizeof(unsigned));
+    mk->distances = (unsigned **)_fmd_array_neat2d_create(AtomsNum, AtomsNum, sizeof(unsigned));
 
     mk->atoms = (molkind_atom_t *)malloc(AtomsNum * sizeof(molkind_atom_t));
     for (unsigned j=0; j<AtomsNum; j++)

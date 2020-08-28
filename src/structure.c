@@ -76,15 +76,15 @@ static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, double x, double 
     {
         case LATTICE_SC:
             points_per_cell = 1;
-            rp = r_sc;
+            rp = (double *)r_sc;
             break;
         case LATTICE_FCC:
             points_per_cell = 4;
-            rp = r_fcc;
+            rp = (double *)r_fcc;
             break;
         case LATTICE_BCC:
             points_per_cell = 2;
-            rp = r_bcc;
+            rp = (double *)r_bcc;
             break;
     }
 
@@ -207,7 +207,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, double xa,
     gsl_rng_set(rng, time(NULL));
 
     molkind_t *mk = &md->potsys.molkinds[molkind];
-    double **coords = (double **)fmd_array_neat2d_create(mk->atoms_num, 3, sizeof(double));
+    double **coords = (double **)_fmd_array_neat2d_create(mk->atoms_num, 3, sizeof(double));
     double MomentumSum[3] = {0., 0., 0.};
 
     for (unsigned i=0; i<num; i++) // iteration on number of molecules
@@ -280,5 +280,5 @@ void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, double xa,
 
     removeRemainingMomentum(md, GroupID, MomentumSum, num * mk->atoms_num);
 
-    fmd_array_neat2d_free((void **)coords);
+    _fmd_array_neat2d_free((void **)coords);
 }
