@@ -59,7 +59,7 @@ fmd_pointer_t ***_fmd_array_neat3d_pointer_create(unsigned dim1, unsigned dim2, 
 
             for (int j=0; j<dim2; j++)
             {
-                arr[i][j] = (fmd_pointer_t *)(arr + dim1 + i * (dim2 + dim2*dim3) + dim2 + j * dim3);
+                arr[i][j] = (fmd_pointer_t *)(arr[i] + dim2 + j * dim3);
 
                 for (int k=0; k<dim3; k++)
                     arr[i][j][k] = NULL;
