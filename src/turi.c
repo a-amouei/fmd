@@ -91,6 +91,7 @@ static void prepare_for_communication(fmd_t *md, turi_t *t)
 
     ITERATE(itc, t->tcell_start, t->tcell_stop)
     {
+        turi_comm_t *tcomm;
         int *pset, np;
 
         np = identify_tcell_processes_set(md, t->tcellh, itc, &pset);
@@ -104,9 +105,11 @@ static void prepare_for_communication(fmd_t *md, turi_t *t)
             /* TO-DO: handle memory error */
             assert(t->comms != NULL);
 
-            turi_comm_t *tcomm = &t->comms[t->comms_num++];
+            tcomm = &t->comms[t->comms_num++];
             tcomm->commsize = np;
             tcomm->pset = pset;
+            tcomm->num_tcells = 0;
+            tcomm->itcs = NULL;
 
             if (np > 1) /* create MPI communicator */
             {
@@ -117,7 +120,21 @@ static void prepare_for_communication(fmd_t *md, turi_t *t)
             }
         }
         else
+        {
             free(pset);
+            tcomm = &t->comms[icomm];
+        }
+
+        /* now, add the local index of the current turi-cell to "itcs" array */
+
+        tcomm->itcs = (index_t *)realloc(tcomm->itcs, (tcomm->num_tcells+1) * sizeof(index_t));
+        /* TO-DO: handle memory error */
+        assert(tcomm->itcs != NULL);
+
+        for (int d=0; d<3; d++)
+            tcomm->itcs[tcomm->num_tcells][d] = itc[d] - t->tcell_start[d];
+
+        tcomm->num_tcells++;
     }
 
     MPI_Group_free(&worldgroup);

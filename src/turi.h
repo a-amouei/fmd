@@ -41,11 +41,15 @@ typedef enum
     FMD_TURI_TTM
 } fmd_turi_t; /* category of the turi */
 
+typedef int index_t[3];
+
 typedef struct
 {
     MPI_Comm comm;
     unsigned commsize;
     int *pset;                  /* ranks of the processes of this comm in MD_comm */
+    unsigned num_tcells;        /* number of turi-cells associated with this comm */
+    index_t *itcs;              /* indexes of turi-cells associated with this comm */
 } turi_comm_t;
 
 typedef struct _turi
