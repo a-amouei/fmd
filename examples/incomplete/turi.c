@@ -19,7 +19,7 @@
 
    and can be executed by
 
-   $ mpirun -n 2 ./turi.x
+   $ mpirun -n 1 ./turi.x
 */
 
 #include <fmd.h>
@@ -32,11 +32,13 @@ int main(int argc, char *argv[])
 
     fmd_box_setSize(md, 50., 50., 50.);
 
-    fmd_box_setSubDomains(md, 2, 2, 2);
+    fmd_box_setSubDomains(md, 1, 1, 1);
 
     fmd_box_createGrid(md, 1.0);
 
-    fmd_turi_add(md, FMD_TURI_CUSTOM, 5, 5, 5);
+    unsigned turi = fmd_turi_add(md, FMD_TURI_CUSTOM, 5, 5, 5);
+
+    fmd_field_add(md, turi, FMD_FIELD_TEMPERATURE, 0.1);
 
     fmd_free(md);
     return 0;

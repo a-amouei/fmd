@@ -48,6 +48,12 @@ typedef enum
     FMD_TURI_TTM
 } fmd_turi_t;
 
+typedef enum
+{
+    FMD_FIELD_VCM,
+    FMD_FIELD_TEMPERATURE
+} fmd_field_t;
+
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 
@@ -139,5 +145,6 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
   double timestep, double strength, double temperature);
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
+unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, double interval);
 
 #endif /* FMD_H */

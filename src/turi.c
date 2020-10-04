@@ -181,24 +181,87 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
 
     prepare_for_communication(md, t);
 
-    /* only for test purpose */
-    /*
-    for (int i=0; i < md->ns[0]; i++)
+    /* only for test */
+    /* for (int i=0; i < md->ns[0]; i++)
         for (int j=0; j < md->ns[1]; j++)
             for (int k=0; k < md->ns[2]; k++)
             {
                 MPI_Barrier(md->MD_comm);
-                if (md->SubDomain.is[0] == i &&
-                    md->SubDomain.is[1] == j &&
-                    md->SubDomain.is[2] == k)
-                {
+                if (md->SubDomain.is[0] == i && md->SubDomain.is[1] == j && md->SubDomain.is[2] == k)
                     printf("subdomain(%d, %d, %d)\n", i, j, k);
-                    printf("tcell_start = {%d, %d, %d}\n", t->tcell_start[0], t->tcell_start[1], t->tcell_start[2]);
-                    printf("tcell_stop = {%d, %d, %d}\n", t->tcell_stop[0], t->tcell_stop[1], t->tcell_stop[2]);
-                    printf("tdims = {%d, %d, %d}\n\n", t->tdims[0], t->tdims[1], t->tdims[2]);
-                }
             }
     */
 
     return ti;
 }
+
+unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, double interval)
+{
+    unsigned i;
+    field_t *f;
+    unsigned dep1;
+    turi_t *t = &md->turies[turi];
+
+    /* add dependency fields */
+    if (cat == FMD_FIELD_TEMPERATURE)
+        dep1 = fmd_field_add(md, turi, FMD_FIELD_VCM, interval);
+
+    /* first, check if this field is already added */
+    for (i=0; i < t->fields_num; i++)
+        if (t->fields[i].cat == cat) break;
+
+    /* if not, add it */
+    if (i == t->fields_num)
+    {
+        /* add the field */
+
+        t->fields = (field_t *)realloc(t->fields, (t->fields_num+1) * sizeof(field_t));
+        /* TO-DO: handle memory error */
+        assert(t->fields != NULL);
+
+        f = &t->fields[t->fields_num++];
+        f->cat = cat;
+        f->timestep = -1;
+        f->intervals = NULL;
+        f->intervals_num = 0;
+
+        if (cat == FMD_FIELD_TEMPERATURE)
+        {
+            f->dependcs_num = 1;
+            f->dependcs = (unsigned *)malloc(sizeof(unsigned));
+            f->dependcs[0] = dep1;
+        }
+        else
+            f->dependcs_num = 0;
+    }
+    else
+        f = &t->fields[i];
+
+    /* add the interval if doesn't already exist in the intervals array */
+    unsigned j;
+    for (j=0; j < f->intervals_num; j++)
+        if (f->intervals[j] == interval) break;
+
+    if (j == f->intervals_num)
+    {
+        f->intervals = (double *)realloc(f->intervals, (f->intervals_num+1) * sizeof(double));
+        f->intervals[f->intervals_num++] = interval;
+    }
+
+    return i;
+}
+
+/*void fmd_field_report(fmd_t *md, unsigned turi)
+{
+    turi_t *t = &md->turies[turi];
+    printf("number of added fields = %d\n\n", t->fields_num);
+    for (int i=0; i < t->fields_num; i++)
+    {
+        printf("FIELD %d:\n", i);
+        field_t *f = &t->fields[i];
+        printf("cat = %d\n", f->cat);
+        printf("timestep = %d\n", f->timestep);
+        printf("number of dependency fields = %d\n", f->dependcs_num);
+        printf("number of intervals = %d\n\n", f->intervals_num);
+    }
+}*/

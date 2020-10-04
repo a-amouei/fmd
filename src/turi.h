@@ -25,14 +25,18 @@
 
 typedef enum
 {
-    FMD_FIELD_NUMBER,
+    FMD_FIELD_VCM,
     FMD_FIELD_TEMPERATURE
 } fmd_field_t; /* category of the field */
 
 typedef struct
 {
     fmd_field_t cat;
-    void *data;
+    int timestep;               /* the last timestep this field was updated */
+    unsigned dependcs_num;      /* number of the dependency fields */
+    unsigned *dependcs;         /* indexes of the dependency fields */
+    unsigned intervals_num;
+    double *intervals;          /* intervals determine when to update the field */
 } field_t;
 
 typedef enum
@@ -71,5 +75,6 @@ typedef struct _turi
 typedef struct _fmd fmd_t;
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
+unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, double interval);
 
 #endif /* TURI_H */
