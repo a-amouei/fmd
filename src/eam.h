@@ -172,14 +172,14 @@ typedef struct eam_t eam_t;
 
 typedef struct eam_element_t
 {
-    double mass;
-    double latticeParameter;
-    double *F;
-    double *F_DD;
-    double *rho;
-    double *rhoDD;
-    double **phi;
-    double **phiDD;
+    fmd_real_t mass;
+    fmd_real_t latticeParameter;
+    fmd_real_t *F;
+    fmd_real_t *F_DD;
+    fmd_real_t *rho;
+    fmd_real_t *rhoDD;
+    fmd_real_t **phi;
+    fmd_real_t **phiDD;
     fmd_string_t name;
     eam_t *eam;
 } eam_element_t;
@@ -187,13 +187,13 @@ typedef struct eam_element_t
 struct eam_t
 {
     eam_element_t *elements;
-    double drho, dr, dr2, cutoff_sqr;
+    fmd_real_t drho, dr, dr2, cutoff_sqr;
     int elementsNo;
     int Nrho, Nr, Nr2;
 };
 
-void fmd_computeEAM_pass0(fmd_t *md, double FembSum);
-void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p);
+void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum);
+void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p);
 unsigned fmd_pot_eam_find_iloc(fmd_t *md, eam_t *eam, unsigned atomkind);
 void fmd_pot_eam_free(eam_t *eam);
 

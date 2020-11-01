@@ -38,7 +38,7 @@
 #include "potential.h"
 #include "subdomain.h"
 
-// Global macroes and symbolic constants
+/* Global macroes and symbolic constants */
 
 #define INDEX(ic, nc)   ((ic)[0] + (nc)[0]*((ic)[1] + (nc)[1]*(ic)[2]))
 
@@ -88,20 +88,20 @@
 #define NEWTON_PER_METER            6.2415091259e-02   // x (eV / ang^2)
 #define MAX_PATH_LENGTH             256
 
-// error codes
+/* error codes */
 #define ERROR_NC_TOO_SMALL                      1
 #define ERROR_UNEXPECTED_PARTICLE_POSITION      2
 #define ERROR_UNABLE_OPEN_FILE                  3
 #define ERROR_UNSUITABLE_FILE                   4
 
-// typedefs & structs
+/* typedefs & structs */
 
 typedef struct
 {
-    double x[3];
-    double v[3];
-    double x_bak[3];
-    double v_bak[3];
+    fmd_rtuple_t x;
+    fmd_rtuple_t v;
+    fmd_rtuple_t x_bak;
+    fmd_rtuple_t v_bak;
     float LocOrdParam;
     float x_avgd[3];
     unsigned AtomID;
@@ -115,8 +115,8 @@ typedef struct
 typedef struct _ParticleListItem
 {
     particle_t P;
-    double F[3];
-    double FembPrime;
+    fmd_rtuple_t F;
+    fmd_real_t FembPrime;
     float LocOrdParamAvg;
     struct _ParticleListItem *next_p;
     list_t *neighbors;  // each data pointer in this list points to a mol_atom_neighbor_t
@@ -140,7 +140,7 @@ typedef struct
 
 typedef struct
 {
-    double x[3];
+    fmd_rtuple_t x;
     unsigned atomkind;
     int GroupID;
 } position_struct_t;
@@ -178,51 +178,51 @@ struct _fmd
     fmd_bool_t GlobalGridExists;
     fmd_bool_t BoxSizeDetermined;
     fmd_bool_t PBCdetermined;
-    double CutoffRadius;
-    double MD_time;
-    double delta_t;
+    fmd_real_t CutoffRadius;
+    fmd_real_t MD_time;
+    fmd_real_t delta_t;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
-    double GlobalTemperature;
+    fmd_real_t GlobalTemperature;
     fmd_bool_t Is_MD_process;
     fmd_bool_t Is_MD_comm_root;
     int LOP_iteration;              // must be initialized with zero
     int LOP_period;
     MPI_Comm MD_comm;
-    double TotalKineticEnergy;
-    double TotalPotentialEnergy;
-    double TotalMDEnergy;
+    fmd_real_t TotalKineticEnergy;
+    fmd_real_t TotalPotentialEnergy;
+    fmd_real_t TotalMDEnergy;
     int world_rank;
     int world_numprocs;
-    double DesiredTemperature;
-    int PBC[3];
-    int ns[3];                      // number of subdomains = ns[0] x ns[1] x ns[2]
-    double l[3];                    // size of the simulation box
-    int nc[3];                      // number of grid cells in the simulation box
-    double cellh[3];                // size of one single grid cell
+    fmd_real_t DesiredTemperature;
+    fmd_ituple_t PBC;
+    fmd_ituple_t ns;                      // number of subdomains = ns[0] x ns[1] x ns[2]
+    fmd_rtuple_t l;                       // size of the simulation box
+    fmd_ituple_t nc;                      // number of grid cells in the simulation box
+    fmd_rtuple_t cellh;                   // size of one single grid cell
     fmd_bool_t UseAutoStep;
-    double AutoStepSensitivity;
+    fmd_real_t AutoStepSensitivity;
     char SaveDirectory[MAX_PATH_LENGTH];
-    double BerendsenThermostatParam;
+    fmd_real_t BerendsenThermostatParam;
     fmd_bool_t CompLocOrdParam;           // compute local order parameter?
     fmd_SaveConfigMode_t SaveConfigMode;
     FILE *ConfigFilep;
-    double WallTimeOrigin;
+    fmd_real_t WallTimeOrigin;
     int ActiveGroup;
     int ActiveGroupParticlesNum;
-    double TotalMomentum[3];
+    fmd_rtuple_t TotalMomentum;
     fmd_bool_t ParticlesDistributed;
     fmd_bool_t MPI_initialized_by_me;
     int _OldNumberOfParticles;
     int _FileIndex;
-    double _OldTotalMDEnergy;
-    double _PrevFailedMDEnergy;
+    fmd_real_t _OldTotalMDEnergy;
+    fmd_real_t _PrevFailedMDEnergy;
 };
 
-// Functions
+/* Functions */
 
-void fmd_box_createGrid(fmd_t *md, double cutoff);
-void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
+void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
+void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
 int getListLength(ParticleListItem_t *root_p);
@@ -233,10 +233,10 @@ void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
 void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p);
 void removeFromList(ParticleListItem_t **item_pp);
-void _fmd_cleanGridSegment(cell_t ***grid, const int ic_from[3], const int ic_to[3]);
+void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to);
 
-//
+/* */
 
-extern const int fmd_ThreeZeros[3];
+extern const fmd_ituple_t fmd_ThreeZeros;
 
 #endif /* BASE_H */

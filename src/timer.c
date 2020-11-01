@@ -30,7 +30,7 @@ void fmd_timer_free(fmd_t *md)
     }
 }
 
-unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double stop)
+unsigned fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop)
 {
     int i = md->timers_num;
 

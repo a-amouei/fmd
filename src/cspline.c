@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include "cspline.h"
 
-void spline_prepare_adv(double x[], double y[], int n, double yDD[])
+void spline_prepare_adv(fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[])
 /*
 Given arrays x[0..n-1] and y[0..n-1] containing a tabulated function, i.e., y_i = f ( x_i ), with
 x_0 < x_1 < ... < x_(n-1), this routine returns an array yDD[0..n-1] that contains
@@ -29,9 +29,9 @@ boundary conditions are set for a natural spline, with zero second derivative on
 */
 {
     int i,k;
-    double p,sig,*u;
+    fmd_real_t p,sig,*u;
 
-    u=malloc((n-1)*sizeof(double));
+    u=malloc((n-1)*sizeof(fmd_real_t));
     yDD[0]=u[0]=0.0;
     for (i=1;i<=n-2;i++) {
         sig=(x[i]-x[i-1])/(x[i+1]-x[i-1]);
@@ -46,7 +46,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     free(u);
 }
 
-void spline_prepare(double h, double y[], int n, double yDD[])
+void spline_prepare(fmd_real_t h, fmd_real_t y[], int n, fmd_real_t yDD[])
 /*
 Given the array y[0..n-1] containing a tabulated function, i.e., y_i = f ( x_i ), with
 x_i = h * i , this routine returns an array yDD[0..n-1] that contains
@@ -55,9 +55,9 @@ boundary conditions are set for a natural spline, with zero second derivative on
 */
 {
     int i,k;
-    double p,sig=0.5,*u;
+    fmd_real_t p,sig=0.5,*u;
 
-    u=malloc((n-1)*sizeof(double));
+    u=malloc((n-1)*sizeof(fmd_real_t));
     yDD[0]=u[0]=0.0;
     for (i=1;i<=n-2;i++)
     {
@@ -72,13 +72,13 @@ boundary conditions are set for a natural spline, with zero second derivative on
     free(u);
 }
 
-double spline_val(double h, double ya[], double yDDa[], double x)
+fmd_real_t spline_val(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x)
 /*  Given the array ya[0..n-1] which tabulates a function,
 and given the array yDDa[0..n-1], which is the output from spline_prepare(), and given a value of
 x, this routine returns a cubic-spline interpolated value. */
 {
     int lo,hi;
-    double b,a;
+    fmd_real_t b,a;
 
     lo=(int)(x / h);
     hi=lo+1;
@@ -88,10 +88,10 @@ x, this routine returns a cubic-spline interpolated value. */
     return SPLINE_VAL(a,b,ya,lo,hi,yDDa,h);
 }
 
-double spline_deriv(double h, double ya[], double yDDa[], double x)
+fmd_real_t spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x)
 {
     int lo,hi;
-    double b,a;
+    fmd_real_t b,a;
 
     lo=(int)(x / h);
     hi=lo+1;
@@ -101,10 +101,10 @@ double spline_deriv(double h, double ya[], double yDDa[], double x)
     return SPLINE_DERIV(a,b,ya,lo,hi,yDDa,h);
 }
 
-void spline_val_deriv(double h, double ya[], double yDDa[], double x, double *y, double *yD)
+void spline_val_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x, fmd_real_t *y, fmd_real_t *yD)
 {
     int lo,hi;
-    double b,a;
+    fmd_real_t b,a;
 
     lo=(int)(x / h);
     hi=lo+1;

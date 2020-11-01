@@ -21,6 +21,7 @@
 #define LJ_H
 
 #include "config.h"
+#include "types.h"
 
 #define LJ_PAIR_UPDATE_FORCE_AND_POTENERGY                                      \
     {                                                                           \
@@ -30,14 +31,14 @@
                                                                                 \
         if (r2 < lj->cutoff_sqr)                                                \
         {                                                                       \
-            double inv_r2, inv_rs2, inv_rs6, inv_rs12;                          \
+            fmd_real_t inv_r2, inv_rs2, inv_rs6, inv_rs12;                          \
                                                                                 \
             /* force, F = -(d/dr)U */                                           \
             inv_r2 = 1.0/r2;                                                    \
             inv_rs2 = SQR(lj->sig) * inv_r2;                                    \
             inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;                              \
             inv_rs12 = SQR(inv_rs6);                                            \
-            double factor = 48.0 * lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6); \
+            fmd_real_t factor = 48.0 * lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6); \
             for (d=0; d<3; d++)                                                 \
                 item1_p->F[d] += rv[d] * factor;                                \
                                                                                 \
@@ -48,9 +49,9 @@
 
 typedef struct
 {
-    double eps;
-    double sig;
-    double cutoff_sqr;
+    fmd_real_t eps;
+    fmd_real_t sig;
+    fmd_real_t cutoff_sqr;
 } LJ_6_12_t;
 
 typedef struct _fmd fmd_t;

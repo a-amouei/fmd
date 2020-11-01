@@ -25,12 +25,13 @@
 
 void fmd_computeLJ(fmd_t *md)
 {
-    int jc[3], kc[3];
+    fmd_ituple_t jc, kc;
     int d;
     ParticleListItem_t *item1_p, *item2_p;
-    double r2, rv[3];
+    fmd_real_t r2;
+    fmd_rtuple_t rv;
     int ic0, ic1, ic2;
-    double potEnergy = 0.0;
+    fmd_real_t potEnergy = 0.0;
     potpair_t **pottable = md->potsys.pottable;
 
     // iterate over all cells(lists)
@@ -79,14 +80,14 @@ void fmd_computeLJ(fmd_t *md)
 
                                         if (r2 < lj->cutoff_sqr)
                                         {
-                                            double inv_r2, inv_rs2, inv_rs6, inv_rs12;
+                                            fmd_real_t inv_r2, inv_rs2, inv_rs6, inv_rs12;
 
                                             // force, F = -(d/dr)U
                                             inv_r2 = 1.0/r2;
                                             inv_rs2 = SQR(lj->sig) * inv_r2;
                                             inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;
                                             inv_rs12 = SQR(inv_rs6);
-                                            double factor = lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6);
+                                            fmd_real_t factor = lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6);
                                             for (d=0; d<3; d++)
                                                 item1_p->F[d] += rv[d] * factor;
 
@@ -105,11 +106,11 @@ void fmd_computeLJ(fmd_t *md)
             }
 
     potEnergy *= 2.0;
-    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
-                            double sigma, double epsilon, double cutoff)
+                            fmd_real_t sigma, fmd_real_t epsilon, fmd_real_t cutoff)
 {
     LJ_6_12_t *lj = (LJ_6_12_t *)malloc(sizeof(LJ_6_12_t));
     lj->sig = sigma;

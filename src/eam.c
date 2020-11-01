@@ -23,7 +23,7 @@
 
 #define EAM_TTM_UPDATE_FORCE                                                    \
     {                                                                           \
-        mass = md->EAM.elements[element_i].mass;                              \
+        mass = md->EAM.elements[element_i].mass;                                \
         for (d=0; d<3; d++)                                                     \
             item1_p->F[d] += ttm_lattice_aux[ttm_index].xi *                    \
                 mass * (item1_p->P.v[d] - ttm_lattice_aux[ttm_index].v_cm[d]);  \
@@ -37,27 +37,28 @@
         }                                                                       \
     }
 
-void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
+void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 {
-    int jc[3], kc[3];
+    fmd_ituple_t jc, kc;
     int d, ir2, ir2_h;
     ParticleListItem_t *item1_p, *item2_p;
-    double r2, rv[3];
-    double *rho_i, *rho_j, *phi;
-    double *rho_iDD, *rho_jDD, *phiDD;
-    double rho_ip, rho_jp;
-    double mag;
-    double phi_deriv;
-    double a, b, h;
+    fmd_real_t r2;
+    fmd_rtuple_t rv;
+    fmd_real_t *rho_i, *rho_j, *phi;
+    fmd_real_t *rho_iDD, *rho_jDD, *phiDD;
+    fmd_real_t rho_ip, rho_jp;
+    fmd_real_t mag;
+    fmd_real_t phi_deriv;
+    fmd_real_t a, b, h;
     int ic0, ic1, ic2;
     potpair_t **pottable = md->potsys.pottable;
 #ifdef USE_TTM
-    double mass;
+    fmd_real_t mass;
     int ttm_index;
-    double dx;
-    double pxx = 0.0;
+    fmd_real_t dx;
+    fmd_real_t pxx = 0.0;
 #endif
-    double potEnergy = 0.0;
+    fmd_real_t potEnergy = 0.0;
 
     // iterate over all cells(lists)
 #ifdef USE_TTM
@@ -127,19 +128,20 @@ void fmd_computeEAM_pass0(fmd_t *md, double FembSum)
 #endif
 
     potEnergy = 0.5 * potEnergy + FembSum;
-    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
-void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
+void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {
-    int jc[3], kc[3];
+    fmd_ituple_t jc, kc;
     int d, ir2, irho, ir2_h, irho_h;
     ParticleListItem_t *item1_p, *item2_p;
-    double r2, rv[3];
-    double *rho, *rhoDD, *F, *F_DD;
-    double a, b, h;
+    fmd_real_t r2;
+    fmd_rtuple_t rv;
+    fmd_real_t *rho, *rhoDD, *F, *F_DD;
+    fmd_real_t a, b, h;
     int ic0, ic1, ic2;
-    double Femb_sum=0;
+    fmd_real_t Femb_sum=0;
     potpair_t **pottable = md->potsys.pottable;
     atomkind_t *atomkinds = md->potsys.atomkinds;
 
@@ -161,7 +163,7 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
             unsigned atomkind1, atomkind2;
             atomkind1 = item1_p->P.atomkind;
 
-            double rho_host = 0.0;
+            fmd_real_t rho_host = 0.0;
             // iterate over neighbor cells of cell ic
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
             {
@@ -194,17 +196,17 @@ void fmd_computeEAM_pass1(fmd_t *md, double *FembSum_p)
     *FembSum_p=Femb_sum;
 }
 
-static void EAM_convert_r_to_r2(eam_t *eam, double *source, double *dest)
+static void EAM_convert_r_to_r2(eam_t *eam, fmd_real_t *source, fmd_real_t *dest)
 /* Consider two functions f1 and f2 with the relation f2(r^2)=f1(r)
  * between them. Given the array source[0..eam.Nr-1] containing a table
  * of the function f1, i.e. source[i]=f1(r_i), with r_i=i*eam.dr , this
  * routine returns an array dest[0..eam.Nr2-1] that contains the
  * values of the function f2 at points j*eam.dr2 . */
 {
-    double *sourceDD;
+    fmd_real_t *sourceDD;
     int i;
 
-    sourceDD = (double *)malloc(eam->Nr * sizeof(double));
+    sourceDD = (fmd_real_t *)malloc(eam->Nr * sizeof(fmd_real_t));
     spline_prepare(eam->dr, source, eam->Nr, sourceDD);
 
     for (i=0; i < eam->Nr2; i++)
@@ -236,37 +238,37 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
                 strcpy(eam->elements[i].name, str);
             }
 
-        double cutoff;
+        fmd_real_t cutoff;
         fscanf(fp, "%d%lf%d%lf%lf", &eam->Nrho, &eam->drho, &eam->Nr, &eam->dr, &cutoff);
         eam->Nr2 = (eam->Nr += 2);
         assert( (eam->Nr-1) * eam->dr > cutoff );
         eam->cutoff_sqr = SQR(cutoff);
         eam->dr2 = SQR((eam->Nr-1) * eam->dr) / (eam->Nr2-1);
 
-        double *tempArray = (double *)malloc(eam->Nr * sizeof(double));
+        fmd_real_t *tempArray = (fmd_real_t *)malloc(eam->Nr * sizeof(fmd_real_t));
         for (i=0; i < eam->elementsNo; i++)
         {
             eam->elements[i].eam = eam;
             fscanf(fp, "%s%lf%lf%s", str, &eam->elements[i].mass,
                 &eam->elements[i].latticeParameter, str);
             eam->elements[i].mass /= MD_MASS_UNIT;
-            eam->elements[i].F = (double *)malloc(eam->Nrho * sizeof(double));
+            eam->elements[i].F = (fmd_real_t *)malloc(eam->Nrho * sizeof(fmd_real_t));
             for (j=0; j < eam->Nrho; j++)
                 fscanf(fp, "%lf", &eam->elements[i].F[j]);
 
-            eam->elements[i].rho = (double *)malloc(eam->Nr2 * sizeof(double));
+            eam->elements[i].rho = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
             for (j=0; j < eam->Nr-2; j++)  // read rho(r) values from file
                 fscanf(fp, "%lf", &tempArray[j]);
             tempArray[eam->Nr-1] = tempArray[eam->Nr-2] = 0.;
             EAM_convert_r_to_r2(eam, tempArray, eam->elements[i].rho);
 
-            eam->elements[i].phi = (double **)malloc(eam->elementsNo * sizeof(double *));
+            eam->elements[i].phi = (fmd_real_t **)malloc(eam->elementsNo * sizeof(fmd_real_t *));
 #ifdef USE_CSPLINE
-            eam->elements[i].F_DD = (double *)malloc(eam->Nrho * sizeof(double));
-            eam->elements[i].rhoDD = (double *)malloc(eam->Nr2 * sizeof(double));
+            eam->elements[i].F_DD = (fmd_real_t *)malloc(eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].rhoDD = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
             spline_prepare(eam->drho, eam->elements[i].F, eam->Nrho, eam->elements[i].F_DD);
             spline_prepare(eam->dr2, eam->elements[i].rho, eam->Nr2, eam->elements[i].rhoDD);
-            eam->elements[i].phiDD = (double **)malloc(eam->elementsNo * sizeof(double *));
+            eam->elements[i].phiDD = (fmd_real_t **)malloc(eam->elementsNo * sizeof(fmd_real_t *));
 #endif
         }
 
@@ -282,11 +284,11 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
                         tempArray[k] /= k * eam->dr;
                 }
                 tempArray[eam->Nr-1] = tempArray[eam->Nr-2] = 0.;
-                eam->elements[i].phi[j] = (double *)malloc(eam->Nr2 * sizeof(double));
+                eam->elements[i].phi[j] = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
                 EAM_convert_r_to_r2(eam, tempArray, eam->elements[i].phi[j]);
                 eam->elements[j].phi[i] = eam->elements[i].phi[j];
 #ifdef USE_CSPLINE
-                eam->elements[i].phiDD[j] = (double *)malloc(eam->Nr2 * sizeof(double));
+                eam->elements[i].phiDD[j] = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
                 spline_prepare(eam->dr2, eam->elements[i].phi[j], eam->Nr2, eam->elements[i].phiDD[j]);
                 eam->elements[j].phiDD[i] = eam->elements[i].phiDD[j];
 #endif
@@ -302,21 +304,21 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         for (i=0; i < eam->elementsNo; i++)
         {
             eam->elements[i].eam = eam;
-            eam->elements[i].F = (double *)malloc(eam->Nrho * sizeof(double));
-            eam->elements[i].rho = (double *)malloc(eam->Nr2 * sizeof(double));
-            eam->elements[i].phi = (double **)malloc(eam->elementsNo * sizeof(double *));
+            eam->elements[i].F = (fmd_real_t *)malloc(eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].rho = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
+            eam->elements[i].phi = (fmd_real_t **)malloc(eam->elementsNo * sizeof(fmd_real_t *));
             for (j=0; j<=i; j++)
             {
-                eam->elements[i].phi[j] = (double *)malloc(eam->Nr2 * sizeof(double));
+                eam->elements[i].phi[j] = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
                 eam->elements[j].phi[i] = eam->elements[i].phi[j];
             }
 #ifdef USE_CSPLINE
-            eam->elements[i].F_DD = (double *)malloc(eam->Nrho * sizeof(double));
-            eam->elements[i].rhoDD = (double *)malloc(eam->Nr2 * sizeof(double));
-            eam->elements[i].phiDD = (double **)malloc(eam->elementsNo * sizeof(double *));
+            eam->elements[i].F_DD = (fmd_real_t *)malloc(eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].rhoDD = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
+            eam->elements[i].phiDD = (fmd_real_t **)malloc(eam->elementsNo * sizeof(fmd_real_t *));
             for (j=0; j<=i; j++)
             {
-                eam->elements[i].phiDD[j] = (double *)malloc(eam->Nr2 * sizeof(double));
+                eam->elements[i].phiDD[j] = (fmd_real_t *)malloc(eam->Nr2 * sizeof(fmd_real_t));
                 eam->elements[j].phiDD[i] = eam->elements[i].phiDD[j];
             }
 #endif
@@ -325,8 +327,8 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
 
     for (i=0; i < eam->elementsNo; i++)
     {
-        MPI_Bcast(&eam->elements[i].mass, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        MPI_Bcast(&eam->elements[i].latticeParameter, 1, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&eam->elements[i].mass, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&eam->elements[i].latticeParameter, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
         unsigned namelen;
         if (md->Is_MD_comm_root)
@@ -336,16 +338,16 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
             eam->elements[i].name = (char *)malloc(namelen + 1);
         MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
-        MPI_Bcast(eam->elements[i].F, eam->Nrho, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        MPI_Bcast(eam->elements[i].rho, eam->Nr2, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].F, eam->Nrho, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].rho, eam->Nr2, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         for (j=0; j<=i; j++)
-            MPI_Bcast(eam->elements[i].phi[j], eam->Nr2, MPI_DOUBLE,
+            MPI_Bcast(eam->elements[i].phi[j], eam->Nr2, FMD_MPI_REAL,
                       ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 #ifdef USE_CSPLINE
-        MPI_Bcast(eam->elements[i].F_DD, eam->Nrho, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        MPI_Bcast(eam->elements[i].rhoDD, eam->Nr2, MPI_DOUBLE, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].F_DD, eam->Nrho, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].rhoDD, eam->Nr2, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
         for (j=0; j<=i; j++)
-            MPI_Bcast(eam->elements[i].phiDD[j], eam->Nr2, MPI_DOUBLE,
+            MPI_Bcast(eam->elements[i].phiDD[j], eam->Nr2, FMD_MPI_REAL,
                       ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 #endif
     }
@@ -366,7 +368,7 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath)
     return pot;
 }
 
-double fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot)
+fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot)
 {
     // TO-DO: handle error
     assert(pot->cat == POT_EAM_ALLOY);
@@ -397,7 +399,7 @@ void fmd_pot_eam_free(eam_t *eam)
     free(eam);
 }
 
-double fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element)
+fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element)
 {
     // TO-DO: handle error
     assert(pot->cat == POT_EAM_ALLOY);

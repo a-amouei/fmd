@@ -21,6 +21,7 @@
 #define MORSE_H
 
 #include "config.h"
+#include "types.h"
 
 #define MORSE_PAIR_UPDATE_FORCE_AND_POTENERGY                                               \
     {                                                                                       \
@@ -31,11 +32,11 @@
         if (r2 < morse->cutoff_sqr)                                                         \
         {                                                                                   \
             /* force, F = -(d/dr)U */                                                       \
-            double r = sqrt(r2);                                                            \
-            double inv_r = 1.0/r;                                                           \
-            double exp1 = exp( -morse->alpha * (r - morse->r0) );                           \
-            double exp2 = SQR(exp1);                                                        \
-            double factor = 2.0 * morse->alpha * morse->D0 * inv_r * (exp2 - exp1);         \
+            fmd_real_t r = sqrt(r2);                                                            \
+            fmd_real_t inv_r = 1.0/r;                                                           \
+            fmd_real_t exp1 = exp( -morse->alpha * (r - morse->r0) );                           \
+            fmd_real_t exp2 = SQR(exp1);                                                        \
+            fmd_real_t factor = 2.0 * morse->alpha * morse->D0 * inv_r * (exp2 - exp1);         \
             for (d=0; d<3; d++)                                                             \
                 item1_p->F[d] += factor * rv[d];                                            \
                                                                                             \
@@ -46,10 +47,10 @@
 
 typedef struct
 {
-    double D0;
-    double alpha;
-    double r0;
-    double cutoff_sqr;
+    fmd_real_t D0;
+    fmd_real_t alpha;
+    fmd_real_t r0;
+    fmd_real_t cutoff_sqr;
 } morse_t;
 
 typedef struct _fmd fmd_t;

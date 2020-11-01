@@ -24,16 +24,18 @@
 #include "md_ghost.h"
 
 static void particles_migrate_in_direction_d(
-    fmd_t *md, int d, int ic_start_send_lower[3],
-    int ic_stop_send_lower[3], int ic_start_receive_lower[3],
-    int ic_stop_receive_lower[3], int ic_start_send_upper[3], int ic_stop_send_upper[3],
-    int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
+    fmd_t *md, int d, fmd_ituple_t ic_start_send_lower,
+    fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
+    fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
+    fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
+    fmd_ituple_t ic_stop_receive_upper)
 {
     MPI_Status status;
     MPI_Request request;
     int sum_length_send, sum_length_receive;
     int k, kreceive, cells_num;
-    int *cells_length_send, *cells_length_receive, ic[3];
+    int *cells_length_send, *cells_length_receive;
+    fmd_ituple_t ic;
     particle_t *particles_send, *particles_receive;
     int dd;
     ParticleListItem_t *item_p, **item_pp;
@@ -302,15 +304,17 @@ static void particles_migrate_in_direction_d(
 }
 
 static void ghostparticles_init_in_direction_d(
-    fmd_t *md, int d, int ic_start_send_lower[3], int ic_stop_send_lower[3],
-    int ic_start_receive_lower[3], int ic_stop_receive_lower[3], int ic_start_send_upper[3],
-    int ic_stop_send_upper[3], int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
+    fmd_t *md, int d, fmd_ituple_t ic_start_send_lower, fmd_ituple_t ic_stop_send_lower,
+    fmd_ituple_t ic_start_receive_lower, fmd_ituple_t ic_stop_receive_lower,
+    fmd_ituple_t ic_start_send_upper, fmd_ituple_t ic_stop_send_upper,
+    fmd_ituple_t ic_start_receive_upper, fmd_ituple_t ic_stop_receive_upper)
 {
     MPI_Status status;
     MPI_Request request;
     int sum_length_send, sum_length_receive;
     int k, kreceive, cells_num;
-    int *cells_length_send, *cells_length_receive, ic[3];
+    int *cells_length_send, *cells_length_receive;
+    fmd_ituple_t ic;
     position_struct_t *data_send, *data_receive;
     int dd;
     ParticleListItem_t *item_p;
@@ -554,16 +558,17 @@ static void ghostparticles_init_in_direction_d(
 }
 
 static void ghostparticles_update_Fprime_in_direction_d(
-    fmd_t *md, int d, int ic_start_send_lower[3],
-    int ic_stop_send_lower[3], int ic_start_receive_lower[3],
-    int ic_stop_receive_lower[3], int ic_start_send_upper[3], int ic_stop_send_upper[3],
-    int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
+    fmd_t *md, int d, fmd_ituple_t ic_start_send_lower,
+    fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
+    fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
+    fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
+    fmd_ituple_t ic_stop_receive_upper)
 {
     MPI_Status status;
     MPI_Request request;
     int sum_length_send, sum_length_receive;
-    int ic[3];
-    double *data_receive, *data_send;
+    fmd_ituple_t ic;
+    fmd_real_t *data_receive, *data_send;
     ParticleListItem_t *item_p;
     int k;
 
@@ -574,8 +579,8 @@ static void ghostparticles_update_Fprime_in_direction_d(
             // receiving from upper process
             MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 100,
                      md->MD_comm, &status);
-            data_receive = (double *)malloc(sum_length_receive * sizeof(double));
-            MPI_Recv(data_receive, sum_length_receive, MPI_DOUBLE,
+            data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
+            MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL,
                      md->SubDomain.rank_of_upper_subd[d], 101, md->MD_comm, &status);
             k = 0;
             ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
@@ -588,12 +593,12 @@ static void ghostparticles_update_Fprime_in_direction_d(
                 sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 102,
                      md->MD_comm);
-            data_send = (double *)malloc(sum_length_send * sizeof(double));
+            data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
             k = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
                 for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                     data_send[k++] = item_p->FembPrime;
-            MPI_Send(data_send, sum_length_send, MPI_DOUBLE, md->SubDomain.rank_of_upper_subd[d],
+            MPI_Send(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_upper_subd[d],
                      103, md->MD_comm);
             free(data_send);
         }
@@ -605,19 +610,19 @@ static void ghostparticles_update_Fprime_in_direction_d(
                 sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 100,
                      md->MD_comm);
-            data_send = (double *)malloc(sum_length_send * sizeof(double));
+            data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
             k = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
                 for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                     data_send[k++] = item_p->FembPrime;
-            MPI_Send(data_send, sum_length_send, MPI_DOUBLE, md->SubDomain.rank_of_lower_subd[d],
+            MPI_Send(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_lower_subd[d],
                      101, md->MD_comm);
             free(data_send);
             // receiving from lower process
             MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 102,
                      md->MD_comm, &status);
-            data_receive = (double *)malloc(sum_length_receive * sizeof(double));
-            MPI_Recv(data_receive, sum_length_receive, MPI_DOUBLE,
+            data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
+            MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL,
                      md->SubDomain.rank_of_lower_subd[d], 103, md->MD_comm, &status);
             k = 0;
             ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
@@ -637,15 +642,15 @@ static void ghostparticles_update_Fprime_in_direction_d(
         MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 100,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
-        data_send = (double *)malloc(sum_length_send * sizeof(double));
-        data_receive = (double *)malloc(sum_length_receive * sizeof(double));
+        data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
+        data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
         k = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                 data_send[k++] = item_p->FembPrime;
-        MPI_Isend(data_send, sum_length_send, MPI_DOUBLE, md->SubDomain.rank_of_lower_subd[d], 101,
+        MPI_Isend(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_lower_subd[d], 101,
                   md->MD_comm, &request);
-        MPI_Recv(data_receive, sum_length_receive, MPI_DOUBLE, md->SubDomain.rank_of_upper_subd[d], 101,
+        MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL, md->SubDomain.rank_of_upper_subd[d], 101,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
@@ -663,15 +668,15 @@ static void ghostparticles_update_Fprime_in_direction_d(
         MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 102,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
-        data_send = (double *)malloc(sum_length_send * sizeof(double));
-        data_receive = (double *)malloc(sum_length_receive * sizeof(double));
+        data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
+        data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
         k = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
                 data_send[k++] = item_p->FembPrime;
-        MPI_Isend(data_send, sum_length_send, MPI_DOUBLE, md->SubDomain.rank_of_upper_subd[d], 103,
+        MPI_Isend(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_upper_subd[d], 103,
                   md->MD_comm, &request);
-        MPI_Recv(data_receive, sum_length_receive, MPI_DOUBLE, md->SubDomain.rank_of_lower_subd[d], 103,
+        MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL, md->SubDomain.rank_of_lower_subd[d], 103,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
@@ -684,15 +689,16 @@ static void ghostparticles_update_Fprime_in_direction_d(
 }
 
 static void ghostparticles_update_LocOrdParam_in_direction_d(
-    fmd_t *md, int d, int ic_start_send_lower[3],
-    int ic_stop_send_lower[3], int ic_start_receive_lower[3],
-    int ic_stop_receive_lower[3], int ic_start_send_upper[3], int ic_stop_send_upper[3],
-    int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
+    fmd_t *md, int d, fmd_ituple_t ic_start_send_lower,
+    fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
+    fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
+    fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
+    fmd_ituple_t ic_stop_receive_upper)
 {
     MPI_Status status;
     MPI_Request request;
     int sum_length_send, sum_length_receive;
-    int ic[3];
+    fmd_ituple_t ic;
     float *data_receive, *data_send;
     ParticleListItem_t *item_p;
     int k;
@@ -814,10 +820,11 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
 }
 
 static void particles_prepare_migration_in_direction_d(
-    SubDomain_t *s_p, int d, int ic_start_send_lower[3],
-    int ic_stop_send_lower[3], int ic_start_receive_lower[3],
-    int ic_stop_receive_lower[3], int ic_start_send_upper[3], int ic_stop_send_upper[3],
-    int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
+    SubDomain_t *s_p, int d, fmd_ituple_t ic_start_send_lower,
+    fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
+    fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
+    fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
+    fmd_ituple_t ic_stop_receive_upper)
 {
     int dd;
 
@@ -854,10 +861,11 @@ static void particles_prepare_migration_in_direction_d(
 }
 
 static void ghostparticles_prepare_init_update_in_direction_d(
-    fmd_t *md, int d, int ic_start_send_lower[3],
-    int ic_stop_send_lower[3], int ic_start_receive_lower[3],
-    int ic_stop_receive_lower[3], int ic_start_send_upper[3], int ic_stop_send_upper[3],
-    int ic_start_receive_upper[3], int ic_stop_receive_upper[3])
+    fmd_t *md, int d, fmd_ituple_t ic_start_send_lower,
+    fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
+    fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
+    fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
+    fmd_ituple_t ic_stop_receive_upper)
 {
     int dd;
 
@@ -902,10 +910,10 @@ static void ghostparticles_prepare_init_update_in_direction_d(
 void fmd_ghostparticles_update_LocOrdParam(fmd_t *md)
 {
     int d;
-    int ic_start_send_lower[3], ic_stop_send_lower[3];
-    int ic_start_send_upper[3], ic_stop_send_upper[3];
-    int ic_start_receive_lower[3], ic_stop_receive_lower[3];
-    int ic_start_receive_upper[3], ic_stop_receive_upper[3];
+    fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
+    fmd_ituple_t ic_start_send_upper, ic_stop_send_upper;
+    fmd_ituple_t ic_start_receive_lower, ic_stop_receive_lower;
+    fmd_ituple_t ic_start_receive_upper, ic_stop_receive_upper;
 
     for (d = 3-1; d >= 0; d--)
     {
@@ -928,10 +936,10 @@ void fmd_ghostparticles_update_LocOrdParam(fmd_t *md)
 void fmd_ghostparticles_update_Femb(fmd_t *md)
 {
     int d;
-    int ic_start_send_lower[3], ic_stop_send_lower[3];
-    int ic_start_send_upper[3], ic_stop_send_upper[3];
-    int ic_start_receive_lower[3], ic_stop_receive_lower[3];
-    int ic_start_receive_upper[3], ic_stop_receive_upper[3];
+    fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
+    fmd_ituple_t ic_start_send_upper, ic_stop_send_upper;
+    fmd_ituple_t ic_start_receive_lower, ic_stop_receive_lower;
+    fmd_ituple_t ic_start_receive_upper, ic_stop_receive_upper;
 
     for (d = 3-1; d >= 0; d--)
     {
@@ -954,10 +962,10 @@ void fmd_ghostparticles_update_Femb(fmd_t *md)
 void fmd_ghostparticles_init(fmd_t *md)
 {
     int d;
-    int ic_start_send_lower[3], ic_stop_send_lower[3];
-    int ic_start_send_upper[3], ic_stop_send_upper[3];
-    int ic_start_receive_lower[3], ic_stop_receive_lower[3];
-    int ic_start_receive_upper[3], ic_stop_receive_upper[3];
+    fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
+    fmd_ituple_t ic_start_send_upper, ic_stop_send_upper;
+    fmd_ituple_t ic_start_receive_lower, ic_stop_receive_lower;
+    fmd_ituple_t ic_start_receive_upper, ic_stop_receive_upper;
 
     for (d = 3-1; d >= 0; d--)
     {
@@ -980,8 +988,8 @@ void fmd_ghostparticles_init(fmd_t *md)
 void fmd_ghostparticles_delete(fmd_t *md)
 {
     int d;
-    int ic_from[3], ic_to[3];
-    int jc[3];
+    fmd_ituple_t ic_from, ic_to;
+    fmd_ituple_t jc;
 
     for (d=0; d<3; d++)
     {
@@ -1002,10 +1010,10 @@ void fmd_ghostparticles_delete(fmd_t *md)
 
 void fmd_particles_migrate(fmd_t *md)
 {
-    int ic_start_send_lower[3], ic_stop_send_lower[3];
-    int ic_start_send_upper[3], ic_stop_send_upper[3];
-    int ic_start_receive_lower[3], ic_stop_receive_lower[3];
-    int ic_start_receive_upper[3], ic_stop_receive_upper[3];
+    fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
+    fmd_ituple_t ic_start_send_upper, ic_stop_send_upper;
+    fmd_ituple_t ic_start_receive_lower, ic_stop_receive_lower;
+    fmd_ituple_t ic_start_receive_upper, ic_stop_receive_upper;
     int d;
 
     for (d = 0; d < 3; d++)

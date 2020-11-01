@@ -28,5 +28,17 @@
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 typedef void *fmd_pointer_t;
+typedef int fmd_ituple_t[3];
+typedef unsigned fmd_utuple_t[3];
+typedef REAL fmd_real_t;
+typedef fmd_real_t fmd_rtuple_t[3];
+
+#if REAL==double
+  #define FMD_MPI_REAL  MPI_DOUBLE
+#else
+  #if REAL==float
+    #define FMD_MPI_REAL  MPI_FLOAT
+  #endif
+#endif
 
 #endif /* TYPES_H */

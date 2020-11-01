@@ -27,12 +27,12 @@
 #include "eam.h"
 #include "molecule.h"
 
-void fmd_pot_setCutoffRadius(fmd_t *md, double cutoff)
+void fmd_pot_setCutoffRadius(fmd_t *md, fmd_real_t cutoff)
 {
     md->CutoffRadius = cutoff;
 }
 
-void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[])
+void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[])
 {
     // TO-DO: error should be handled here
     assert(number > 0);

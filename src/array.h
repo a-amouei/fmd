@@ -23,15 +23,21 @@
 #include "config.h"
 #include "types.h"
 
-typedef enum {ARRAY_NEAT3D, ARRAY_ORDINARY3D} array_kind_t;
+typedef enum {ARRAY_NEAT3D, ARRAY_SEMINEAT3D, ARRAY_ORDINARY3D} array_kind_t;
 
 void **_fmd_array_neat2d_create(unsigned dim1, unsigned dim2, unsigned elsize);
 void _fmd_array_neat2d_free(void **array);
-fmd_pointer_t ***_fmd_array_neat3d_pointer_create(unsigned dim1, unsigned dim2, unsigned dim3);
-void _fmd_array_neat3d_pointer_free(fmd_pointer_t ***array);
-fmd_pointer_t ***_fmd_array_ordinary3d_pointer_create(unsigned dim1, unsigned dim2, unsigned dim3);
-void _fmd_array_ordinary3d_pointer_free(fmd_pointer_t ***array, unsigned dim1, unsigned dim2, unsigned dim3);
-fmd_pointer_t ***_fmd_array_3d_pointer_create(unsigned dim1, unsigned dim2, unsigned dim3, array_kind_t *type);
-void _fmd_array_3d_pointer_free(fmd_pointer_t ***array, array_kind_t type, unsigned dim1, unsigned dim2, unsigned dim3);
+void ***_fmd_array_ordinary3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize);
+void _fmd_array_ordinary3d_free(void ***array, unsigned dim1, unsigned dim2);
+void ***_fmd_array_3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize, array_kind_t *type);
+void _fmd_array_3d_free(void ***array, array_kind_t type, unsigned dim1, unsigned dim2);
+void ***_fmd_array_neat3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize);
+void _fmd_array_neat3d_free(void ***array);
+void _fmd_array_3d_pointer_clean(fmd_pointer_t ***array, unsigned dim1, unsigned dim2, unsigned dim3);
+void _fmd_array_3d_rtuple_clean(fmd_rtuple_t ***array, unsigned dim1, unsigned dim2, unsigned dim3);
+void _fmd_array_3d_real_clean(fmd_real_t ***array, unsigned dim1, unsigned dim2, unsigned dim3);
+void _fmd_array_3d_unsigned_clean(unsigned ***array, unsigned dim1, unsigned dim2, unsigned dim3);
+void ***_fmd_array_semineat3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize);
+void _fmd_array_semineat3d_free(void ***array, unsigned dim1);
 
 #endif /* ARRAY_H */

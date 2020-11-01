@@ -21,6 +21,7 @@
 #define CSPLINE_H
 
 #include "config.h"
+#include "types.h"
 
 #define SPLINE_VAL(a,b,y,lo,hi,yDD,h) ((a)*(y)[lo]+(b)*(y)[hi]+(((a)*(a)*(a)-(a))*(yDD)[lo]+((b)*(b)*(b)-(b))*(yDD)[hi])*((h)*(h))/6.0)
 #define SPLINE_DERIV(a,b,y,lo,hi,yDD,h) (((y)[hi]-(y)[lo])/(h)+((3*(b)*(b)-1)*(yDD)[hi]-(3*(a)*(a)-1)*(yDD)[lo])*(h)/6.0)
@@ -42,10 +43,10 @@
     b=(x-list[klo])/h;                                                 \
 }
 
-void spline_prepare_adv(double x[], double y[], int n, double yDD[]);
-void spline_prepare(double h, double y[], int n, double yDD[]);
-double spline_val(double h, double ya[], double yDDa[], double x);
-double spline_deriv(double h, double ya[], double yDDa[], double x);
-void spline_val_deriv(double h, double ya[], double yDDa[], double x, double *y, double *yD);
+void spline_prepare_adv(fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[]);
+void spline_prepare(fmd_real_t h, fmd_real_t y[], int n, fmd_real_t yDD[]);
+fmd_real_t spline_val(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x);
+fmd_real_t spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x);
+void spline_val_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x, fmd_real_t *y, fmd_real_t *yD);
 
 #endif /* CSPLINE_H */

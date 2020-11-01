@@ -25,9 +25,9 @@
    For example if for a pos[] value we obtain s[] = {1.5, 0.5, 3.5}, it
    means that pos[] is placed right in the center of the subdomain with
    index of is[] = {1, 0, 3}. */
-void _fmd_convert_pos_to_subd_coord(fmd_t *md, const double pos[3], double s[3])
+void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s)
 {
-    double pos2[3], ref2[3], width1[3];
+    fmd_rtuple_t pos2, ref2, width1;
 
     for (int d=0; d<3; d++)
     {
@@ -47,11 +47,10 @@ void fmd_subd_free(fmd_t *md)
     if (md->SubDomain.grid != NULL)
     {
         _fmd_cleanGridSegment(md->SubDomain.grid, fmd_ThreeZeros, md->SubDomain.cell_num);
-        _fmd_array_3d_pointer_free((fmd_pointer_t ***)md->SubDomain.grid,
-                                   md->SubDomain.grid_arraykind,
-                                   md->SubDomain.cell_num[0],
-                                   md->SubDomain.cell_num[1],
-                                   md->SubDomain.cell_num[2]);
+        _fmd_array_3d_free((void ***)md->SubDomain.grid,
+                           md->SubDomain.grid_arraykind,
+                           md->SubDomain.cell_num[0],
+                           md->SubDomain.cell_num[1]);
         md->SubDomain.grid = NULL;
     }
 }
@@ -63,7 +62,7 @@ void fmd_subd_init(fmd_t *md)
     // initialize is
     INVERSEINDEX(md->SubDomain.myrank, md->ns, md->SubDomain.is);
     // initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes)
-    int istemp[3];
+    fmd_ituple_t istemp;
     for (d=0; d<3; d++)
         istemp[d] = md->SubDomain.is[d];
     for (d=0; d<3; d++)
@@ -99,8 +98,18 @@ void fmd_subd_init(fmd_t *md)
         md->SubDomain.cell_num_nonmarg[d] = md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d];
     }
 
-    md->SubDomain.grid = (cell_t ***)_fmd_array_3d_pointer_create(md->SubDomain.cell_num[0],
-                                                                  md->SubDomain.cell_num[1],
-                                                                  md->SubDomain.cell_num[2],
-                                                                  &md->SubDomain.grid_arraykind);
+    md->SubDomain.grid = (cell_t ***)_fmd_array_3d_create(md->SubDomain.cell_num[0],
+                                                          md->SubDomain.cell_num[1],
+                                                          md->SubDomain.cell_num[2],
+                                                          sizeof(cell_t),
+                                                          &md->SubDomain.grid_arraykind);
+
+    assert(md->SubDomain.grid != NULL);
+    /* TO-DO: handle memory error */
+
+    /* set all pointers in the array to NULL */
+    _fmd_array_3d_pointer_clean((fmd_pointer_t ***)md->SubDomain.grid,
+                                md->SubDomain.cell_num[0],
+                                md->SubDomain.cell_num[1],
+                                md->SubDomain.cell_num[2]);
 }

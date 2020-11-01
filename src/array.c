@@ -45,24 +45,84 @@ void _fmd_array_neat2d_free(void **array)
     free((void *)array);
 }
 
-fmd_pointer_t ***_fmd_array_neat3d_pointer_create(unsigned dim1, unsigned dim2, unsigned dim3)
+void _fmd_array_3d_pointer_clean(fmd_pointer_t ***array, unsigned dim1, unsigned dim2, unsigned dim3)
 {
-    size_t s = dim1*sizeof(fmd_pointer_t **) + dim1*dim2*sizeof(fmd_pointer_t *) + dim1*dim2*dim3*sizeof(fmd_pointer_t);
+    for (unsigned i=0; i<dim1; i++)
+        for (unsigned j=0; j<dim2; j++)
+            for (unsigned k=0; k<dim3; k++)
+                array[i][j][k] = NULL;
+}
 
-    fmd_pointer_t ***arr = (fmd_pointer_t ***)malloc(s);
+void _fmd_array_3d_rtuple_clean(fmd_rtuple_t ***array, unsigned dim1, unsigned dim2, unsigned dim3)
+{
+    for (unsigned i=0; i<dim1; i++)
+        for (unsigned j=0; j<dim2; j++)
+            for (unsigned k=0; k<dim3; k++)
+                for (int d=0; d<3; d++)
+                    array[i][j][k][d] = 0.0;
+}
+
+void _fmd_array_3d_real_clean(fmd_real_t ***array, unsigned dim1, unsigned dim2, unsigned dim3)
+{
+    for (unsigned i=0; i<dim1; i++)
+        for (unsigned j=0; j<dim2; j++)
+            for (unsigned k=0; k<dim3; k++)
+                array[i][j][k] = 0;
+}
+
+void _fmd_array_3d_unsigned_clean(unsigned ***array, unsigned dim1, unsigned dim2, unsigned dim3)
+{
+    for (unsigned i=0; i<dim1; i++)
+        for (unsigned j=0; j<dim2; j++)
+            for (unsigned k=0; k<dim3; k++)
+                array[i][j][k] = 0;
+}
+
+
+void ***_fmd_array_neat3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize)
+{
+    size_t s_ptrs1 = dim1 * sizeof(void **);
+    size_t s_ptrs2 = dim2 * sizeof(void *);
+    size_t s_2d_arr = s_ptrs2 + dim2 * dim3 * elsize;
+
+    void ***arr = (void ***)malloc(s_ptrs1 + dim1 * s_2d_arr);
 
     if (arr != NULL)
     {
         for (int i=0; i<dim1; i++)
         {
-            arr[i] = (fmd_pointer_t **)(arr + dim1 + i * (dim2 + dim2*dim3));
+            arr[i] = (void **)((char *)arr + s_ptrs1 + i * s_2d_arr);
 
             for (int j=0; j<dim2; j++)
-            {
-                arr[i][j] = (fmd_pointer_t *)(arr[i] + dim2 + j * dim3);
+                arr[i][j] = (void *)((char *)arr[i] + s_ptrs2 + j * dim3 * elsize);
+        }
+    }
 
-                for (int k=0; k<dim3; k++)
-                    arr[i][j][k] = NULL;
+    return arr;
+}
+
+void _fmd_array_neat3d_free(void ***array)
+{
+    free((void *)array);
+}
+
+void ***_fmd_array_semineat3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize)
+{
+    void ***arr;
+
+    arr = (void ***)malloc(dim1 * sizeof(void **));
+
+    if (arr != NULL)
+    {
+        for (unsigned i=0; i<dim1; dim1++)
+        {
+            arr[i] = _fmd_array_neat2d_create(dim2, dim3, elsize);
+
+            if (arr[i] == NULL)  /* free memory and return NULL */
+            {
+                for (unsigned j=0; j<i; j++)
+                    _fmd_array_neat2d_free(arr[i]);
+                return NULL;
             }
         }
     }
@@ -70,39 +130,38 @@ fmd_pointer_t ***_fmd_array_neat3d_pointer_create(unsigned dim1, unsigned dim2, 
     return arr;
 }
 
-void _fmd_array_neat3d_pointer_free(fmd_pointer_t ***array)
+void _fmd_array_semineat3d_free(void ***array, unsigned dim1)
 {
+    for (unsigned i=0; i < dim1; i++)
+        _fmd_array_neat2d_free(array[i]);
     free((void *)array);
 }
 
-fmd_pointer_t ***_fmd_array_ordinary3d_pointer_create(unsigned dim1, unsigned dim2, unsigned dim3)
+void ***_fmd_array_ordinary3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize)
 {
-    fmd_pointer_t ***arr;
+    void ***arr;
 
-    arr = (fmd_pointer_t ***)malloc(dim1 * sizeof(fmd_pointer_t **));
+    arr = (void ***)malloc(dim1 * sizeof(void **));
 
     if (arr != NULL)
         for (int i=0; i < dim1; i++)
         {
-            arr[i] = (fmd_pointer_t **)malloc(dim2 * sizeof(fmd_pointer_t *));
+            arr[i] = (void **)malloc(dim2 * sizeof(void *));
             assert(arr[i] != NULL);
             /* TO-DO: handle memory error */
 
             for (int j=0; j < dim2; j++)
             {
-                arr[i][j] = (fmd_pointer_t *)malloc(dim3 * sizeof(fmd_pointer_t));
+                arr[i][j] = (void *)malloc(dim3 * elsize);
                 assert(arr[i][j] != NULL);
                 /* TO-DO: handle memory error */
-
-                for (int k=0; k < dim3; k++)
-                    arr[i][j][k] = NULL;
             }
         }
 
     return arr;
 }
 
-void _fmd_array_ordinary3d_pointer_free(fmd_pointer_t ***array, unsigned dim1, unsigned dim2, unsigned dim3)
+void _fmd_array_ordinary3d_free(void ***array, unsigned dim1, unsigned dim2)
 {
     for (int i=0; i < dim1; i++)
     {
@@ -114,33 +173,42 @@ void _fmd_array_ordinary3d_pointer_free(fmd_pointer_t ***array, unsigned dim1, u
     free(array);
 }
 
-/* This function first tries to create a "neat" 3D pointer-array. If it isn't possible,
-   then makes an ordinary one. */
-fmd_pointer_t ***_fmd_array_3d_pointer_create(unsigned dim1, unsigned dim2, unsigned dim3, array_kind_t *type)
+/* This function first tries to create a "neat" 3D array. If it isn't possible,
+   then tries to make a "semi-neat" one. If not possible yet, makes an "ordinary" 3D array. */
+void ***_fmd_array_3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize, array_kind_t *type)
 {
-    fmd_pointer_t ***arr;
+    void ***arr;
 
-    arr = _fmd_array_neat3d_pointer_create(dim1, dim2, dim3);
+    arr = _fmd_array_neat3d_create(dim1, dim2, dim3, elsize);
     if (arr != NULL)
         *type = ARRAY_NEAT3D;
     else
     {
-        arr = _fmd_array_ordinary3d_pointer_create(dim1, dim2, dim3);
-        *type = ARRAY_ORDINARY3D;
+        arr = _fmd_array_semineat3d_create(dim1, dim2, dim3, elsize);
+        if (arr != NULL)
+            *type = ARRAY_SEMINEAT3D;
+        else
+        {
+            arr = _fmd_array_ordinary3d_create(dim1, dim2, dim3, elsize);
+            *type = ARRAY_ORDINARY3D;
+        }
     }
 
     return arr;
 }
 
-void _fmd_array_3d_pointer_free(fmd_pointer_t ***array, array_kind_t type, unsigned dim1, unsigned dim2, unsigned dim3)
+void _fmd_array_3d_free(void ***array, array_kind_t type, unsigned dim1, unsigned dim2)
 {
     switch (type)
     {
         case ARRAY_NEAT3D:
-            _fmd_array_neat3d_pointer_free(array);
+            _fmd_array_neat3d_free(array);
+            break;
+        case ARRAY_SEMINEAT3D:
+            _fmd_array_semineat3d_free(array, dim1);
             break;
         case ARRAY_ORDINARY3D:
-            _fmd_array_ordinary3d_pointer_free(array, dim1, dim2, dim3);
+            _fmd_array_ordinary3d_free(array, dim1, dim2);
             break;
     }
 }

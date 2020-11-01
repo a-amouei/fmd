@@ -48,7 +48,7 @@ typedef struct eam_element_t eam_element_t;
 
 typedef struct
 {
-    double mass;
+    fmd_real_t mass;
     fmd_string_t name;
     eam_element_t *eam_element;
 } atomkind_t;

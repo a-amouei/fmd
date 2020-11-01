@@ -22,5 +22,6 @@
 
 //#define NDEBUG
 #define USE_CSPLINE
+#define REAL double
 
 #endif /* CONFIG_H */

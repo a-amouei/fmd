@@ -32,9 +32,9 @@ typedef struct _fmd_timer
 {
     timercat_t cat;
     fmd_bool_t enabled;
-    double start;
-    double stop;
-    double interval;
+    fmd_real_t start;
+    fmd_real_t stop;
+    fmd_real_t interval;
 } fmd_timer_t;
 
 typedef struct _fmd fmd_t;

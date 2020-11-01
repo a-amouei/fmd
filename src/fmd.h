@@ -23,11 +23,15 @@
 #define FMD_TRUE 1
 #define FMD_FALSE 0
 
-// typedefs
+/* typedefs */
 
 typedef struct _fmd fmd_t;
 
 typedef struct _fmd_pot fmd_pot_t;
+
+typedef double fmd_real_t;
+
+typedef fmd_real_t fmd_rtuple_t[3];
 
 typedef enum
 {
@@ -64,44 +68,44 @@ typedef enum
 
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
 
-// functions
+/* functions */
 
-unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, double coeffs[]);
+unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[]);
 void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
   unsigned atom1, unsigned atom2);
 
 unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
-  unsigned AtomKinds[], double AtomPositions[][3]);
+  unsigned AtomKinds[], fmd_rtuple_t AtomPositions[]);
 
-void fmd_matt_addVelocity(fmd_t *md, int GroupID, double vx, double vy, double vz);
+void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz);
 void fmd_matt_setActiveGroup(fmd_t *md, int GroupID);
-void fmd_matt_setDesiredTemperature(fmd_t *md, double DesiredTemperature);
-void fmd_matt_makeCuboidSC(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
-void fmd_matt_makeCuboidSC_alloy(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
-void fmd_matt_makeCuboidBCC(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
-void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
-void fmd_matt_makeCuboidFCC(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, unsigned atomkind, int GroupID);
-void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, double x, double y, double z,
-  int dimx, int dimy, int dimz, double LatticeParameter, double *proportions, int GroupID);
-void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, double xa,
-  double ya, double za, double xb, double yb, double zb, unsigned num,
+void fmd_matt_setDesiredTemperature(fmd_t *md, fmd_real_t DesiredTemperature);
+void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
+void fmd_matt_makeCuboidSC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
+void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
+void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
+void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
+void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
+void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, fmd_real_t xa,
+  fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
   int GroupID);
 void fmd_matt_saveConfiguration(fmd_t *md);
-double fmd_matt_getTotalEnergy(fmd_t *md);
-double fmd_matt_getGlobalTemperature(fmd_t *md);
+fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
+fmd_real_t fmd_matt_getGlobalTemperature(fmd_t *md);
 void fmd_matt_distribute(fmd_t *md);
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID);
-void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const double masses[]);
+void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
 
 void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
-void fmd_box_setSize(fmd_t *md, double sx, double sy, double sz);
+void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz);
 void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz);
-void fmd_box_createGrid(fmd_t *md, double cutoff);
+void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);
@@ -110,21 +114,21 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, fmd_bool_t useTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 
 fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath);
-double fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
-double fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
-void fmd_pot_setCutoffRadius(fmd_t *md, double cutoff);
+fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
+fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
+void fmd_pot_setCutoffRadius(fmd_t *md, fmd_real_t cutoff);
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
-  double sigma, double epsilon, double cutoff);
+  fmd_real_t sigma, fmd_real_t epsilon, fmd_real_t cutoff);
 fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
-  double D0, double alpha, double r0, double cutoff);
+  fmd_real_t D0, fmd_real_t alpha, fmd_real_t r0, fmd_real_t cutoff);
 void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t *pot);
 
 void fmd_subd_init(fmd_t *md);
 void fmd_subd_free(fmd_t *md);
 
-unsigned fmd_timer_makeSimple(fmd_t *md, double start, double interval, double stop);
+unsigned fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop);
 
-double fmd_proc_getWallTime(fmd_t *md);
+fmd_real_t fmd_proc_getWallTime(fmd_t *md);
 fmd_bool_t fmd_proc_isMD(fmd_t *md);
 fmd_bool_t fmd_proc_isRoot(fmd_t *md);
 
@@ -132,19 +136,19 @@ fmd_t *fmd_create();
 void fmd_free(fmd_t *md);
 void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
 
-double fmd_dync_getTimeStep(fmd_t *md);
-void fmd_dync_setTimeStep(fmd_t *md, double TimeStep);
-double fmd_dync_getTime(fmd_t *md);
+fmd_real_t fmd_dync_getTimeStep(fmd_t *md);
+void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t TimeStep);
+fmd_real_t fmd_dync_getTime(fmd_t *md);
 void fmd_dync_updateForces(fmd_t *md);
 void fmd_dync_updateForcesLJ(fmd_t *md);
 void fmd_dync_incTime(fmd_t *md);
-void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, double parameter);
+void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
 void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat);
 int fmd_dync_VelocityVerlet_finishStep(fmd_t *md);
-void fmd_dync_equilibrate(fmd_t *md, int GroupID, double duration,
-  double timestep, double strength, double temperature);
+void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
+  fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature);
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
-unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, double interval);
+unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, fmd_real_t interval);
 
 #endif /* FMD_H */

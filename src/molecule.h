@@ -38,8 +38,8 @@ typedef bondkind_t *bondkindp_t;
 typedef struct
 {
     fmd_bond_t cat;
-    double k;
-    double r0;
+    fmd_real_t k;
+    fmd_real_t r0;
 } bondkind_harmonic_t;
 
 typedef struct _list list_t;
@@ -48,7 +48,7 @@ typedef struct
 {
     unsigned LocalID;
     unsigned atomkind;
-    double position[3];
+    fmd_rtuple_t position;
     list_t *neighbors;   // each data pointer in this list points to a molkind_atom_neighbor_t
 } molkind_atom_t;
 

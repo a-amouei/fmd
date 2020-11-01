@@ -26,16 +26,17 @@
 #include "list.h"
 #include "molecule.h"
 
-static void compute_hybrid_pass1(fmd_t *md, double *FembSum_p)
+static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {
-    int jc[3], kc[3];
+    fmd_ituple_t jc, kc;
     int d, ir2, irho, ir2_h, irho_h;
     ParticleListItem_t *item1_p, *item2_p;
-    double r2, rv[3];
-    double *rho, *rhoDD, *F, *F_DD;
-    double a, b, h;
+    fmd_real_t r2;
+    fmd_rtuple_t rv;
+    fmd_real_t *rho, *rhoDD, *F, *F_DD;
+    fmd_real_t a, b, h;
     int ic0, ic1, ic2;
-    double Femb_sum=0.0;
+    fmd_real_t Femb_sum=0.0;
     potpair_t **pottable = md->potsys.pottable;
     atomkind_t *atomkinds = md->potsys.atomkinds;
 
@@ -60,7 +61,7 @@ static void compute_hybrid_pass1(fmd_t *md, double *FembSum_p)
             if (md->potsys.atomkinds[atomkind1].eam_element == NULL)
                 continue;
 
-            double rho_host = 0.0;
+            fmd_real_t rho_host = 0.0;
             // iterate over neighbor cells of cell ic
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
             {
@@ -95,27 +96,28 @@ static void compute_hybrid_pass1(fmd_t *md, double *FembSum_p)
     *FembSum_p=Femb_sum;
 }
 
-static void compute_hybrid_pass0(fmd_t *md, double FembSum)
+static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
 {
-    int jc[3], kc[3];
+    fmd_ituple_t jc, kc;
     int d, ir2, ir2_h;
     ParticleListItem_t *item1_p, *item2_p;
-    double r2, rv[3];
-    double *rho_i, *rho_j, *phi;
-    double *rho_iDD, *rho_jDD, *phiDD;
-    double rho_ip, rho_jp;
-    double mag;
-    double phi_deriv;
-    double a, b, h;
+    fmd_real_t r2;
+    fmd_rtuple_t rv;
+    fmd_real_t *rho_i, *rho_j, *phi;
+    fmd_real_t *rho_iDD, *rho_jDD, *phiDD;
+    fmd_real_t rho_ip, rho_jp;
+    fmd_real_t mag;
+    fmd_real_t phi_deriv;
+    fmd_real_t a, b, h;
     int ic0, ic1, ic2;
     potpair_t **pottable = md->potsys.pottable;
 #ifdef USE_TTM
-    double mass;
+    fmd_real_t mass;
     int ttm_index;
-    double dx;
-    double pxx = 0.0;
+    fmd_real_t dx;
+    fmd_real_t pxx = 0.0;
 #endif
-    double potEnergy = 0.0;
+    fmd_real_t potEnergy = 0.0;
 
     // iterate over all cells(lists)
 #ifdef USE_TTM
@@ -191,7 +193,7 @@ static void compute_hybrid_pass0(fmd_t *md, double FembSum)
     }
 
     potEnergy = 0.5 * potEnergy + FembSum;
-    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
 void fmd_dync_updateForces(fmd_t *md)
@@ -217,7 +219,7 @@ void fmd_dync_updateForces(fmd_t *md)
 
             case POT_EAM_ALLOY:
                 if (md->CompLocOrdParam) compLocOrdParam(md);
-                double FembSum;
+                fmd_real_t FembSum;
                 fmd_computeEAM_pass1(md, &FembSum);
                 fmd_ghostparticles_update_Femb(md);
                 fmd_computeEAM_pass0(md, FembSum);
@@ -226,7 +228,7 @@ void fmd_dync_updateForces(fmd_t *md)
     }
     else  // hybrid mode
     {
-        double FembSum = 0.0;
+        fmd_real_t FembSum = 0.0;
 
         if (md->potsys.hybridpasses[1])
         {

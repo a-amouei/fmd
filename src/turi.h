@@ -21,12 +21,23 @@
 #define TURI_H
 
 #include "config.h"
+#include "types.h"
+#include "array.h"
 #include <mpi.h>
 
 typedef enum
 {
+    FIELD_DATA_UNSIGNED,
+    FIELD_DATA_REAL,
+    FIELD_DATA_RTUPLE
+} field_data_type_t;
+
+typedef enum
+{
+    FMD_FIELD_MASS,
     FMD_FIELD_VCM,
-    FMD_FIELD_TEMPERATURE
+    FMD_FIELD_TEMPERATURE,
+    FMD_FIELD_NUMBER
 } fmd_field_t; /* category of the field */
 
 typedef struct
@@ -36,7 +47,11 @@ typedef struct
     unsigned dependcs_num;      /* number of the dependency fields */
     unsigned *dependcs;         /* indexes of the dependency fields */
     unsigned intervals_num;
-    double *intervals;          /* intervals determine when to update the field */
+    fmd_real_t *intervals;      /* intervals determine when to update the field */
+    void ***data;
+    array_kind_t data_array_kind;
+    unsigned data_el_size;      /* size of each data element in bytes */
+    field_data_type_t data_type;
 } field_t;
 
 typedef enum
@@ -45,36 +60,37 @@ typedef enum
     FMD_TURI_TTM
 } fmd_turi_t; /* category of the turi */
 
-typedef int index_t[3];
-
 typedef struct
 {
     MPI_Comm comm;
     unsigned commsize;
     int *pset;                  /* ranks of the processes of this comm in MD_comm */
     unsigned num_tcells;        /* number of turi-cells associated with this comm */
-    index_t *itcs;              /* indexes of turi-cells associated with this comm */
+    fmd_ituple_t *itcs;         /* local indexes of turi-cells associated with this comm */
 } turi_comm_t;
 
 typedef struct _turi
 {
     fmd_turi_t cat;
-    int tdims_global[3];        /* global dimenstions of the turi */
-    int tdims[3];               /* dimenstions of the turi in current subdomain.
+    fmd_ituple_t tdims_global;  /* global dimenstions of the turi */
+    fmd_ituple_t tdims;         /* dimenstions of the turi in current subdomain.
                                    The subdomain may share some of its turi-cells with
                                    neighbor subdomains. */
-    int tcell_start[3];         /* global index of the first turi-cell in current subdomain */
-    int tcell_stop[3];          /* global index of the first turi-cell outside current subdomain */
-    double tcellh[3];           /* size of each cell of the turi (global) */
+    fmd_ituple_t tcell_start;   /* global index of the first turi-cell in current subdomain */
+    fmd_ituple_t tcell_stop;    /* global index of the first turi-cell outside current subdomain */
+    fmd_rtuple_t tcellh;        /* size of each cell of the turi (global) */
     unsigned fields_num;
     field_t *fields;
     unsigned comms_num;         /* number of communicators = number of elements of the following array */
     turi_comm_t *comms;
+    unsigned num_tcells_max;    /* number of turi-cells in the communicator having maximum number of turi-cells */
+    fmd_ituple_t *owned_tcells; /* list of local indexes of turi-cells "own"ed by current subdomain */
+    unsigned owned_tcells_num;  /* number of turi-cells "own"ed by current subdomain */
 } turi_t;
 
 typedef struct _fmd fmd_t;
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
-unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, double interval);
+unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, fmd_real_t interval);
 
 #endif /* TURI_H */

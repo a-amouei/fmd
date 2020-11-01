@@ -23,7 +23,7 @@
 #include "array.h"
 #include "list.h"
 
-unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, double coeffs[])
+unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[])
 {
     unsigned i = md->potsys.bondkinds_num;
 
@@ -115,7 +115,7 @@ void fmd_molecule_freeKinds()
 }
 
 unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
-  unsigned AtomKinds[], double AtomPositions[][3])
+  unsigned AtomKinds[], fmd_rtuple_t AtomPositions[])
 {
     unsigned i = md->potsys.molkinds_num;
 
@@ -194,7 +194,8 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     else                                                                    \
         (jc)[(d)] = (kc)[(d)];
 
-static ParticleListItem_t *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, unsigned neighborID)
+static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned MolID,
+                                         unsigned neighborID)
 {
     // calculate maximum distance
     int max_dist = 0;
@@ -223,7 +224,7 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, int ic[3], unsigned MolID, u
     // other dist values
     for (int dist=1; dist <= max_dist; dist++)
     {
-        int jc[3], kc[3];
+        fmd_ituple_t jc, kc;
         fmd_bool_t map_done;
 
         // segment 1 out of 6
@@ -330,7 +331,7 @@ static int compare_LocalID_in_ln(const void *a, const void *b)
 
 void fmd_matt_updateNeighbors(fmd_t *md)
 {
-    int ic[3];
+    fmd_ituple_t ic;
     ParticleListItem_t *item_p;
 
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -400,7 +401,7 @@ void fmd_matt_updateNeighbors(fmd_t *md)
 void fmd_dync_computeBondForce(fmd_t *md)
 {
     int ic0, ic1, ic2;
-    double PotEnergy = 0.0;
+    fmd_real_t PotEnergy = 0.0;
 
     // iterate over all cells(lists)
     #pragma omp parallel for private(ic0,ic1,ic2) \
@@ -418,15 +419,16 @@ void fmd_dync_computeBondForce(fmd_t *md)
 
                         if (item1->P.AtomID_local > item2->P.AtomID_local)
                         {
-                            double r2, rv[3];
+                            fmd_real_t r2;
+                            fmd_rtuple_t rv;
                             int d;
 
                             bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(item1->neighbors->data))->bond;
-                            double r0 = bond->r0;
+                            fmd_real_t r0 = bond->r0;
                             _COMPUTE_rv_AND_r2(item1, item2, r0);
-                            double k = bond->k;
-                            double r = sqrt(r2);
-                            double vek[3];
+                            fmd_real_t k = bond->k;
+                            fmd_real_t r = sqrt(r2);
+                            fmd_rtuple_t vek;
                             for (d=0; d<3; d++)
                             {
                                 vek[d] = -2*k*(r-r0)*rv[d]/r;

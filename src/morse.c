@@ -25,12 +25,13 @@
 
 void fmd_computeMorse(fmd_t *md)
 {
-    int jc[3], kc[3];
+    fmd_ituple_t jc, kc;
     int d;
     ParticleListItem_t *item1_p, *item2_p;
-    double r2, rv[3];
+    fmd_real_t r2;
+    fmd_rtuple_t rv;
     int ic0, ic1, ic2;
-    double potEnergy = 0.0;
+    fmd_real_t potEnergy = 0.0;
     potpair_t **pottable = md->potsys.pottable;
 
     // iterate over all cells(lists)
@@ -78,11 +79,11 @@ void fmd_computeMorse(fmd_t *md)
                                         if (r2 < morse->cutoff_sqr)
                                         {
                                             // force, F = -(d/dr)U
-                                            double r = sqrt(r2);
-                                            double inv_r = 1.0/r;
-                                            double exp1 = exp( -morse->alpha * (r - morse->r0) );
-                                            double exp2 = SQR(exp1);
-                                            double factor = morse->alpha * morse->D0 * inv_r * (exp2 - exp1);
+                                            fmd_real_t r = sqrt(r2);
+                                            fmd_real_t inv_r = 1.0/r;
+                                            fmd_real_t exp1 = exp( -morse->alpha * (r - morse->r0) );
+                                            fmd_real_t exp2 = SQR(exp1);
+                                            fmd_real_t factor = morse->alpha * morse->D0 * inv_r * (exp2 - exp1);
                                             for (d=0; d<3; d++)
                                                 item1_p->F[d] += factor * rv[d];
 
@@ -99,12 +100,12 @@ void fmd_computeMorse(fmd_t *md)
                 }
             }
 
-    potEnergy *= 0.5;  /*correct double-counting*/
-    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, MPI_DOUBLE, MPI_SUM, md->MD_comm);
+    potEnergy *= 0.5;  /*correct fmd_real_t-counting*/
+    MPI_Allreduce(&potEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
 fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
-                               double D0, double alpha, double r0, double cutoff)
+                               fmd_real_t D0, fmd_real_t alpha, fmd_real_t r0, fmd_real_t cutoff)
 {
     morse_t *morse = (morse_t *)malloc(sizeof(morse_t));
     morse->D0 = D0;
