@@ -54,8 +54,10 @@ typedef enum
 
 typedef enum
 {
+    FMD_FIELD_MASS,
     FMD_FIELD_VCM,
-    FMD_FIELD_TEMPERATURE
+    FMD_FIELD_TEMPERATURE,
+    FMD_FIELD_NUMBER
 } fmd_field_t;
 
 typedef char *fmd_string_t;

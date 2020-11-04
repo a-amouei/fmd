@@ -163,6 +163,11 @@ typedef enum
 
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
 
+typedef struct
+{
+    MPI_Datatype mpi_ituple;
+} mpi_types_t;
+
 typedef struct _turi turi_t;
 
 struct _fmd
@@ -171,6 +176,7 @@ struct _fmd
     potsys_t potsys;
     cell_t ***global_grid;
     fmd_EventHandler_t EventHandler;
+    mpi_types_t mpi_types;
     unsigned timers_num;
     fmd_timer_t *timers;
     unsigned turies_num;

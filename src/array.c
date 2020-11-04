@@ -175,40 +175,40 @@ void _fmd_array_ordinary3d_free(void ***array, unsigned dim1, unsigned dim2)
 
 /* This function first tries to create a "neat" 3D array. If it isn't possible,
    then tries to make a "semi-neat" one. If not possible yet, makes an "ordinary" 3D array. */
-void ***_fmd_array_3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize, array_kind_t *type)
+void _fmd_array_3d_create(unsigned dim1, unsigned dim2, unsigned dim3, unsigned elsize, fmd_array3D_t *array)
 {
-    void ***arr;
-
-    arr = _fmd_array_neat3d_create(dim1, dim2, dim3, elsize);
-    if (arr != NULL)
-        *type = ARRAY_NEAT3D;
+    array->data = _fmd_array_neat3d_create(dim1, dim2, dim3, elsize);
+    if (array->data != NULL)
+        array->kind = ARRAY_NEAT3D;
     else
     {
-        arr = _fmd_array_semineat3d_create(dim1, dim2, dim3, elsize);
-        if (arr != NULL)
-            *type = ARRAY_SEMINEAT3D;
+        array->data = _fmd_array_semineat3d_create(dim1, dim2, dim3, elsize);
+        if (array->data != NULL)
+            array->kind = ARRAY_SEMINEAT3D;
         else
         {
-            arr = _fmd_array_ordinary3d_create(dim1, dim2, dim3, elsize);
-            *type = ARRAY_ORDINARY3D;
+            array->data = _fmd_array_ordinary3d_create(dim1, dim2, dim3, elsize);
+            array->kind = ARRAY_ORDINARY3D;
         }
     }
 
-    return arr;
+    array->dim1 = dim1;
+    array->dim2 = dim2;
+    array->dim3 = dim3;
 }
 
-void _fmd_array_3d_free(void ***array, array_kind_t type, unsigned dim1, unsigned dim2)
+void _fmd_array_3d_free(fmd_array3D_t *array)
 {
-    switch (type)
+    switch (array->kind)
     {
         case ARRAY_NEAT3D:
-            _fmd_array_neat3d_free(array);
+            _fmd_array_neat3d_free(array->data);
             break;
         case ARRAY_SEMINEAT3D:
-            _fmd_array_semineat3d_free(array, dim1);
+            _fmd_array_semineat3d_free(array->data, array->dim1);
             break;
         case ARRAY_ORDINARY3D:
-            _fmd_array_ordinary3d_free(array, dim1, dim2);
+            _fmd_array_ordinary3d_free(array->data, array->dim1, array->dim2);
             break;
     }
 }

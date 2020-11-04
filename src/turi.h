@@ -48,8 +48,7 @@ typedef struct
     unsigned *dependcs;         /* indexes of the dependency fields */
     unsigned intervals_num;
     fmd_real_t *intervals;      /* intervals determine when to update the field */
-    void ***data;
-    array_kind_t data_array_kind;
+    fmd_array3D_t data;
     unsigned data_el_size;      /* size of each data element in bytes */
     field_data_type_t data_type;
 } field_t;
@@ -63,11 +62,22 @@ typedef enum
 typedef struct
 {
     MPI_Comm comm;
-    unsigned commsize;
+    int commsize;
     int *pset;                  /* ranks of the processes of this comm in MD_comm */
     unsigned num_tcells;        /* number of turi-cells associated with this comm */
     fmd_ituple_t *itcs;         /* local indexes of turi-cells associated with this comm */
 } turi_comm_t;
+
+typedef struct
+{
+    fmd_ituple_t *owned_tcells;   /* list of local indexes of turi-cells "own"ed by current subdomain */
+    int owned_tcells_num;         /* number of turi-cells "own"ed by current subdomain */
+    MPI_Comm comm;
+    int commsize;
+    fmd_ituple_t *global_indexes; /* used when gattering data of all tcells (for root process) */
+    int *recvcounts;              /* used when gattering data of all tcells (for root process) */
+    int *displs;                  /* used when gattering data of all tcells (for root process) */
+} turi_ownerscomm_t;
 
 typedef struct _turi
 {
@@ -76,6 +86,7 @@ typedef struct _turi
     fmd_ituple_t tdims;         /* dimenstions of the turi in current subdomain.
                                    The subdomain may share some of its turi-cells with
                                    neighbor subdomains. */
+    unsigned tcells_global_num;
     fmd_ituple_t tcell_start;   /* global index of the first turi-cell in current subdomain */
     fmd_ituple_t tcell_stop;    /* global index of the first turi-cell outside current subdomain */
     fmd_rtuple_t tcellh;        /* size of each cell of the turi (global) */
@@ -83,9 +94,8 @@ typedef struct _turi
     field_t *fields;
     unsigned comms_num;         /* number of communicators = number of elements of the following array */
     turi_comm_t *comms;
-    unsigned num_tcells_max;    /* number of turi-cells in the communicator having maximum number of turi-cells */
-    fmd_ituple_t *owned_tcells; /* list of local indexes of turi-cells "own"ed by current subdomain */
-    unsigned owned_tcells_num;  /* number of turi-cells "own"ed by current subdomain */
+    unsigned num_tcells_max;    /* number of turi-cells associated with the communicator having maximum number of turi-cells */
+    turi_ownerscomm_t ownerscomm;
 } turi_t;
 
 typedef struct _fmd fmd_t;

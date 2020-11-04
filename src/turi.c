@@ -21,6 +21,58 @@
 #include "base.h"
 #include "subdomain.h"
 
+static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
+{
+    out->data = NULL;
+    turi_ownerscomm_t *owcomm = &t->ownerscomm;
+
+    /* only "owners" participate in the collective communication below */
+    if (owcomm->owned_tcells_num == 0) return;
+
+    unsigned ***lcd = (unsigned ***)f->data.data;
+
+    unsigned *sendbuf = (unsigned *)malloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
+    assert(sendbuf != NULL);
+    /* TO-DO: handle memory error */
+
+    for (int i=0; i < owcomm->owned_tcells_num; i++)
+    {
+        int *itc = owcomm->owned_tcells[i];
+        sendbuf[i] = lcd[itc[0]][itc[1]][itc[2]];
+    }
+
+    unsigned *recvbuf;
+
+    if (md->Is_MD_comm_root)
+    {
+        recvbuf = (unsigned *)malloc(t->tcells_global_num * sizeof(*recvbuf));
+        assert(recvbuf != NULL);
+        /* TO-DO: handle memory error */
+    }
+
+    MPI_Gatherv(sendbuf, owcomm->owned_tcells_num, MPI_UNSIGNED,
+                recvbuf, owcomm->recvcounts, owcomm->displs,
+                MPI_UNSIGNED, 0, owcomm->comm);
+
+    free(sendbuf);
+
+    if (md->Is_MD_comm_root)
+    {
+        _fmd_array_3d_create(t->tdims_global[0], t->tdims_global[1], t->tdims_global[2],
+                             sizeof(unsigned), out);
+        assert(out->data != NULL);
+        /* TO-DO: handle memory error */
+
+        for (int i=0; i < t->tcells_global_num; i++)
+        {
+            int *itc = owcomm->global_indexes[i];
+            ((unsigned ***)out->data)[itc[0]][itc[1]][itc[2]] = recvbuf[i];
+        }
+
+        free(recvbuf);
+    }
+}
+
 /* This function receives the index of a turi-cell and returns the number
    of processes that share it. The ranks of those processes in MD_comm
    will be written in pset. */
@@ -88,16 +140,71 @@ static int find_this_pset_in_comms(int np, int *pset, int comms_num, turi_comm_t
     return -1; /* it is not there! */
 }
 
+static void prepare_ownerscomm(fmd_t *md, turi_t *t)
+{
+    turi_ownerscomm_t *owcomm = &t->ownerscomm;
+
+    /* create the communicator */
+
+    MPI_Comm_split(md->MD_comm,
+                   owcomm->owned_tcells_num == 0,
+                   md->Is_MD_comm_root ? 0 : 1,
+                   &owcomm->comm);
+
+    /* prepare the remaining fields of t->ownerscomm */
+
+    if (owcomm->owned_tcells_num == 0) return;
+
+    MPI_Comm_size(owcomm->comm, &owcomm->commsize);
+
+    if (md->Is_MD_comm_root)
+    {
+        owcomm->recvcounts = (int *)malloc(owcomm->commsize * sizeof(int));
+        assert(owcomm->recvcounts != NULL);
+        /* TO-DO: handle memory error */
+    }
+
+    MPI_Gather(&owcomm->owned_tcells_num, 1, MPI_INT, owcomm->recvcounts, 1, MPI_INT, 0, owcomm->comm);
+
+    if (md->Is_MD_comm_root)
+    {
+        owcomm->global_indexes = (fmd_ituple_t *)malloc(t->tcells_global_num * sizeof(fmd_ituple_t));
+        assert(owcomm->global_indexes != NULL);
+        /* TO-DO: handle memory error */
+
+        owcomm->displs = (int *)malloc(owcomm->commsize * sizeof(int));
+        assert(owcomm->displs != NULL);
+        /* TO-DO: handle memory error */
+
+        owcomm->displs[0] = 0;
+        for (int i=1; i < owcomm->commsize; i++)
+            owcomm->displs[i] = owcomm->displs[i-1] + owcomm->recvcounts[i-1];
+    }
+
+    fmd_ituple_t *lg = (fmd_ituple_t *)malloc(owcomm->owned_tcells_num * sizeof(fmd_ituple_t));
+    assert(lg != NULL);
+    /* TO-DO: handle memory error */
+
+    for (int i=0; i < owcomm->owned_tcells_num; i++)
+        for (int d=0; d<3; d++)
+            lg[i][d] = owcomm->owned_tcells[i][d] + t->tcell_start[d]; /* convert local indexes to global indexes */
+
+    MPI_Gatherv(lg, owcomm->owned_tcells_num, md->mpi_types.mpi_ituple, owcomm->global_indexes,
+                owcomm->recvcounts, owcomm->displs, md->mpi_types.mpi_ituple, 0, owcomm->comm);
+
+    free(lg);
+}
+
 static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 {
     t->comms_num = 0;
     t->comms = NULL;
-    t->owned_tcells = NULL;
-    t->owned_tcells_num = 0;
+    t->ownerscomm.owned_tcells = NULL;
+    t->ownerscomm.owned_tcells_num = 0;
 
-    MPI_Group worldgroup, newgroup;
+    MPI_Group mdgroup, newgroup;
 
-    MPI_Comm_group(MPI_COMM_WORLD, &worldgroup);
+    MPI_Comm_group(md->MD_comm, &mdgroup);
 
     fmd_ituple_t itc;
 
@@ -111,14 +218,15 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
         /* do owned_tcells and owned_tcells_num need an update? */
         if (pset[0] == md->SubDomain.myrank)
         {
-            t->owned_tcells = (fmd_ituple_t *)realloc(t->owned_tcells, (t->owned_tcells_num+1) * sizeof(*t->owned_tcells));
+            t->ownerscomm.owned_tcells = (fmd_ituple_t *)realloc(t->ownerscomm.owned_tcells,
+                                          (t->ownerscomm.owned_tcells_num+1) * sizeof(*t->ownerscomm.owned_tcells));
             /* TO-DO: handle memory error */
-            assert(t->owned_tcells != NULL);
+            assert(t->ownerscomm.owned_tcells != NULL);
 
             for (int d=0; d<3; d++)
-                t->owned_tcells[t->owned_tcells_num][d] = itc[d] - t->tcell_start[d];
+                t->ownerscomm.owned_tcells[t->ownerscomm.owned_tcells_num][d] = itc[d] - t->tcell_start[d];
 
-            t->owned_tcells_num++;
+            t->ownerscomm.owned_tcells_num++;
         }
 
         int icomm = find_this_pset_in_comms(np, pset, t->comms_num, t->comms);
@@ -139,7 +247,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
             if (np > 1) /* create MPI communicator */
             {
-                MPI_Group_incl(worldgroup, np, pset, &newgroup);
+                MPI_Group_incl(mdgroup, np, pset, &newgroup);
                 int res = MPI_Comm_create_group(md->MD_comm, newgroup, 0, &tcomm->comm);
                 assert(res == MPI_SUCCESS);
                 MPI_Group_free(&newgroup);
@@ -163,13 +271,14 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
         tcomm->num_tcells++;
     }
 
-    MPI_Group_free(&worldgroup);
+    MPI_Group_free(&mdgroup);
+
+    prepare_ownerscomm(md, t);
 
     /* find num_tcells_max */
     t->num_tcells_max = 0;
     for (int i=0; i < t->comms_num; i++)
         if (t->comms[i].num_tcells > t->num_tcells_max) t->num_tcells_max = t->comms[i].num_tcells;
-
 }
 
 unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
@@ -187,6 +296,8 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
     t->tdims_global[0] = dimx;
     t->tdims_global[1] = dimy;
     t->tdims_global[2] = dimz;
+
+    t->tcells_global_num = dimx * dimy * dimz;
 
     for (int d=0; d<3; d++)
     {
@@ -256,7 +367,7 @@ inline static void prepare_buf1_real(fmd_real_t *buf1, turi_comm_t *tcm, field_t
     {
         int *itc = tcm->itcs[j];
 
-        buf1[j] = ((fmd_real_t ***)f->data)[itc[0]][itc[1]][itc[2]];
+        buf1[j] = ((fmd_real_t ***)f->data.data)[itc[0]][itc[1]][itc[2]];
     }
 }
 
@@ -267,7 +378,7 @@ inline static void prepare_buf1_rtuple(fmd_rtuple_t *buf1, turi_comm_t *tcm, fie
         int *itc = tcm->itcs[j];
 
         for (int d=0; d<3; d++)
-            buf1[j][d] = ((fmd_rtuple_t ***)f->data)[itc[0]][itc[1]][itc[2]][d];
+            buf1[j][d] = ((fmd_rtuple_t ***)f->data.data)[itc[0]][itc[1]][itc[2]][d];
     }
 }
 
@@ -277,7 +388,7 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
     {
         int *itc = tcm->itcs[j];
 
-        buf1[j] = ((unsigned ***)f->data)[itc[0]][itc[1]][itc[2]];
+        buf1[j] = ((unsigned ***)f->data.data)[itc[0]][itc[1]][itc[2]];
     }
 }
 
@@ -317,7 +428,7 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
                 {
                     int *itc = tcm->itcs[j];
 
-                    ((unsigned ***)f->data)[itc[0]][itc[1]][itc[2]] = ((unsigned *)buf2)[j];
+                    ((unsigned ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((unsigned *)buf2)[j];
                 }
             }
         }
@@ -332,7 +443,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t)
     fmd_ituple_t ic, itc;
     ParticleListItem_t *item_p;
 
-    unsigned ***num = (unsigned ***)f->data;
+    unsigned ***num = (unsigned ***)f->data.data;
 
     /* clean data of number field (initialize with zeros) */
     _fmd_array_3d_unsigned_clean(num, t->tdims[0], t->tdims[1], t->tdims[2]);
@@ -359,8 +470,8 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
     fmd_ituple_t ic, itc;
     ParticleListItem_t *item_p;
 
-    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)f->data;
-    fmd_real_t ***mass = (fmd_real_t ***)t->fields[f->dependcs[0]].data;
+    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)f->data.data;
+    fmd_real_t ***mass = (fmd_real_t ***)t->fields[f->dependcs[0]].data.data;
 
     /* clean data of mass and vcm fields (initialize with zeros) */
     ITERATE(itc, fmd_ThreeZeros, t->tdims)
@@ -395,6 +506,30 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
         for (int d=0; d<3; d++)
             vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
 }
+
+/*
+void fmd_field_update_test(fmd_t *md)
+{
+    turi_t *t = &md->turies[0];
+    field_t *f = &t->fields[0];
+
+    update_field_number(md, f, t);
+
+    fmd_array3D_t num;
+
+    gather_field_data_unsigned(md, t, f, &num);
+
+    if (md->Is_MD_comm_root)
+    {
+        for (int i=0; i < num.dim1; i++)
+            for (int j=0; j < num.dim2; j++)
+                for (int k=0; k < num.dim3; k++)
+                    printf("%d ", ((unsigned ***)(num.data))[i][j][k]);
+        printf("\n");
+
+        _fmd_array_3d_free(&num);
+    }
+}*/
 
 unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, fmd_real_t interval)
 {
@@ -449,8 +584,8 @@ unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, fmd_real_t int
         set_field_data_el_size_and_type(f);
 
         /* allocate space for field data */
-        f->data = _fmd_array_3d_create(t->tdims[0], t->tdims[1], t->tdims[2], f->data_el_size, &f->data_array_kind);
-        assert(f->data != NULL);
+        _fmd_array_3d_create(t->tdims[0], t->tdims[1], t->tdims[2], f->data_el_size, &f->data);
+        assert(f->data.data != NULL);
     }
     else
         f = &t->fields[i];

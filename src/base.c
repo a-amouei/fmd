@@ -1060,6 +1060,17 @@ void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
     }
 }
 
+static void create_mpi_types(fmd_t *md)
+{
+    MPI_Type_vector(1, 3, 0, MPI_INT, &md->mpi_types.mpi_ituple);
+    MPI_Type_commit(&md->mpi_types.mpi_ituple);
+}
+
+static void free_mpi_types(fmd_t *md)
+{
+    MPI_Type_free(&md->mpi_types.mpi_ituple);
+}
+
 fmd_t *fmd_create()
 {
     fmd_t *md = (fmd_t *)malloc(sizeof(fmd_t));
@@ -1103,6 +1114,7 @@ fmd_t *fmd_create()
     md->_OldTotalMDEnergy = 0.0;
     md->_PrevFailedMDEnergy = 0.0;
     fmd_potsys_init(md);
+    create_mpi_types(md);
 
     // this must be the last statement before return
     md->WallTimeOrigin = MPI_Wtime();
@@ -1322,6 +1334,7 @@ void fmd_free(fmd_t *md)
     fmd_subd_free(md);
     fmd_potsys_free(md);
     fmd_timer_free(md);
+    free_mpi_types(md);
 
     free(md);
 

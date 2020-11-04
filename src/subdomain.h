@@ -30,8 +30,8 @@ typedef ParticleListItem_t *cell_t;
 
 typedef struct
 {
-    cell_t ***grid;                   /* where the particles lie */
-    array_kind_t grid_arraykind;      /* is it a neat 3d array or ... ? */
+    cell_t ***grid;                   /* must be equal to grid_array->data */
+    fmd_array3D_t grid_array;
     int myrank;                       /* rank of the local process in MD_comm */
     int numprocs;                     /* number of processes in MD_comm */
     fmd_ituple_t is;                  /* position of subdomain in the subdomain grid */
