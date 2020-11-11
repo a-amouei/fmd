@@ -69,6 +69,60 @@
     else                                                               \
         jc[dd] = kc[dd];
 
+#define CELL_INCREMENT  10
+
+#define RESIZE_CELL(c)                                                          \
+    do                                                                          \
+    {                                                                           \
+        (c).capacity = (c).parts_num + CELL_INCREMENT;                          \
+        (c).parts = realloc((c).parts, (c).capacity * sizeof(*(c).parts));      \
+        assert((c).parts != NULL);                                              \
+        /* TO-DO: handle memory error */                                        \
+    } while (0)
+
+#define INSERT_PART_CORE_IN_CELL(pc, cell)                                      \
+    do                                                                          \
+    {                                                                           \
+        if ((cell).parts_num == (cell).capacity)                                \
+            RESIZE_CELL(cell);                                                  \
+        (cell).parts[(cell).parts_num++].core = pc;                             \
+    } while (0)
+
+#define INSERT_PARTICLE_IN_CELL(p, cell)                                        \
+    do                                                                          \
+    {                                                                           \
+        if ((cell).parts_num == (cell).capacity)                                \
+            RESIZE_CELL(cell);                                                  \
+        (cell).parts[(cell).parts_num++] = p;                                   \
+    } while (0)
+
+#define MINIMIZE_CELL(c)                                                        \
+    do                                                                          \
+    {                                                                           \
+        (c).parts_num = 0;                                                      \
+        (c).capacity = CELL_INCREMENT;                                          \
+        (c).parts = realloc((c).parts, (c).capacity * sizeof(*(c).parts));      \
+        assert((c).parts != NULL);                                              \
+        /* TO-DO: handle memory error */                                        \
+    } while (0)
+
+#define FREE_CELL(c)             \
+    do                           \
+    {                            \
+        (c).parts_num = 0;       \
+        (c).capacity = 0;        \
+        free((c).parts);         \
+        (c).parts = NULL;        \
+    } while (0)
+
+#define REMOVE_PARTICLE_FROM_CELL(c, i)                      \
+    do                                                       \
+    {                                                        \
+        (c).parts[i] = (c).parts[--(c).parts_num];           \
+        if ((c).parts_num + CELL_INCREMENT < (c).capacity)   \
+            RESIZE_CELL(c);                                  \
+    } while (0)
+
 #define ROOTPROCESS(numprocs)       ((numprocs) - 1)
 #define K_BOLTZMANN                 8.6173303e-5       // (eV / Kelvin)
 #define LIGHT_SPEED                 2.9979245800e+06   // (ang / ps)
@@ -110,26 +164,24 @@ typedef struct
     unsigned molkind;
     unsigned MolID;
     unsigned AtomID_local;
-} particle_t;
+} particle_core_t;
 
-typedef struct _ParticleListItem
+typedef struct _particle
 {
-    particle_t P;
+    particle_core_t core;
     fmd_rtuple_t F;
     fmd_real_t FembPrime;
     float LocOrdParamAvg;
-    struct _ParticleListItem *next_p;
-    list_t *neighbors;  // each data pointer in this list points to a mol_atom_neighbor_t
-} ParticleListItem_t;
+    list_t *neighbors;       /* each data pointer in this list points to a mol_atom_neighbor_t */
+} particle_t;
 
 typedef struct
 {
-    ParticleListItem_t *atom;
+    cell_t *cell;            /* points to the cell in which this neighbor atom is placed */
+    unsigned index;          /* the neighbor atom is placed at cell->parts[index] */
     unsigned LocalID;
     bondkind_t *bond;
 } mol_atom_neighbor_t;
-
-typedef ParticleListItem_t *cell_t;
 
 typedef struct
 {
@@ -137,13 +189,6 @@ typedef struct
     float var;
     unsigned atomkind;
 } XYZ_struct_t;
-
-typedef struct
-{
-    fmd_rtuple_t x;
-    unsigned atomkind;
-    int GroupID;
-} position_struct_t;
 
 typedef enum
 {
@@ -231,18 +276,22 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
-int getListLength(ParticleListItem_t *root_p);
 void identifyProcess(fmd_t *md);
 void handleFileOpenError(FILE *fp, char *filename);
 void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
 void restoreBackups(fmd_t *md);
-void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p);
-void removeFromList(ParticleListItem_t **item_pp);
 void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to);
+void _fmd_initialize_grid(cell_t ***grid, unsigned dim1, unsigned dim2, unsigned dim3);
+
+inline unsigned new_particle(cell_t *c)
+{
+    if (c->parts_num == c->capacity) RESIZE_CELL(*c);
+    return c->parts_num++;
+}
 
 /* */
 
-extern const fmd_ituple_t fmd_ThreeZeros;
+extern const fmd_ituple_t _fmd_ThreeZeros;
 
 #endif /* BASE_H */

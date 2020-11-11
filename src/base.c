@@ -28,26 +28,28 @@
 #include "molecule.h"
 #include "array.h"
 
-const fmd_ituple_t fmd_ThreeZeros = {0, 0, 0};
+const fmd_ituple_t _fmd_ThreeZeros = {0, 0, 0};
 
 static void refreshGrid(fmd_t *md, int reverse);
+
+void _fmd_initialize_grid(cell_t ***grid, unsigned dim1, unsigned dim2, unsigned dim3)
+{
+     for (int i=0; i < dim1; i++)
+        for (int j=0; j < dim2; j++)
+            for (int k=0; k < dim3; k++)
+            {
+                grid[i][j][k].capacity = 0;
+                grid[i][j][k].parts = NULL;
+                grid[i][j][k].parts_num = 0;
+            }
+}
 
 void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
 {
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p, **item_pp;
 
     ITERATE(ic, ic_from, ic_to)
-    {
-        item_pp = &grid[ic[0]][ic[1]][ic[2]];
-        item_p = *item_pp;
-        while (item_p != NULL)
-        {
-            removeFromList(item_pp);
-            free(item_p);
-            item_p = *item_pp;
-        }
-    }
+        FREE_CELL(grid[ic[0]][ic[1]][ic[2]]);
 }
 
 void compLocOrdParam(fmd_t *md)
@@ -197,62 +199,64 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 {
     fmd_ituple_t ic;
     int d;
-    ParticleListItem_t *item_p, **item_pp;
     fmd_real_t velocityScale, mass;
     fmd_real_t x;
-    int itemDestroyed;
 
     if (UseThermostat) velocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
                        (md->DesiredTemperature / md->GlobalTemperature - 1));
+
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
-        // iterate over all items in cell ic
-        item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-        item_p = *item_pp;
-        while (item_p != NULL)
+        /* iterate over all particles in cell ic */
+
+        int i=0;
+        cell_t *cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+
+        while (i < cell->parts_num)
         {
-            if (!(md->ActiveGroup == -1 || item_p->P.GroupID == md->ActiveGroup))
+            particle_t *p = &cell->parts[i];
+
+            if (!(md->ActiveGroup == -1 || p->core.GroupID == md->ActiveGroup))
             {
-                item_pp = &item_p->next_p;
-                item_p = *item_pp;
+                i++;
                 continue;
             }
 
-            itemDestroyed = 0;
-            mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
+            mass = md->potsys.atomkinds[p->core.atomkind].mass;
 
             for (d=0; d<3; d++)
             {
                 if (md->UseAutoStep)
                 {
-                    item_p->P.v_bak[d] = item_p->P.v[d];
-                    item_p->P.x_bak[d] = item_p->P.x[d];
+                    p->core.v_bak[d] = p->core.v[d];
+                    p->core.x_bak[d] = p->core.x[d];
                 }
-                if (UseThermostat) item_p->P.v[d] *= velocityScale;
-                item_p->P.v[d] += md->delta_t * 0.5 / mass * item_p->F[d];
-                x = item_p->P.x[d] + md->delta_t * item_p->P.v[d];
+
+                if (UseThermostat) p->core.v[d] *= velocityScale;
+
+                p->core.v[d] += md->delta_t * 0.5 / mass * p->F[d];
+                x = p->core.x[d] + md->delta_t * p->core.v[d];
 
                 if ( (md->ns[d] == 1) && ((x < 0.0) || (x >= md->l[d])) )
                 {
                     if (!md->PBC[d])
                     {
-                        removeFromList(item_pp);
-                        free(item_p);
+                        REMOVE_PARTICLE_FROM_CELL(*cell, i);
                         (md->SubDomain.NumberOfParticles)--;
-                        itemDestroyed = 1;
+                        i--;
                         break;
                     }
                     else
                         if (x < 0.0) x += md->l[d]; else x -= md->l[d];
                 }
-                item_p->P.x[d] = x;
+
+                p->core.x[d] = x;
             }
 
-            if (!itemDestroyed)
-                item_pp = &item_p->next_p;
-            item_p = *item_pp;
+            i++;
         }
     }
+
     refreshGrid(md, 0);
 }
 
@@ -260,31 +264,34 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
 {
     fmd_ituple_t ic;
     int d;
-    ParticleListItem_t *item_p;
     fmd_real_t m_vSqd_Sum = 0, m_vSqd_SumSum;
     fmd_real_t mass;
     int returnVal = 0;
     int particlesNum = 0;
     fmd_rtuple_t momentumSum = {0., 0., 0.};
+    cell_t *cell;
+    int i;
 
     for (ic[0] = md->SubDomain.ic_start[0]; ic[0] < md->SubDomain.ic_stop[0]; ic[0]++)
     {
         for (ic[1] = md->SubDomain.ic_start[1]; ic[1] < md->SubDomain.ic_stop[1]; ic[1]++)
             for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+                for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
                 {
-                    if (!(md->ActiveGroup == -1 || item_p->P.GroupID == md->ActiveGroup))
+                    particle_t *p = &cell->parts[i];
+
+                    if (!(md->ActiveGroup == -1 || p->core.GroupID == md->ActiveGroup))
                         continue;
                     particlesNum++;
-                    mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
+                    mass = md->potsys.atomkinds[p->core.atomkind].mass;
                     for (d=0; d<3; d++)
                     {
-                        item_p->P.v[d] += md->delta_t * 0.5 / mass * item_p->F[d];
-                        momentumSum[d] += mass * item_p->P.v[d];
+                        p->core.v[d] += md->delta_t * 0.5 / mass * p->F[d];
+                        momentumSum[d] += mass * p->core.v[d];
                     }
-                    m_vSqd_Sum += mass * ( SQR(item_p->P.v[0]) +
-                                           SQR(item_p->P.v[1]) +
-                                           SQR(item_p->P.v[2]) );
+                    m_vSqd_Sum += mass * ( SQR(p->core.v[0]) +
+                                           SQR(p->core.v[1]) +
+                                           SQR(p->core.v[2]) );
                 }
     }
     MPI_Reduce(momentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM,
@@ -327,22 +334,26 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
     return returnVal;
 }
 
-// not correct under periodic boundary conditions
-// see [J. Chem. Phys. 131, 154107 (2009)]
+/* not correct under periodic boundary conditions
+   see [J. Chem. Phys. 131, 154107 (2009)] */
 static fmd_real_t compVirial_internal(fmd_t *md)
 {
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p;
     fmd_real_t virial = 0.0;
     fmd_real_t virial_global;
+    int i;
+    cell_t *cell;
 
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
-            virial += item_p->P.x[0] * item_p->F[0] +
-                      item_p->P.x[1] * item_p->F[1] +
-                      item_p->P.x[2] * item_p->F[2];
+            particle_t *p = &cell->parts[i];
+
+            virial += p->core.x[0] * p->F[0] +
+                      p->core.x[1] * p->F[1] +
+                      p->core.x[2] * p->F[2];
         }
+
     MPI_Reduce(&virial, &virial_global, 1, FMD_MPI_REAL, MPI_SUM,
       ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
@@ -355,7 +366,7 @@ void createCommunicators(fmd_t *md)
     MPI_Group world_group, MD_group;
     int *ranks;
 
-    // create MD_comm
+    /* create MD_comm */
     mdnum = md->ns[0] * md->ns[1] * md->ns[2];
     ranks = (int *)malloc(mdnum * sizeof(int));
     for (i=0; i<mdnum; i++)
@@ -370,7 +381,6 @@ void createCommunicators(fmd_t *md)
 
 void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
 {
-    ParticleListItem_t *item_p;
     fmd_ituple_t ic;
     int d;
     fmd_rtuple_t LocalLower, LocalUpper;
@@ -378,32 +388,22 @@ void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
     LocalLower[0] = LocalLower[1] = LocalLower[2] = DBL_MAX;
     LocalUpper[0] = LocalUpper[1] = LocalUpper[2] = DBL_MIN;
 
+    int i;
+    cell_t *cell;
+
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
             for (d=0; d<3; d++)
             {
-                if (item_p->P.x[d] < LocalLower[d])
-                    LocalLower[d] = item_p->P.x[d];
-                if (item_p->P.x[d] > LocalUpper[d])
-                    LocalUpper[d] = item_p->P.x[d];
+                particle_core_t *pc = &cell->parts[i].core;
+
+                if (pc->x[d] < LocalLower[d])
+                    LocalLower[d] = pc->x[d];
+                if (pc->x[d] > LocalUpper[d])
+                    LocalUpper[d] = pc->x[d];
             }
     MPI_Allreduce(LocalLower, LowerLimit, 3, FMD_MPI_REAL, MPI_MIN, md->MD_comm);
     MPI_Allreduce(LocalUpper, UpperLimit, 3, FMD_MPI_REAL, MPI_MAX, md->MD_comm);
-}
-
-static void freeGlobalGrid(cell_t ***grid, int *cell_num)
-{
-    _fmd_cleanGridSegment(grid, fmd_ThreeZeros, cell_num);
-    _fmd_array_ordinary3d_free((void ***)grid, cell_num[0], cell_num[1]);
-}
-
-int getListLength(ParticleListItem_t *root_p)
-{
-    int i = 0;
-
-    for ( ; root_p != NULL; root_p = root_p->next_p)
-        i++;
-    return i;
 }
 
 void handleFileOpenError(FILE *fp, char *filename)
@@ -442,7 +442,6 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
     cell_t ***grid;
     int *start, *stop;
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p;
 
     if (md->ParticlesDistributed)
     {
@@ -452,7 +451,7 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
     }
     else
     {
-        start = fmd_ThreeZeros;
+        start = _fmd_ThreeZeros;
         if (md->Is_MD_comm_root)
         {
             grid = md->global_grid;
@@ -462,23 +461,28 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
             stop = start;
     }
 
+    int i;
+    cell_t *cell;
+    particle_core_t *pc;
+
     ITERATE(ic, start, stop)
-        for (item_p = grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-            if (GroupID == -1 || GroupID == item_p->P.GroupID)
+        for (cell = &grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+            if (pc = &cell->parts[i].core, GroupID == -1 || GroupID == pc->GroupID)
             {
-                item_p->P.v[0] += vx;
-                item_p->P.v[1] += vy;
-                item_p->P.v[2] += vz;
+                pc->v[0] += vx;
+                pc->v[1] += vy;
+                pc->v[2] += vz;
             }
 }
 
 void fmd_matt_distribute(fmd_t *md)
 {
-    ParticleListItem_t *item_p;
     int i, k, d, nct, sum_length;
     fmd_ituple_t ic;
     int *ic_length;
-    particle_t *is_particles;
+    particle_core_t *is_partcores;
+    cell_t *cell;
+    int pind;
 
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
@@ -486,7 +490,6 @@ void fmd_matt_distribute(fmd_t *md)
     {
         int r, w;
         fmd_ituple_t is, global_icstart, global_icstop;
-        ParticleListItem_t **item_pp;
         fmd_real_t m_vSqd_Sum = 0.0;
         fmd_real_t mass;
 
@@ -494,13 +497,16 @@ void fmd_matt_distribute(fmd_t *md)
         ttm_comp_min_atomsNo(global_grid, s_p);
 #endif
 
-        ITERATE(ic, fmd_ThreeZeros, md->nc)
-            for (item_p=md->global_grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        ITERATE(ic, _fmd_ThreeZeros, md->nc)
+            for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
             {
-                mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
+                particle_core_t *pc = &cell->parts[pind].core;
+
+                mass = md->potsys.atomkinds[pc->atomkind].mass;
                 for (d=0; d<3; d++)
-                    m_vSqd_Sum += mass * SQR(item_p->P.v[d]);
+                    m_vSqd_Sum += mass * SQR(pc->v[d]);
             }
+
         md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->TotalNoOfParticles * K_BOLTZMANN);
 
         for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
@@ -528,42 +534,46 @@ void fmd_matt_distribute(fmd_t *md)
             k = sum_length = 0;
             ITERATE(ic, global_icstart, global_icstop)
             {
-                ic_length[k] = getListLength(md->global_grid[ic[0]][ic[1]][ic[2]]);
+                ic_length[k] = md->global_grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length += ic_length[k++];
             }
             ic_length[nct] = sum_length;
+
             MPI_Send(ic_length, nct+1, MPI_INT, i, 50, md->MD_comm);
+
             free(ic_length);
-            sum_length *= sizeof(particle_t);
-            is_particles = (particle_t *)malloc(sum_length);
+
+            sum_length *= sizeof(particle_core_t);
+            is_partcores = (particle_core_t *)malloc(sum_length);
+
             k = 0;
             ITERATE(ic, global_icstart, global_icstop)
-                for (item_p=md->global_grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    is_particles[k++] = item_p->P;
-            MPI_Send(is_particles, sum_length, MPI_CHAR, i, 51, md->MD_comm);
-            free(is_particles);
+                for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
+                    is_partcores[k++] = cell->parts[pind].core;
+
+            MPI_Send(is_partcores, sum_length, MPI_CHAR, i, 51, md->MD_comm);
+
+            free(is_partcores);
         }
 
         md->SubDomain.NumberOfParticles = 0;
         ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         {
-            item_pp = &md->global_grid[ ic[0] - md->SubDomain.ic_start[0] + md->SubDomain.ic_global_firstcell[0] ]
-                                      [ ic[1] - md->SubDomain.ic_start[1] + md->SubDomain.ic_global_firstcell[1] ]
-                                      [ ic[2] - md->SubDomain.ic_start[2] + md->SubDomain.ic_global_firstcell[2] ];
-            item_p = *item_pp;
-
-            while (item_p != NULL)
+            cell = &md->global_grid[ ic[0] - md->SubDomain.ic_start[0] + md->SubDomain.ic_global_firstcell[0] ]
+                                   [ ic[1] - md->SubDomain.ic_start[1] + md->SubDomain.ic_global_firstcell[1] ]
+                                   [ ic[2] - md->SubDomain.ic_start[2] + md->SubDomain.ic_global_firstcell[2] ];
+            for (pind = 0; pind < cell->parts_num; pind++)
             {
-                removeFromList(item_pp);
-                item_p->neighbors = NULL;
-                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+
+                cell->parts[pind].neighbors = NULL;
+                INSERT_PARTICLE_IN_CELL(cell->parts[pind], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                 ++(md->SubDomain.NumberOfParticles);
-                item_p = *item_pp;
             }
 
-
+            FREE_CELL(*cell);
         }
-        freeGlobalGrid(md->global_grid, md->nc);
+
+        _fmd_array_ordinary3d_free((void ***)md->global_grid, md->nc[0], md->nc[1]);
     }
     else
     {
@@ -580,24 +590,28 @@ void fmd_matt_distribute(fmd_t *md)
         MPI_Recv(ic_length, nct+1, MPI_INT, ROOTPROCESS(md->SubDomain.numprocs),
                  50, md->MD_comm, &status);
         md->SubDomain.NumberOfParticles = sum_length = ic_length[nct];
-        sum_length *= sizeof(particle_t);
-        is_particles = (particle_t *)malloc(sum_length);
-        MPI_Recv(is_particles, sum_length, MPI_CHAR,
+        sum_length *= sizeof(particle_core_t);
+        is_partcores = (particle_core_t *)malloc(sum_length);
+
+        MPI_Recv(is_partcores, sum_length, MPI_CHAR,
                  ROOTPROCESS(md->SubDomain.numprocs), 51, md->MD_comm, &status);
+
         kreceive = k = 0;
         ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         {
-            for (i=0; i<ic_length[kreceive]; i++)
+            cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+
+            for (i=0; i < ic_length[kreceive]; i++)
             {
-                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                item_p->P = is_particles[k++];
-                item_p->neighbors = NULL;
-                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                unsigned pind = new_particle(cell);
+                cell->parts[pind].core = is_partcores[k++];
+                cell->parts[pind].neighbors = NULL;
             }
             kreceive++;
         }
+
         free(ic_length);
-        free(is_particles);
+        free(is_partcores);
     }
 
     MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs),
@@ -607,28 +621,21 @@ void fmd_matt_distribute(fmd_t *md)
     MPI_Bcast(&md->GlobalTemperature, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs),
               md->MD_comm);
 
-    if (md->TotalNoOfMolecules > 0) fmd_matt_updateNeighbors(md);
+    if (md->TotalNoOfMolecules > 0) _fmd_matt_updateAtomNeighbors(md);
 
     md->TotalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
     md->GlobalGridExists = FMD_FALSE;
     md->ParticlesDistributed = FMD_TRUE;
 }
 
-void fmd_insertInList(ParticleListItem_t **root_pp, ParticleListItem_t *item_p)
+void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
 {
-    item_p->next_p = *root_pp;
-    *root_pp = item_p;
-}
-
-void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
-{
-    ParticleListItem_t *item_p;
     FILE *fp;
     char name[3];
     int i, j, d;
     fmd_ituple_t ic;
-    fmd_real_t stateFileTime;
-    int particlesNum;
+    fmd_real_t StateFileTime;
+    int ParticlesNum;
     fmd_real_t l0, l1, l2;
     int PBC0, PBC1, PBC2;
 
@@ -636,11 +643,11 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
     {
         fp = fopen(file, "r");
         handleFileOpenError(fp, file);
-        fscanf(fp, "%lf", &stateFileTime);
-        if (useTime)
-            md->MD_time = stateFileTime;
-        fscanf(fp, "%d\n", &particlesNum);
-        md->TotalNoOfParticles += particlesNum;
+        fscanf(fp, "%lf", &StateFileTime);
+        if (UseTime)
+            md->MD_time = StateFileTime;
+        fscanf(fp, "%d\n", &ParticlesNum);
+        md->TotalNoOfParticles += ParticlesNum;
         fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2);
         fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2);
     }
@@ -672,27 +679,32 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t useTime)
     if (!md->GlobalGridExists)
         fmd_box_createGrid(md, md->CutoffRadius);
 
-    if (useTime)
+    if (UseTime)
         MPI_Bcast(&md->MD_time, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
-        for (i=0; i < particlesNum; i++)
+        for (i=0; i < ParticlesNum; i++)
         {
-            item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-            fscanf(fp, "%s%d", name, &item_p->P.GroupID);
+            particle_core_t pc;
+
+            fscanf(fp, "%s%d", name, &pc.GroupID);
+
             for (j=0; j < md->potsys.atomkinds_num; j++)
                 if (strcmp(name, md->potsys.atomkinds[j].name) == 0)
                 {
-                    item_p->P.atomkind = j;
+                    pc.atomkind = j;
                     break;
                 }
-            // TO-DO: what if the name doesn't exist in potsys?
-            fscanf(fp, "%lf%lf%lf", &item_p->P.x[0], &item_p->P.x[1], &item_p->P.x[2]);
-            fscanf(fp, "%lf%lf%lf", &item_p->P.v[0], &item_p->P.v[1], &item_p->P.v[2]);
+
+            /* TO-DO: what if the name doesn't exist in potsys? */
+            fscanf(fp, "%lf%lf%lf", &pc.x[0], &pc.x[1], &pc.x[2]);
+            fscanf(fp, "%lf%lf%lf", &pc.v[0], &pc.v[1], &pc.v[2]);
+
             for (d=0; d<3; d++)
-                ic[d] = (int)floor(item_p->P.x[d] / md->cellh[d]);
-            fmd_insertInList(&(md->global_grid[ic[0]][ic[1]][ic[2]]), item_p);
+                ic[d] = (int)floor(pc.x[d] / md->cellh[d]);
+
+            INSERT_PART_CORE_IN_CELL(pc, md->global_grid[ic[0]][ic[1]][ic[2]]);
         }
         fclose(fp);
     }
@@ -702,26 +714,30 @@ static void refreshGrid(fmd_t *md, int reverse)
 {
     fmd_ituple_t ic, jc;
     int d;
-    ParticleListItem_t **item_pp;
-    ParticleListItem_t *item_p;
 
-    // iterate over all cells(lists)
+    /* iterate over all cells */
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
-        // iterate over all items in cell ic
-        item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-        item_p = *item_pp;
-        while (item_p != NULL)
+
+        /* iterate over all particles in cell ic */
+
+        cell_t *cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        int pind = 0;  /* particle index */
+
+        while (pind < cell->parts_num)
         {
+            particle_t *p = &cell->parts[pind];
+
             for (d=0; d<3; d++)
             {
-                jc[d] = (int)floor(item_p->P.x[d] / md->cellh[d]) - md->SubDomain.ic_global_firstcell[d] + md->SubDomain.ic_start[d];
+                jc[d] = (int)floor(p->core.x[d] / md->cellh[d]) - md->SubDomain.ic_global_firstcell[d] + md->SubDomain.ic_start[d];
+
                 if (jc[d] < 0)
                 {
                     if (reverse && md->PBC[d] && md->ns[d] > 1 &&
                         md->SubDomain.is[d]==md->ns[d]-1 && ic[d] >= md->SubDomain.ic_stop[d]-md->SubDomain.ic_start[d])
                     {
-                        item_p->P.x[d] += md->l[d];
+                        p->core.x[d] += md->l[d];
                         jc[d] = ic[d] + md->SubDomain.ic_start[d];
                     }
                     else
@@ -736,7 +752,7 @@ static void refreshGrid(fmd_t *md, int reverse)
                         if (reverse && md->PBC[d] && md->ns[d] > 1 &&
                             md->SubDomain.is[d]==0 && ic[d] < 2*md->SubDomain.ic_start[d])
                         {
-                            item_p->P.x[d] -= md->l[d];
+                            p->core.x[d] -= md->l[d];
                             jc[d] = ic[d] - md->SubDomain.ic_start[d];
                         }
                         else
@@ -749,38 +765,34 @@ static void refreshGrid(fmd_t *md, int reverse)
 
             if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
             {
-                removeFromList(item_pp);
-                fmd_insertInList(&md->SubDomain.grid[jc[0]][jc[1]][jc[2]], item_p);
+                INSERT_PARTICLE_IN_CELL(*p, md->SubDomain.grid[jc[0]][jc[1]][jc[2]]);
+                REMOVE_PARTICLE_FROM_CELL(*cell, pind);
             }
-            else
-                item_pp = &item_p->next_p;
 
-            item_p = *item_pp;
+            pind++;
         }
     }
 
-    // now particles in ghost cells migrate to neighbour subdomains
+    /* now particles in ghost cells migrate to neighbour subdomains */
     fmd_particles_migrate(md);
-}
-
-void removeFromList(ParticleListItem_t **item_pp)
-{
-    *item_pp = (*item_pp)->next_p;
 }
 
 void rescaleVelocities(fmd_t *md)
 {
     fmd_ituple_t ic;
     int d;
-    ParticleListItem_t *item_p;
     fmd_real_t scale;
 
     scale = sqrt(md->DesiredTemperature / md->GlobalTemperature);
 
+    cell_t *cell;
+    int i;
+
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
             for (d=0; d<3; d++)
-                item_p->P.v[d] *= scale;
+                cell->parts[i].core.v[d] *= scale;
+
     md->GlobalTemperature = md->DesiredTemperature;
 }
 
@@ -788,17 +800,21 @@ void restoreBackups(fmd_t *md)
 {
     fmd_ituple_t ic;
     int d;
-    ParticleListItem_t *item_p;
+    cell_t *cell;
+    int pind;
 
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
         {
+            particle_core_t *pc = &cell->parts[pind].core;
+
             for (d=0; d<3; d++)
             {
-                item_p->P.x[d] = item_p->P.x_bak[d];
-                item_p->P.v[d] = item_p->P.v_bak[d];
+                pc->x[d] = pc->x_bak[d];
+                pc->v[d] = pc->v_bak[d];
             }
         }
+
     refreshGrid(md, 1);
 
 #ifdef USE_TTM
@@ -809,36 +825,40 @@ void restoreBackups(fmd_t *md)
 void fmd_matt_saveConfiguration(fmd_t *md)
 {
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p;
     XYZ_struct_t *localData, *globalData;
     int *nums, *recvcounts, *displs;
     int k;
+    cell_t *cell;
+    int pind;
 
     localData = (XYZ_struct_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t));
     k=0;
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
         {
+            particle_core_t *pc = &cell->parts[pind].core;
+
             if (md->CompLocOrdParam)
             {
-                localData[k].x[0] = (float)item_p->P.x_avgd[0];
-                localData[k].x[1] = (float)item_p->P.x_avgd[1];
-                localData[k].x[2] = (float)item_p->P.x_avgd[2];
+                localData[k].x[0] = (float)pc->x_avgd[0];
+                localData[k].x[1] = (float)pc->x_avgd[1];
+                localData[k].x[2] = (float)pc->x_avgd[2];
             }
             else
             {
-                localData[k].x[0] = (float)item_p->P.x[0];
-                localData[k].x[1] = (float)item_p->P.x[1];
-                localData[k].x[2] = (float)item_p->P.x[2];
+                localData[k].x[0] = (float)pc->x[0];
+                localData[k].x[1] = (float)pc->x[1];
+                localData[k].x[2] = (float)pc->x[2];
             }
-            localData[k].var = item_p->P.GroupID;
-            localData[k].atomkind = item_p->P.atomkind;
+            localData[k].var = pc->GroupID;
+            localData[k].atomkind = pc->atomkind;
             k++;
         }
 
     nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
     MPI_Allgather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
         md->MD_comm);
+
     md->TotalNoOfParticles = 0;
     for (k=0; k < md->SubDomain.numprocs; k++)
         md->TotalNoOfParticles += nums[k];
@@ -918,7 +938,7 @@ void fmd_matt_saveConfiguration(fmd_t *md)
                         if (globalData[k].atomkind == i)
                             count++;
                     fprintf(md->ConfigFilep, "atom %d:%d\tname %s\n", atomID,
-                     atomID+count-1, md->potsys.atomkinds[i].name);
+                            atomID+count-1, md->potsys.atomkinds[i].name);
                     atomID += count;
                 }
                 atomID = 0;
@@ -968,23 +988,26 @@ void fmd_matt_saveConfiguration(fmd_t *md)
 
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 {
-    particle_t *is_particles, *P_p;
+    particle_core_t *is_partcores;
     int *nums;
     int i, k;
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p;
     char stateFilePath[MAX_PATH_LENGTH];
     FILE *fp;
     MPI_Status status;
+    cell_t *cell;
+    int pind;
 
     if (md->Is_MD_comm_root)
     {
         nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
         MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-            ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+                   ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+
         md->TotalNoOfParticles = 0;
         for (k=0; k < md->SubDomain.numprocs; k++)
             md->TotalNoOfParticles += nums[k];
+
         sprintf(stateFilePath, "%s%s", md->SaveDirectory, filename);
         fp = fopen(stateFilePath, "w");
         handleFileOpenError(fp, stateFilePath);
@@ -992,42 +1015,52 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         fprintf(fp, "%d\n", md->TotalNoOfParticles);
         fprintf(fp, "%.16e\t%.16e\t%.16e\n", md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
+
         ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+            for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
             {
-                fprintf(fp, "%s %d\n", md->potsys.atomkinds[item_p->P.atomkind].name, item_p->P.GroupID);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", item_p->P.x[0], item_p->P.x[1], item_p->P.x[2]);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", item_p->P.v[0], item_p->P.v[1], item_p->P.v[2]);
+                particle_core_t *pc = &cell->parts[pind].core;
+
+                fprintf(fp, "%s %d\n", md->potsys.atomkinds[pc->atomkind].name, pc->GroupID);
+                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->x[0], pc->x[1], pc->x[2]);
+                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->v[0], pc->v[1], pc->v[2]);
             }
+
         for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
         {
-            is_particles = (particle_t *)malloc(nums[i] * sizeof(particle_t));
-            MPI_Recv(is_particles, nums[i] * sizeof(particle_t), MPI_CHAR, i, 150,
-                md->MD_comm, &status);
+            is_partcores = (particle_core_t *)malloc(nums[i] * sizeof(particle_core_t));
+            MPI_Recv(is_partcores, nums[i] * sizeof(particle_core_t), MPI_CHAR, i, 150,
+                     md->MD_comm, &status);
+
             for (k=0; k < nums[i]; k++)
             {
-                P_p = is_particles + k;
-                fprintf(fp, "%s %d\n", md->potsys.atomkinds[P_p->atomkind].name, P_p->GroupID);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", P_p->x[0], P_p->x[1], P_p->x[2]);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", P_p->v[0], P_p->v[1], P_p->v[2]);
+                particle_core_t *pc = is_partcores + k;
+
+                fprintf(fp, "%s %d\n", md->potsys.atomkinds[pc->atomkind].name, pc->GroupID);
+                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->x[0], pc->x[1], pc->x[2]);
+                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->v[0], pc->v[1], pc->v[2]);
             }
-            free(is_particles);
+
+            free(is_partcores);
         }
+
         free(nums);
         fclose(fp);
     }
     else
     {
         MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-            ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        is_particles = (particle_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(particle_t));
+                   ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        is_partcores = (particle_core_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(particle_core_t));
+
         k = 0;
         ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                is_particles[k++] = item_p->P;
-        MPI_Send(is_particles, md->SubDomain.NumberOfParticles * sizeof(particle_t), MPI_CHAR,
-            ROOTPROCESS(md->SubDomain.numprocs), 150, md->MD_comm);
-        free(is_particles);
+            for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
+                is_partcores[k++] = cell->parts[pind].core;
+
+        MPI_Send(is_partcores, md->SubDomain.NumberOfParticles * sizeof(particle_core_t), MPI_CHAR,
+                 ROOTPROCESS(md->SubDomain.numprocs), 150, md->MD_comm);
+        free(is_partcores);
     }
 }
 
@@ -1169,8 +1202,7 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
         assert(md->global_grid != NULL);
         /* TO-DO: handle memory error */
 
-        /* set all pointers to NULL */
-        _fmd_array_3d_pointer_clean((fmd_pointer_t ***)md->global_grid, md->nc[0], md->nc[1], md->nc[2]);
+        _fmd_initialize_grid(md->global_grid, md->nc[0], md->nc[1], md->nc[2]);
     }
     md->GlobalGridExists = FMD_TRUE;
     md->CutoffRadius = cutoff;
@@ -1278,7 +1310,6 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     cell_t ***grid;
     int *start, *stop;
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p;
 
     if (md->ParticlesDistributed)
     {
@@ -1288,7 +1319,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     }
     else
     {
-        start = fmd_ThreeZeros;
+        start = _fmd_ThreeZeros;
         if (md->Is_MD_comm_root)
         {
             grid = md->global_grid;
@@ -1303,16 +1334,21 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     gsl_rng_set(rng, time(NULL));
     int d;
 
+    cell_t *cell;
+    int pind;
+
     ITERATE(ic, start, stop)
-        for (item_p = grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &grid[ic[0]][ic[1]][ic[2]], pind = 0; pind < cell->parts_num; pind++)
         {
-            if (GroupID == -1 || GroupID == item_p->P.GroupID)
+            particle_core_t *pc = &cell->parts[pind].core;
+
+            if (GroupID == -1 || GroupID == pc->GroupID)
             {
-                fmd_real_t mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
+                fmd_real_t mass = md->potsys.atomkinds[pc->atomkind].mass;
                 fmd_real_t stdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
 
                 for (d=0; d<3; d++)
-                    item_p->P.v[d] = gsl_ran_gaussian_ziggurat(rng, stdDevVelocity);
+                    pc->v[d] = gsl_ran_gaussian_ziggurat(rng, stdDevVelocity);
             }
         }
 

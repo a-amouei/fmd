@@ -27,32 +27,36 @@ void fmd_computeLJ(fmd_t *md)
 {
     fmd_ituple_t jc, kc;
     int d;
-    ParticleListItem_t *item1_p, *item2_p;
     fmd_real_t r2;
     fmd_rtuple_t rv;
     int ic0, ic1, ic2;
     fmd_real_t potEnergy = 0.0;
     potpair_t **pottable = md->potsys.pottable;
 
-    // iterate over all cells(lists)
-    #pragma omp parallel for private(ic0,ic1,ic2,item1_p,d,kc,jc,item2_p,rv,r2) \
+    /* iterate over all cells(lists) */
+    #pragma omp parallel for private(ic0,ic1,ic2,d,kc,jc,rv,r2) \
       shared(md,pottable) default(none) collapse(3) reduction(+:potEnergy) schedule(static,1)
     for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
         for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
             for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
             {
-                // iterate over all items in cell ic
-                for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
+                int i1, i2;
+                cell_t *cell1, *cell2;
+
+                /* iterate over all items in cell ic */
+                for (cell1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < cell1->parts_num; i1++)
                 {
-                    if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
+                    particle_t *p1 = &cell1->parts[i1];
+
+                    if (!(md->ActiveGroup == -1 || p1->core.GroupID == md->ActiveGroup))
                         continue;
 
-                    unsigned atomkind1 = item1_p->P.atomkind;
+                    unsigned atomkind1 = p1->core.atomkind;
 
                     for (d=0; d<3; d++)
-                        item1_p->F[d] = 0.0;
+                        p1->F[d] = 0.0;
 
-                    // iterate over neighbor cells of cell ic
+                    /* iterate over neighbor cells of cell ic */
                     for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
                     {
                         SET_jc_IN_DIRECTION(0)
@@ -62,17 +66,20 @@ void fmd_computeLJ(fmd_t *md)
                             for (kc[2]=ic2-1; kc[2]<=ic2+1; kc[2]++)
                             {
                                 SET_jc_IN_DIRECTION(2)
-                                // iterate over all items in cell jc
-                                for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+
+                                /* iterate over all items in cell jc */
+                                for (cell2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]], i2=0; i2 < cell2->parts_num; i2++)
                                 {
-                                    if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
+                                    particle_t *p2 = &cell2->parts[i2];
+
+                                    if (!(md->ActiveGroup == -1 || p2->core.GroupID == md->ActiveGroup))
                                         continue;
 
-                                    if (item1_p->P.molkind!=0 && item1_p->P.MolID==item2_p->P.MolID) continue;// TO-DO
+                                    if (p1->core.molkind!=0 && p1->core.MolID==p2->core.MolID) continue;// TO-DO
 
-                                    if (item1_p != item2_p)
+                                    if (p1 != p2)
                                     {
-                                        unsigned atomkind2 = item2_p->P.atomkind;
+                                        unsigned atomkind2 = p2->core.atomkind;
 
                                         COMPUTE_rv_AND_r2;
 
@@ -82,16 +89,16 @@ void fmd_computeLJ(fmd_t *md)
                                         {
                                             fmd_real_t inv_r2, inv_rs2, inv_rs6, inv_rs12;
 
-                                            // force, F = -(d/dr)U
+                                            /* force, F = -(d/dr)U */
                                             inv_r2 = 1.0/r2;
                                             inv_rs2 = SQR(lj->sig) * inv_r2;
                                             inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;
                                             inv_rs12 = SQR(inv_rs6);
                                             fmd_real_t factor = lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6);
                                             for (d=0; d<3; d++)
-                                                item1_p->F[d] += rv[d] * factor;
+                                                p1->F[d] += rv[d] * factor;
 
-                                            // potential energy, U = 4*eps*( (sig/r)^12 - (sig/r)^6 )
+                                            /* potential energy, U = 4*eps*( (sig/r)^12 - (sig/r)^6 ) */
                                             potEnergy += lj->eps * (inv_rs12 - inv_rs6);
                                         }
                                     }
@@ -101,7 +108,7 @@ void fmd_computeLJ(fmd_t *md)
                     }
 
                     for (d=0; d<3; d++)
-                        item1_p->F[d] *= 48.0;
+                        p1->F[d] *= 48.0;
                 }
             }
 
@@ -121,10 +128,10 @@ fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
     pot->cat = POT_LJ_6_12;
     pot->data = lj;
 
-    // add the pot to potlist
+    /* add the pot to potlist */
     md->potsys.potlist = fmd_list_prepend(md->potsys.potlist, pot);
 
-    // apply the pot
+    /* apply the pot */
     fmd_pot_apply(md, atomkind1, atomkind2, pot);
 
     return pot;

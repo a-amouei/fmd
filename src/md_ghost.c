@@ -17,11 +17,20 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// functions for working with ghost cells of MD subdomains, including
-// communication of data from or to them
+/* functions for working with ghost cells of MD subdomains, including
+   communication of data from or to them */
+
 
 #include "base.h"
 #include "md_ghost.h"
+#include "types.h"
+
+typedef struct
+{
+    fmd_rtuple_t x;
+    unsigned atomkind;
+    int GroupID;
+} position_struct_t;
 
 static void particles_migrate_in_direction_d(
     fmd_t *md, int d, fmd_ituple_t ic_start_send_lower,
@@ -36,16 +45,14 @@ static void particles_migrate_in_direction_d(
     int k, kreceive, cells_num;
     int *cells_length_send, *cells_length_receive;
     fmd_ituple_t ic;
-    particle_t *particles_send, *particles_receive;
+    particle_core_t *pcs_send, *pcs_receive;
     int dd;
-    ParticleListItem_t *item_p, **item_pp;
-    int cc;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
     {
         if (md->SubDomain.is[d] == 0)
         {
-            // receiving from upper process
+            /* receiving from upper process */
             cells_num = 1;
             for (dd=0; dd<3; dd++)
                 cells_num *= ic_stop_receive_upper[dd] - ic_start_receive_upper[dd];
@@ -53,42 +60,34 @@ static void particles_migrate_in_direction_d(
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_upper_subd[d],
                      1, md->MD_comm, &status);
             md->SubDomain.NumberOfParticles += cells_length_receive[cells_num];
-            sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
-            particles_receive = (particle_t *)malloc(sum_length_receive);
-            MPI_Recv(particles_receive, sum_length_receive, MPI_CHAR,
+            sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_core_t);
+            pcs_receive = (particle_core_t *)malloc(sum_length_receive);
+            MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_upper_subd[d], 2, md->MD_comm, &status);
+
             kreceive = k = 0;
             ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
             {
-                for (cc=0; cc<cells_length_receive[kreceive]; cc++)
-                {
-                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                    item_p->P = particles_receive[k++];
-                    fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
-                }
+                for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
+                    INSERT_PART_CORE_IN_CELL(pcs_receive[k++], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                 kreceive++;
             }
+
             free(cells_length_receive);
-            free(particles_receive);
-            //
+            free(pcs_receive);
+            /* */
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             {
-                item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-                item_p = *item_pp;
-                while (item_p != NULL)
-                {
-                    removeFromList(item_pp);
-                    --(md->SubDomain.NumberOfParticles);
-                    free(item_p);
-                    item_p = *item_pp;
-                }
+                md->SubDomain.NumberOfParticles -= md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
+                MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
-            // sending to upper process
+
+            /* sending to upper process */
             cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
             k = sum_length_send = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             {
-                cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
             }
             cells_length_send[cells_num] = sum_length_send;
@@ -96,29 +95,25 @@ static void particles_migrate_in_direction_d(
                      md->MD_comm);
             free(cells_length_send);
             md->SubDomain.NumberOfParticles -= sum_length_send;
-            sum_length_send *= sizeof(particle_t);
-            particles_send = (particle_t *)malloc(sum_length_send);
-            k = 0;
+            sum_length_send *= sizeof(particle_core_t);
+            pcs_send = (particle_core_t *)malloc(sum_length_send);
+
+            k=0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             {
-                item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-                item_p = *item_pp;
-                while (item_p != NULL)
-                {
-                    removeFromList(item_pp);
-                    particles_send[k++] = item_p->P;
-                    free(item_p);
-                    item_p = *item_pp;
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
 
-                }
+                MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
-            MPI_Send(particles_send, sum_length_send, MPI_CHAR,
+
+            MPI_Send(pcs_send, sum_length_send, MPI_CHAR,
                      md->SubDomain.rank_of_upper_subd[d], 4, md->MD_comm);
-            free(particles_send);
+            free(pcs_send);
         }
-        else // if (md->SubDomain.is[d] == md->ns[d]-1)
+        else /* if (md->SubDomain.is[d] == md->ns[d]-1) */
         {
-            // sending to lower process
+            /* sending to lower process */
             cells_num = 1;
             for (dd=0; dd<3; dd++)
                 cells_num *= ic_stop_send_lower[dd] - ic_start_send_lower[dd];
@@ -126,7 +121,7 @@ static void particles_migrate_in_direction_d(
             k = sum_length_send = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             {
-                cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
             }
             cells_length_send[cells_num] = sum_length_send;
@@ -134,64 +129,51 @@ static void particles_migrate_in_direction_d(
                      md->MD_comm);
             free(cells_length_send);
             md->SubDomain.NumberOfParticles -= sum_length_send;
-            sum_length_send *= sizeof(particle_t);
-            particles_send = (particle_t *)malloc(sum_length_send);
-            k = 0;
+            sum_length_send *= sizeof(particle_core_t);
+            pcs_send = (particle_core_t *)malloc(sum_length_send);
+
+            k=0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             {
-                item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-                item_p = *item_pp;
-                while (item_p != NULL)
-                {
-                    removeFromList(item_pp);
-                    particles_send[k++] = item_p->P;
-                    free(item_p);
-                    item_p = *item_pp;
-                }
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
+
+                MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
-            MPI_Send(particles_send, sum_length_send, MPI_CHAR,
+
+            MPI_Send(pcs_send, sum_length_send, MPI_CHAR,
                      md->SubDomain.rank_of_lower_subd[d], 2, md->MD_comm);
-            free(particles_send);
-            // receiving from lower process
+            free(pcs_send);
+
+            /* receiving from lower process */
             cells_length_receive = (int *)malloc((cells_num+1) * sizeof(int));
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 3,
                      md->MD_comm, &status);
             md->SubDomain.NumberOfParticles += cells_length_receive[cells_num];
-            sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
-            particles_receive = (particle_t *)malloc(sum_length_receive);
-            MPI_Recv(particles_receive, sum_length_receive, MPI_CHAR,
+            sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_core_t);
+            pcs_receive = (particle_core_t *)malloc(sum_length_receive);
+            MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_lower_subd[d], 4, md->MD_comm, &status);
             kreceive = k = 0;
             ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
             {
-                for (cc=0; cc<cells_length_receive[kreceive]; cc++)
-                {
-                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                    item_p->P = particles_receive[k++];
-                    fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
-                }
+                for (int cc=0; cc<cells_length_receive[kreceive]; cc++)
+                    INSERT_PART_CORE_IN_CELL(pcs_receive[k++], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                 kreceive++;
             }
             free(cells_length_receive);
-            free(particles_receive);
-            //
+            free(pcs_receive);
+            /* */
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             {
-                item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-                item_p = *item_pp;
-                while (item_p != NULL)
-                {
-                    removeFromList(item_pp);
-                    --(md->SubDomain.NumberOfParticles);
-                    free(item_p);
-                    item_p = *item_pp;
-                }
+                md->SubDomain.NumberOfParticles -= md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
+                MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
         }
     }
     else
     {
-        // sending to lower process, receiving from upper process
+        /* sending to lower process, receiving from upper process */
         cells_num = 1;
         for (dd=0; dd<3; dd++)
             cells_num *= ic_stop_send_lower[dd] - ic_start_send_lower[dd];
@@ -200,7 +182,7 @@ static void particles_migrate_in_direction_d(
         k = sum_length_send = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
         {
-            cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
         }
         cells_length_send[cells_num] = sum_length_send;
@@ -210,48 +192,46 @@ static void particles_migrate_in_direction_d(
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         md->SubDomain.NumberOfParticles += cells_length_receive[cells_num] - sum_length_send;
-        sum_length_send *= sizeof(particle_t);
-        particles_send = (particle_t *)malloc(sum_length_send);
-        sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
-        particles_receive = (particle_t *)malloc(sum_length_receive);
-        k = 0;
+        sum_length_send *= sizeof(particle_core_t);
+        pcs_send = (particle_core_t *)malloc(sum_length_send);
+        sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_core_t);
+        pcs_receive = (particle_core_t *)malloc(sum_length_receive);
+
+        k=0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
         {
-            item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-            item_p = *item_pp;
-            while (item_p != NULL)
-            {
-                removeFromList(item_pp);
-                particles_send[k++] = item_p->P;
-                free(item_p);
-                item_p = *item_pp;
-            }
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
+
+            MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
         }
-        MPI_Isend(particles_send, sum_length_send, MPI_CHAR,
+
+        MPI_Isend(pcs_send, sum_length_send, MPI_CHAR,
                   md->SubDomain.rank_of_lower_subd[d], 2, md->MD_comm, &request);
-        MPI_Recv(particles_receive, sum_length_receive, MPI_CHAR,
+        MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
                  md->SubDomain.rank_of_upper_subd[d], 2, md->MD_comm, &status);
         MPI_Wait(&request, &status);
-        free(particles_send);
+        free(pcs_send);
+
         kreceive = k = 0;
         ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
         {
-            for (cc=0; cc<cells_length_receive[kreceive]; cc++)
+            for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
-                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                item_p->P = particles_receive[k++];
                 if (md->SubDomain.is[d] == md->ns[d] - 1)
-                    item_p->P.x[d] += md->l[d];
-                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    pcs_receive[k].x[d] += md->l[d];
+                INSERT_PART_CORE_IN_CELL(pcs_receive[k++], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
             kreceive++;
         }
-        free(particles_receive);
-        // sending to upper process, receiving from lower process
+
+        free(pcs_receive);
+
+        /* sending to upper process, receiving from lower process */
         k = sum_length_send = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
         {
-            cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
         }
         cells_length_send[cells_num] = sum_length_send;
@@ -262,44 +242,41 @@ static void particles_migrate_in_direction_d(
         MPI_Wait(&request, &status);
         free(cells_length_send);
         md->SubDomain.NumberOfParticles += cells_length_receive[cells_num] - sum_length_send;
-        sum_length_send *= sizeof(particle_t);
-        particles_send = (particle_t *)malloc(sum_length_send);
-        sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_t);
-        particles_receive = (particle_t *)malloc(sum_length_receive);
-        k = 0;
+        sum_length_send *= sizeof(particle_core_t);
+        pcs_send = (particle_core_t *)malloc(sum_length_send);
+        sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_core_t);
+        pcs_receive = (particle_core_t *)malloc(sum_length_receive);
+
+        k=0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
         {
-            item_pp = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-            item_p = *item_pp;
-            while (item_p != NULL)
-            {
-                removeFromList(item_pp);
-                particles_send[k++] = item_p->P;
-                free(item_p);
-                item_p = *item_pp;
-            }
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
+
+            MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
         }
-        MPI_Isend(particles_send, sum_length_send, MPI_CHAR,
+
+        MPI_Isend(pcs_send, sum_length_send, MPI_CHAR,
                   md->SubDomain.rank_of_upper_subd[d], 4, md->MD_comm, &request);
-        MPI_Recv(particles_receive, sum_length_receive, MPI_CHAR,
+        MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
                  md->SubDomain.rank_of_lower_subd[d], 4, md->MD_comm, &status);
         MPI_Wait(&request, &status);
-        free(particles_send);
+        free(pcs_send);
+
         kreceive = k = 0;
         ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
         {
-            for (cc=0; cc<cells_length_receive[kreceive]; cc++)
+            for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
-                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                item_p->P = particles_receive[k++];
                 if (md->SubDomain.is[d] == 0)
-                    item_p->P.x[d] -= md->l[d];
-                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    pcs_receive[k].x[d] -= md->l[d];
+                INSERT_PART_CORE_IN_CELL(pcs_receive[k++], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
             kreceive++;
         }
+
         free(cells_length_receive);
-        free(particles_receive);
+        free(pcs_receive);
     }
 }
 
@@ -317,14 +294,12 @@ static void ghostparticles_init_in_direction_d(
     fmd_ituple_t ic;
     position_struct_t *data_send, *data_receive;
     int dd;
-    ParticleListItem_t *item_p;
-    int cc;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
     {
         if (md->SubDomain.is[d] == 0)
         {
-            // receiving from upper process
+            /* receiving from upper process */
             cells_num = 1;
             for (dd=0; dd<3; dd++)
                 cells_num *= ic_stop_receive_upper[dd] - ic_start_receive_upper[dd];
@@ -335,31 +310,31 @@ static void ghostparticles_init_in_direction_d(
             data_receive = (position_struct_t *)malloc(sum_length_receive);
             MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_upper_subd[d], 6, md->MD_comm, &status);
-            kreceive = 0;
-            k = -1;
+
+            kreceive = k = 0;
             ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
             {
-                k += cells_length_receive[kreceive];
-                for (cc=0; cc<cells_length_receive[kreceive]; cc++)
+                for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
                 {
-                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
+                    new_particle(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                     for (dd=0; dd<3; dd++)
-                        item_p->P.x[dd] = data_receive[k].x[dd];
-                    item_p->P.atomkind = data_receive[k].atomkind;
-                    item_p->P.GroupID = data_receive[k--].GroupID;
-                    fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                        md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd] = data_receive[k].x[dd];
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind = data_receive[k].atomkind;
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID = data_receive[k].GroupID;
+                    k++;
                 }
-                k += cells_length_receive[kreceive];
                 kreceive++;
             }
+
             free(cells_length_receive);
             free(data_receive);
-            // sending to upper process
+
+            /* sending to upper process */
             cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
             k = sum_length_send = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
             {
-                cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
             }
             cells_length_send[cells_num] = sum_length_send;
@@ -368,22 +343,27 @@ static void ghostparticles_init_in_direction_d(
             free(cells_length_send);
             sum_length_send *= sizeof(position_struct_t);
             data_send = (position_struct_t *)malloc(sum_length_send);
-            k = 0;
+
+            k=0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+            {
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 {
                     for (dd=0; dd<3; dd++)
-                        data_send[k].x[dd] = item_p->P.x[dd];
-                    data_send[k].atomkind = item_p->P.atomkind;
-                    data_send[k++].GroupID = item_p->P.GroupID;
+                        data_send[k].x[dd] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd];
+                    data_send[k].atomkind = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind;
+                    data_send[k].GroupID = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID;
+                    k++;
                 }
+            }
+
             MPI_Send(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_upper_subd[d],
                      8, md->MD_comm);
             free(data_send);
         }
-        else // if (md->SubDomain.is[d] == md->ns[d]-1)
+        else /* if (md->SubDomain.is[d] == md->ns[d]-1) */
         {
-            // sending to lower process
+            /* sending to lower process */
             cells_num = 1;
             for (dd=0; dd<3; dd++)
                 cells_num *= ic_stop_send_lower[dd] - ic_start_send_lower[dd];
@@ -391,7 +371,7 @@ static void ghostparticles_init_in_direction_d(
             k = sum_length_send = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
             {
-                cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
             }
             cells_length_send[cells_num] = sum_length_send;
@@ -400,19 +380,25 @@ static void ghostparticles_init_in_direction_d(
             free(cells_length_send);
             sum_length_send *= sizeof(position_struct_t);
             data_send = (position_struct_t *)malloc(sum_length_send);
-            k = 0;
+
+            k=0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+            {
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 {
                     for (dd=0; dd<3; dd++)
-                        data_send[k].x[dd] = item_p->P.x[dd];
-                    data_send[k].atomkind = item_p->P.atomkind;
-                    data_send[k++].GroupID = item_p->P.GroupID;
+                        data_send[k].x[dd] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd];
+                    data_send[k].atomkind = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind;
+                    data_send[k].GroupID = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID;
+                    k++;
                 }
+            }
+
             MPI_Send(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_lower_subd[d],
                      6, md->MD_comm);
             free(data_send);
-            // receiving from lower process
+
+            /* receiving from lower process */
             cells_length_receive = (int *)malloc((cells_num+1) * sizeof(int));
             MPI_Recv(cells_length_receive, cells_num+1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 7,
                      md->MD_comm, &status);
@@ -420,30 +406,29 @@ static void ghostparticles_init_in_direction_d(
             data_receive = (position_struct_t *)malloc(sum_length_receive);
             MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_lower_subd[d], 8, md->MD_comm, &status);
-            kreceive = 0;
-            k = -1;
+
+            kreceive = k = 0;
             ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
             {
-                k += cells_length_receive[kreceive];
-                for (cc=0; cc<cells_length_receive[kreceive]; cc++)
+                for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
                 {
-                    item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
+                    new_particle(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                     for (dd=0; dd<3; dd++)
-                        item_p->P.x[dd] = data_receive[k].x[dd];
-                    item_p->P.atomkind = data_receive[k].atomkind;
-                    item_p->P.GroupID = data_receive[k--].GroupID;
-                    fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                        md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd] = data_receive[k].x[dd];
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind = data_receive[k].atomkind;
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID = data_receive[k].GroupID;
+                    k++;
                 }
-                k += cells_length_receive[kreceive];
                 kreceive++;
             }
+
             free(cells_length_receive);
             free(data_receive);
         }
     }
     else
     {
-        // sending to lower process, receiving from upper process
+        /* sending to lower process, receiving from upper process */
         cells_num = 1;
         for (dd=0; dd<3; dd++)
             cells_num *= ic_stop_send_lower[dd] - ic_start_send_lower[dd];
@@ -452,7 +437,7 @@ static void ghostparticles_init_in_direction_d(
         k = sum_length_send = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
         {
-            cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
         }
         cells_length_send[cells_num] = sum_length_send;
@@ -465,46 +450,51 @@ static void ghostparticles_init_in_direction_d(
         data_send = (position_struct_t *)malloc(sum_length_send);
         sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
         data_receive = (position_struct_t *)malloc(sum_length_receive);
-        k = 0;
+
+        k=0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        {
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
             {
                 for (dd=0; dd<3; dd++)
-                    data_send[k].x[dd] = item_p->P.x[dd];
-                data_send[k].atomkind = item_p->P.atomkind;
-                data_send[k++].GroupID = item_p->P.GroupID;
+                    data_send[k].x[dd] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd];
+                data_send[k].atomkind = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind;
+                data_send[k].GroupID = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID;
+                k++;
             }
+        }
+
         MPI_Isend(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_lower_subd[d], 6,
                   md->MD_comm, &request);
         MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
                  md->SubDomain.rank_of_upper_subd[d], 6, md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
-        kreceive = 0;
-        k = -1;
+
+        kreceive = k = 0;
         ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
         {
-            k += cells_length_receive[kreceive];
-            for (cc=0; cc<cells_length_receive[kreceive]; cc++)
+            for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
-                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                for (dd=0; dd<3; dd++)
-                    item_p->P.x[dd] = data_receive[k].x[dd];
-                item_p->P.atomkind = data_receive[k].atomkind;
-                item_p->P.GroupID = data_receive[k--].GroupID;
+                new_particle(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                 if (md->SubDomain.is[d] == md->ns[d] - 1)
-                    item_p->P.x[d] += md->l[d];
-                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    data_receive[k].x[d] += md->l[d];
+                for (dd=0; dd<3; dd++)
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd] = data_receive[k].x[dd];
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind = data_receive[k].atomkind;
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID = data_receive[k].GroupID;
+                k++;
             }
-            k += cells_length_receive[kreceive];
             kreceive++;
         }
+
         free(data_receive);
-        // sending to upper process, receiving from lower process
+
+        /* sending to upper process, receiving from lower process */
         k = sum_length_send = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
         {
-            cells_length_send[k] = getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
         }
         cells_length_send[cells_num] = sum_length_send;
@@ -518,40 +508,44 @@ static void ghostparticles_init_in_direction_d(
         data_send = (position_struct_t *)malloc(sum_length_send);
         sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
         data_receive = (position_struct_t *)malloc(sum_length_receive);
-        k = 0;
+
+        k=0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        {
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
             {
                 for (dd=0; dd<3; dd++)
-                    data_send[k].x[dd] = item_p->P.x[dd];
-                data_send[k].atomkind = item_p->P.atomkind;
-                data_send[k++].GroupID = item_p->P.GroupID;
+                    data_send[k].x[dd] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd];
+                data_send[k].atomkind = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind;
+                data_send[k].GroupID = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID;
+                k++;
             }
+        }
+
         MPI_Isend(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_upper_subd[d], 8,
                   md->MD_comm, &request);
         MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
                  md->SubDomain.rank_of_lower_subd[d], 8, md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
-        kreceive = 0;
-        k = -1;
+
+        kreceive = k = 0;
         ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
         {
-            k += cells_length_receive[kreceive];
-            for (cc=0; cc<cells_length_receive[kreceive]; cc++)
+            for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
-                item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-                for (dd=0; dd<3; dd++)
-                    item_p->P.x[dd] = data_receive[k].x[dd];
-                item_p->P.atomkind = data_receive[k].atomkind;
-                item_p->P.GroupID = data_receive[k--].GroupID;
+                new_particle(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
                 if (md->SubDomain.is[d] == 0)
-                    item_p->P.x[d] -= md->l[d];
-                fmd_insertInList(&md->SubDomain.grid[ic[0]][ic[1]][ic[2]], item_p);
+                    data_receive[k].x[d] -= md->l[d];
+                for (dd=0; dd<3; dd++)
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.x[dd] = data_receive[k].x[dd];
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.atomkind = data_receive[k].atomkind;
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.GroupID = data_receive[k].GroupID;
+                k++;
             }
-            k += cells_length_receive[kreceive];
             kreceive++;
         }
+
         free(cells_length_receive);
         free(data_receive);
     }
@@ -569,74 +563,84 @@ static void ghostparticles_update_Fprime_in_direction_d(
     int sum_length_send, sum_length_receive;
     fmd_ituple_t ic;
     fmd_real_t *data_receive, *data_send;
-    ParticleListItem_t *item_p;
     int k;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
     {
         if (md->SubDomain.is[d] == 0)
         {
-            // receiving from upper process
+            /* receiving from upper process */
             MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 100,
                      md->MD_comm, &status);
             data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
             MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL,
                      md->SubDomain.rank_of_upper_subd[d], 101, md->MD_comm, &status);
+
             k = 0;
             ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    item_p->FembPrime = data_receive[k++];
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
+
             free(data_receive);
-            // sending to upper process
+
+            /* sending to upper process */
             sum_length_send = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-                sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
+
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 102,
                      md->MD_comm);
             data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
+
             k = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    data_send[k++] = item_p->FembPrime;
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
+
             MPI_Send(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_upper_subd[d],
                      103, md->MD_comm);
             free(data_send);
         }
-        else // if (md->SubDomain.is[d] == md->ns[d]-1)
+        else  /* if (md->SubDomain.is[d] == md->ns[d]-1) */
         {
-            // sending to lower process
+            /* sending to lower process */
             sum_length_send = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-                sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 100,
                      md->MD_comm);
             data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
+
             k = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    data_send[k++] = item_p->FembPrime;
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
+
             MPI_Send(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_lower_subd[d],
                      101, md->MD_comm);
             free(data_send);
-            // receiving from lower process
+
+            /* receiving from lower process */
             MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 102,
                      md->MD_comm, &status);
             data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
             MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL,
                      md->SubDomain.rank_of_lower_subd[d], 103, md->MD_comm, &status);
+
             k = 0;
             ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    item_p->FembPrime = data_receive[k++];
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
+
             free(data_receive);
         }
     }
     else
     {
-        // sending to lower process, receiving from upper process
+        /* sending to lower process, receiving from upper process */
         sum_length_send = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-            sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 100,
                   md->MD_comm, &request);
         MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 100,
@@ -644,25 +648,30 @@ static void ghostparticles_update_Fprime_in_direction_d(
         MPI_Wait(&request, &status);
         data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
         data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
+
         k = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                data_send[k++] = item_p->FembPrime;
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
+
         MPI_Isend(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_lower_subd[d], 101,
                   md->MD_comm, &request);
         MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL, md->SubDomain.rank_of_upper_subd[d], 101,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
+
         k = 0;
         ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                item_p->FembPrime = data_receive[k++];
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
+
         free(data_receive);
-        // sending to upper process, receiving from lower process
+
+        /* sending to upper process, receiving from lower process */
         sum_length_send = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-            sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 102,
                   md->MD_comm, &request);
         MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 102,
@@ -670,20 +679,24 @@ static void ghostparticles_update_Fprime_in_direction_d(
         MPI_Wait(&request, &status);
         data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
         data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
+
         k = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                data_send[k++] = item_p->FembPrime;
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
+
         MPI_Isend(data_send, sum_length_send, FMD_MPI_REAL, md->SubDomain.rank_of_upper_subd[d], 103,
                   md->MD_comm, &request);
         MPI_Recv(data_receive, sum_length_receive, FMD_MPI_REAL, md->SubDomain.rank_of_lower_subd[d], 103,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
+
         k = 0;
         ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                item_p->FembPrime = data_receive[k++];
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
+
         free(data_receive);
     }
 }
@@ -700,74 +713,83 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
     int sum_length_send, sum_length_receive;
     fmd_ituple_t ic;
     float *data_receive, *data_send;
-    ParticleListItem_t *item_p;
     int k;
 
     if ( ((md->SubDomain.is[d] == 0) || (md->SubDomain.is[d] == md->ns[d]-1)) && !md->PBC[d] )
     {
         if (md->SubDomain.is[d] == 0)
         {
-            // receiving from upper process
+            /* receiving from upper process */
             MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 130,
                      md->MD_comm, &status);
             data_receive = (float *)malloc(sum_length_receive * sizeof(float));
             MPI_Recv(data_receive, sum_length_receive, MPI_FLOAT,
                      md->SubDomain.rank_of_upper_subd[d], 131, md->MD_comm, &status);
+
             k = 0;
             ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    item_p->P.LocOrdParam = data_receive[k++];
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
+
             free(data_receive);
-            // sending to upper process
+
+            /* sending to upper process */
             sum_length_send = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-                sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 132,
                      md->MD_comm);
             data_send = (float *)malloc(sum_length_send * sizeof(float));
+
             k = 0;
             ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    data_send[k++] = item_p->P.LocOrdParam;
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
+
             MPI_Send(data_send, sum_length_send, MPI_FLOAT, md->SubDomain.rank_of_upper_subd[d],
                      133, md->MD_comm);
             free(data_send);
         }
-        else // if (md->SubDomain.is[d] == md->ns[d]-1)
+        else  /* if (md->SubDomain.is[d] == md->ns[d]-1) */
         {
-            // sending to lower process
+            /* sending to lower process */
             sum_length_send = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-                sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+                sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 130,
                      md->MD_comm);
             data_send = (float *)malloc(sum_length_send * sizeof(float));
+
             k = 0;
             ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    data_send[k++] = item_p->P.LocOrdParam;
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
+
             MPI_Send(data_send, sum_length_send, MPI_FLOAT, md->SubDomain.rank_of_lower_subd[d],
                      131, md->MD_comm);
             free(data_send);
-            // receiving from lower process
+
+            /* receiving from lower process */
             MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 132,
                      md->MD_comm, &status);
             data_receive = (float *)malloc(sum_length_receive * sizeof(float));
             MPI_Recv(data_receive, sum_length_receive, MPI_FLOAT,
                      md->SubDomain.rank_of_lower_subd[d], 133, md->MD_comm, &status);
+
             k = 0;
             ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
-                for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                    item_p->P.LocOrdParam = data_receive[k++];
+                for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                    md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
+
             free(data_receive);
         }
     }
     else
     {
-        // sending to lower process, receiving from upper process
+        /* sending to lower process, receiving from upper process */
         sum_length_send = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-            sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 130,
                   md->MD_comm, &request);
         MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 130,
@@ -775,25 +797,30 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         MPI_Wait(&request, &status);
         data_send = (float *)malloc(sum_length_send * sizeof(float));
         data_receive = (float *)malloc(sum_length_receive * sizeof(float));
+
         k = 0;
         ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                data_send[k++] = item_p->P.LocOrdParam;
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
+
         MPI_Isend(data_send, sum_length_send, MPI_FLOAT, md->SubDomain.rank_of_lower_subd[d], 131,
                   md->MD_comm, &request);
         MPI_Recv(data_receive, sum_length_receive, MPI_FLOAT, md->SubDomain.rank_of_upper_subd[d], 131,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
+
         k = 0;
         ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                item_p->P.LocOrdParam = data_receive[k++];
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
+
         free(data_receive);
-        // sending to upper process, receiving from lower process
+
+        /* sending to upper process, receiving from lower process */
         sum_length_send = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-            sum_length_send += getListLength(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+            sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 132,
                   md->MD_comm, &request);
         MPI_Recv(&sum_length_receive, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 132,
@@ -801,20 +828,24 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         MPI_Wait(&request, &status);
         data_send = (float *)malloc(sum_length_send * sizeof(float));
         data_receive = (float *)malloc(sum_length_receive * sizeof(float));
+
         k = 0;
         ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                data_send[k++] = item_p->P.LocOrdParam;
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
+
         MPI_Isend(data_send, sum_length_send, MPI_FLOAT, md->SubDomain.rank_of_upper_subd[d], 133,
                   md->MD_comm, &request);
         MPI_Recv(data_receive, sum_length_receive, MPI_FLOAT, md->SubDomain.rank_of_lower_subd[d], 133,
                  md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
+
         k = 0;
         ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
-            for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
-                item_p->P.LocOrdParam = data_receive[k++];
+            for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
+                md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
+
         free(data_receive);
     }
 }

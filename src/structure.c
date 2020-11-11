@@ -27,18 +27,19 @@ typedef enum {LATTICE_FCC, LATTICE_BCC, LATTICE_SC} lattice_t;
 
 static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *MomentumSum, unsigned AtomsNum)
 {
-    ParticleListItem_t *item_p;
     fmd_ituple_t ic;
 
-    ITERATE(ic, fmd_ThreeZeros, md->nc)
-        for (item_p=md->global_grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+    ITERATE(ic, _fmd_ThreeZeros, md->nc)
+        for (int i=0; i < md->global_grid[ic[0]][ic[1]][ic[2]].parts_num; i++)
         {
-            if (item_p->P.GroupID == RESERVED_GROUP)
+            particle_core_t *pc = &md->global_grid[ic[0]][ic[1]][ic[2]].parts[i].core;
+
+            if (pc->GroupID == RESERVED_GROUP)
             {
-                item_p->P.GroupID = GroupID;
-                fmd_real_t mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
+                pc->GroupID = GroupID;
+                fmd_real_t mass = md->potsys.atomkinds[pc->atomkind].mass;
                 for (int d=0; d<3; d++)
-                    item_p->P.v[d] -= MomentumSum[d] / (AtomsNum * mass);
+                    pc->v[d] -= MomentumSum[d] / (AtomsNum * mass);
             }
         }
 }
@@ -55,7 +56,6 @@ static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd
     const fmd_rtuple_t r_sc[1] = {{0.0, 0.0, 0.0}};
 
     fmd_rtuple_t MomentumSum = {0.0, 0.0, 0.0};
-    ParticleListItem_t *item_p;
     fmd_ituple_t dims = {dimx, dimy, dimz};
     fmd_rtuple_t r0 = {x, y, z};
     int i, d;
@@ -88,33 +88,35 @@ static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd
             break;
     }
 
-    ITERATE(CrystalCell, fmd_ThreeZeros, dims)
+    ITERATE(CrystalCell, _fmd_ThreeZeros, dims)
         for (i=0; i<points_per_cell; i++)
         {
-            item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
+            particle_core_t pc;
 
             fmd_real_t rn = prps_sum * gsl_rng_uniform(rng);
-            int j;
-            for (j=0; j < md->potsys.atomkinds_num; j++)
-                if (rn < prps_cumult[j]) break;
-            item_p->P.atomkind = j;
 
-            item_p->P.molkind = 0;
+            int j;
+            for (int j=0; j < md->potsys.atomkinds_num; j++)
+                if (rn < prps_cumult[j]) break;
+            pc.atomkind = j;
+
+            pc.molkind = 0;
 
             mass = md->potsys.atomkinds[j].mass;
             StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
 
-            item_p->P.GroupID = RESERVED_GROUP;
-            item_p->P.AtomID = md->TotalNoOfParticles++;
+            pc.GroupID = RESERVED_GROUP;
+            pc.AtomID = md->TotalNoOfParticles++;
 
             for (d=0; d<3; d++)
             {
-                item_p->P.x[d] = r0[d] + (CrystalCell[d] + .25 + rp[i*3+d]) * LatticeParameter;
-                item_p->P.v[d] = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
-                MomentumSum[d] += mass * item_p->P.v[d];
-                ic[d] = (int)floor(item_p->P.x[d] / md->cellh[d]);
+                pc.x[d] = r0[d] + (CrystalCell[d] + .25 + rp[i*3+d]) * LatticeParameter;
+                pc.v[d] = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
+                MomentumSum[d] += mass * pc.v[d];
+                ic[d] = (int)floor(pc.x[d] / md->cellh[d]);
             }
-            fmd_insertInList(&md->global_grid[ic[0]][ic[1]][ic[2]], item_p);
+
+            INSERT_PART_CORE_IN_CELL(pc, md->global_grid[ic[0]][ic[1]][ic[2]]);
         }
 
     gsl_rng_free(rng);
@@ -210,19 +212,19 @@ void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, fmd_real_t xa,
     fmd_real_t **coords = (fmd_real_t **)_fmd_array_neat2d_create(mk->atoms_num, 3, sizeof(fmd_real_t));
     fmd_rtuple_t MomentumSum = {0., 0., 0.};
 
-    for (unsigned i=0; i<num; i++) // iteration on number of molecules
+    for (unsigned i=0; i<num; i++) /* iteration on number of molecules */
     {
         unsigned j, trycount=0;
 
-        // prepare coordinates for this molecule
+        /* prepare coordinates for this molecule */
         do
         {
             fmd_rtuple_t xo;
 
-            for (int d=0; d<3; d++)  // choose center position
+            for (int d=0; d<3; d++)  /* choose center position */
                 xo[d] = x1[d] + X[d] * gsl_rng_uniform(rng);
 
-            for (j=0; j < mk->atoms_num; j++)  // iteration on number of atoms in a molecule
+            for (j=0; j < mk->atoms_num; j++)  /* iteration on number of atoms in a molecule */
             {
                 fmd_bool_t broke = 0;
 
@@ -245,34 +247,35 @@ void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, fmd_real_t xa,
             }
             trycount++;
         } while (j != mk->atoms_num && trycount < 1000);
-        // TO-DO: error handling
+        /* TO-DO: error handling */
         assert(trycount < 1000);
 
-        ParticleListItem_t *item_p;
         fmd_ituple_t ic;
 
-        // create the atoms in memory and initialize them
+        /* create the atoms in memory and initialize them */
         for (j=0; j < mk->atoms_num; j++)
         {
-            item_p = (ParticleListItem_t *)malloc(sizeof(ParticleListItem_t));
-            item_p->P.AtomID_local = j;
-            item_p->P.atomkind = mk->atoms[j].atomkind;
-            item_p->P.MolID = md->TotalNoOfMolecules;
-            item_p->P.molkind = molkind;
-            item_p->P.AtomID = md->TotalNoOfParticles++;
-            item_p->P.GroupID = RESERVED_GROUP;
+            particle_core_t pc;
 
-            fmd_real_t mass = md->potsys.atomkinds[item_p->P.atomkind].mass;
+            pc.AtomID_local = j;
+            pc.atomkind = mk->atoms[j].atomkind;
+            pc.MolID = md->TotalNoOfMolecules;
+            pc.molkind = molkind;
+            pc.AtomID = md->TotalNoOfParticles++;
+            pc.GroupID = RESERVED_GROUP;
+
+            fmd_real_t mass = md->potsys.atomkinds[pc.atomkind].mass;
             fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
 
             for (int d=0; d<3; d++)
             {
-                item_p->P.x[d] = coords[j][d];
-                item_p->P.v[d] = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
-                MomentumSum[d] += mass * item_p->P.v[d];
-                ic[d] = (int)floor(item_p->P.x[d] / md->cellh[d]);
+                pc.x[d] = coords[j][d];
+                pc.v[d] = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
+                MomentumSum[d] += mass * pc.v[d];
+                ic[d] = (int)floor(pc.x[d] / md->cellh[d]);
             }
-            fmd_insertInList(&md->global_grid[ic[0]][ic[1]][ic[2]], item_p);
+
+            INSERT_PART_CORE_IN_CELL(pc, md->global_grid[ic[0]][ic[1]][ic[2]]);
         }
 
         md->TotalNoOfMolecules++;

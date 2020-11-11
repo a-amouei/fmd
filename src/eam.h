@@ -38,7 +38,7 @@
         F_DD = el->F_DD;                                                     \
         a = irho_h - rho_host/h;                                             \
         b = 1-a;                                                             \
-        item1_p->FembPrime = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);         \
+        p1->FembPrime = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);              \
         Femb_sum += SPLINE_VAL(a,b,F,irho,irho_h,F_DD,h);                    \
     }
 #else
@@ -51,8 +51,8 @@
         assert(irho < eam->Nrho - 1);                                        \
         irho_h = irho + 1;                                                   \
         F = el->F;                                                           \
-        item1_p->FembPrime = (F[irho_h] - F[irho]) / h;                      \
-        Femb_sum += F[irho] + (rho_host - irho * h) * item1_p->FembPrime;    \
+        p1->FembPrime = (F[irho_h] - F[irho]) / h;                           \
+        Femb_sum += F[irho] + (rho_host - irho * h) * p1->FembPrime;         \
     }
 #endif
 
@@ -88,12 +88,12 @@
                 rho_jp = SPLINE_DERIV(a,b,rho_j,ir2,ir2_h,rho_jDD,h);           \
             }                                                                   \
                                                                                 \
-            mag = 2 * (item1_p->FembPrime * rho_jp +                            \
-                  item2_p->FembPrime * rho_ip + phi_deriv);                     \
+            mag = 2 * (p1->FembPrime * rho_jp +                                 \
+                  p2->FembPrime * rho_ip + phi_deriv);                          \
             potEnergy += SPLINE_VAL(a,b,phi,ir2,ir2_h,phiDD,h);                 \
                                                                                 \
             for (d=0; d<3; d++)                                                 \
-                item1_p->F[d] -= mag * rv[d];                                   \
+                p1->F[d] -= mag * rv[d];                                        \
         }                                                                       \
     }
 #else
@@ -114,13 +114,13 @@
             rho_i = eam->elements[iloc].rho;                                    \
             phi = eam->elements[iloc].phi[jloc];                                \
             rho_j = eam->elements[jloc].rho;                                    \
-            mag = 2 * (item1_p->FembPrime * (rho_j[ir2_h] - rho_j[ir2]) +       \
-                       item2_p->FembPrime * (rho_i[ir2_h] - rho_i[ir2]) +       \
-                                                (phi[ir2_h] - phi[ir2])) / h;   \
+            mag = 2 * (p1->FembPrime * (rho_j[ir2_h] - rho_j[ir2]) +            \
+                       p2->FembPrime * (rho_i[ir2_h] - rho_i[ir2]) +            \
+                       (phi[ir2_h] - phi[ir2])) / h;                            \
             potEnergy += phi[ir2] + (r2/h - ir2) * (phi[ir2_h] - phi[ir2]);     \
                                                                                 \
             for (d=0; d<3; d++)                                                 \
-                item1_p->F[d] -= mag * rv[d];                                   \
+                p1->F[d] -= mag * rv[d];                                        \
         }                                                                       \
     }
 #endif

@@ -57,6 +57,7 @@ unsigned fmd_list_length(list_t *list)
     return length;
 }
 
+/* returns NULL if not found */
 list_t *fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func)
 {
     while (list != NULL)

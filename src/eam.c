@@ -25,15 +25,15 @@
     {                                                                           \
         mass = md->EAM.elements[element_i].mass;                                \
         for (d=0; d<3; d++)                                                     \
-            item1_p->F[d] += ttm_lattice_aux[ttm_index].xi *                    \
-                mass * (item1_p->P.v[d] - ttm_lattice_aux[ttm_index].v_cm[d]);  \
+            p1->F[d] += ttm_lattice_aux[ttm_index].xi *                         \
+                mass * (p1->core.v[d] - ttm_lattice_aux[ttm_index].v_cm[d]);    \
         if (ttm_useSuction)                                                     \
-            if (item1_p->P.x[0] < ttm_suctionWidth)                             \
-                item1_p->F[0] -= mass * ttm_suctionIntensity;                   \
+            if (p1->core.x[0] < ttm_suctionWidth)                               \
+                p1->F[0] -= mass * ttm_suctionIntensity;                        \
         if (ttm_pxx_compute)                                                    \
         {                                                                       \
-            dx = item1_p->P.x[0] - ttm_pxx_pos;                                 \
-            pxx += item1_p->F[0] * ((dx > 0) - (dx < 0));                       \
+            dx = p1->core.x[0] - ttm_pxx_pos;                                   \
+            pxx += p1->F[0] * ((dx > 0) - (dx < 0));                            \
         }                                                                       \
     }
 
@@ -41,7 +41,6 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 {
     fmd_ituple_t jc, kc;
     int d, ir2, ir2_h;
-    ParticleListItem_t *item1_p, *item2_p;
     fmd_real_t r2;
     fmd_rtuple_t rv;
     fmd_real_t *rho_i, *rho_j, *phi;
@@ -60,14 +59,14 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 #endif
     fmd_real_t potEnergy = 0.0;
 
-    // iterate over all cells(lists)
+    /* iterate over all cells */
 #ifdef USE_TTM
-    #pragma omp parallel for private(ic0,ic1,ic2,ttm_index,item1_p,d,element_i,rho_i,rho_iDD,kc,jc,item2_p,rv,r2,h,ir2, \
+    #pragma omp parallel for private(ic0,ic1,ic2,ttm_index,d,element_i,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
       ir2_h,element_j,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag,mass,dx) \
       shared(md,ttm_lattice_aux,ttm_useSuction,ttm_suctionWidth,ttm_suctionIntensity,ttm_pxx_compute, \
       ttm_pxx_pos) default(none) collapse(3) reduction(+:potEnergy,pxx) schedule(static,1)
 #else
-    #pragma omp parallel for private(ic0,ic1,ic2,item1_p,d,rho_i,rho_iDD,kc,jc,item2_p,rv,r2,h,ir2, \
+    #pragma omp parallel for private(ic0,ic1,ic2,d,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
       ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
       shared(md,pottable) default(none) collapse(3) reduction(+:potEnergy) schedule(static,1)
 #endif
@@ -78,20 +77,26 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 #ifdef USE_TTM
         ttm_index = ic0 - md->SubDomain.ic_start[0] + 1;
 #endif
-        // iterate over all items in cell ic
-        for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
+        /* iterate over all particles in cell ic */
+
+        cell_t *c1;
+        int pind1;
+
+        for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], pind1=0; pind1 < c1->parts_num; pind1++)
         {
-            if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
+            particle_t *p1 = &c1->parts[pind1];
+
+            if (!(md->ActiveGroup == -1 || p1->core.GroupID == md->ActiveGroup))
                 continue;
 
             for (d=0; d<3; d++)
-                item1_p->F[d] = 0.0;
+                p1->F[d] = 0.0;
 
             eam_t *eam;
             unsigned atomkind1, atomkind2;
-            atomkind1 = item1_p->P.atomkind;
+            atomkind1 = p1->core.atomkind;
 
-            // iterate over neighbor cells of cell ic
+            /* iterate over neighbor cells of cell ic */
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
             {
                 SET_jc_IN_DIRECTION(0)
@@ -101,15 +106,21 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
                     for (kc[2]=ic2-1; kc[2]<=ic2+1; kc[2]++)
                     {
                         SET_jc_IN_DIRECTION(2)
-                        // iterate over all items in cell jc
-                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+
+                        /* iterate over all particles in cell jc */
+
+                        cell_t *c2;
+                        int pind2;
+
+                        for (c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]], pind2=0; pind2 < c2->parts_num; pind2++)
                         {
-                            if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
+                            particle_t *p2 = &c2->parts[pind2];
+                            if (!(md->ActiveGroup == -1 || p2->core.GroupID == md->ActiveGroup))
                                 continue;
 
-                            if (item1_p != item2_p)
+                            if (p1 != p2)
                             {
-                                atomkind2 = item2_p->P.atomkind;
+                                atomkind2 = p2->core.atomkind;
                                 EAM_PAIR_UPDATE_FORCE_AND_POTENERGY;
                             }
                         }
@@ -135,7 +146,6 @@ void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {
     fmd_ituple_t jc, kc;
     int d, ir2, irho, ir2_h, irho_h;
-    ParticleListItem_t *item1_p, *item2_p;
     fmd_real_t r2;
     fmd_rtuple_t rv;
     fmd_real_t *rho, *rhoDD, *F, *F_DD;
@@ -145,26 +155,33 @@ void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
     potpair_t **pottable = md->potsys.pottable;
     atomkind_t *atomkinds = md->potsys.atomkinds;
 
-    // iterate over all cells(lists)
-    #pragma omp parallel for private(ic0,ic1,ic2,item1_p,kc,jc,item2_p,d,rv,r2,h,ir2,ir2_h,a,b,rho, \
+    /* iterate over all cells */
+    #pragma omp parallel for private(ic0,ic1,ic2,kc,jc,d,rv,r2,h,ir2,ir2_h,a,b,rho, \
       rhoDD,F,F_DD,irho,irho_h) shared(md,pottable,atomkinds) default(none) collapse(3) reduction(+:Femb_sum) \
       schedule(static,1)
     for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
     for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
     for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
     {
-        // iterate over all items in cell ic
-        for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
+        /* iterate over all particles in cell ic */
+
+        cell_t *c1;
+        int pind1;
+
+        for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], pind1=0; pind1 < c1->parts_num; pind1++)
         {
-            if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
+            particle_t *p1 = &c1->parts[pind1];
+
+            if (!(md->ActiveGroup == -1 || p1->core.GroupID == md->ActiveGroup))
                 continue;
 
             eam_t *eam;
             unsigned atomkind1, atomkind2;
-            atomkind1 = item1_p->P.atomkind;
+            atomkind1 = p1->core.atomkind;
 
             fmd_real_t rho_host = 0.0;
-            // iterate over neighbor cells of cell ic
+
+            /* iterate over neighbor cells of cell ic */
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
             {
                 SET_jc_IN_DIRECTION(0)
@@ -174,15 +191,22 @@ void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
                     for (kc[2]=ic2-1; kc[2]<=ic2+1; kc[2]++)
                     {
                         SET_jc_IN_DIRECTION(2)
-                        // iterate over all items in cell jc
-                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+
+                        /* iterate over particles in cell jc */
+
+                        cell_t *c2;
+                        int pind2;
+
+                        for (c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]], pind2=0; pind2 < c2->parts_num; pind2++)
                         {
-                            if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
+                            particle_t *p2 = &c2->parts[pind2];
+
+                            if (!(md->ActiveGroup == -1 || p2->core.GroupID == md->ActiveGroup))
                                 continue;
 
-                            if (item1_p != item2_p)
+                            if (p1 != p2)
                             {
-                                atomkind2 = item2_p->P.atomkind;
+                                atomkind2 = p2->core.atomkind;
                                 EAM_PAIR_UPDATE_rho_host;
                             }
                         }
@@ -193,6 +217,7 @@ void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
             EAM_COMPUTE_FembPrime_AND_UPDATE_Femb_sum;
         }
     }
+
     *FembSum_p=Femb_sum;
 }
 

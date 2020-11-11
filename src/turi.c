@@ -441,21 +441,22 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
 static void update_field_number(fmd_t *md, field_t *f, turi_t *t)
 {
     fmd_ituple_t ic, itc;
-    ParticleListItem_t *item_p;
 
     unsigned ***num = (unsigned ***)f->data.data;
 
     /* clean data of number field (initialize with zeros) */
     _fmd_array_3d_unsigned_clean(num, t->tdims[0], t->tdims[1], t->tdims[2]);
 
+    cell_t *cell;
+    int i;
     /* iterate over all particles in current subdomain */
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
 
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(item_p->P.x[d] / t->tcellh[d]) - t->tcell_start[d];
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
 
             /* count atoms */
             num[itc[0]][itc[1]][itc[2]]++;
@@ -468,41 +469,43 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t)
 static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
 {
     fmd_ituple_t ic, itc;
-    ParticleListItem_t *item_p;
 
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)f->data.data;
     fmd_real_t ***mass = (fmd_real_t ***)t->fields[f->dependcs[0]].data.data;
 
     /* clean data of mass and vcm fields (initialize with zeros) */
-    ITERATE(itc, fmd_ThreeZeros, t->tdims)
+    ITERATE(itc, _fmd_ThreeZeros, t->tdims)
     {
         mass[itc[0]][itc[1]][itc[2]] = 0.0;
         for (int d=0; d<3; d++)
             vcm[itc[0]][itc[1]][itc[2]][d] = 0.0;
     }
 
+    cell_t *cell;
+    int i;
+
     /* iterate over all particles in current subdomain */
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
 
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(item_p->P.x[d] / t->tcellh[d]) - t->tcell_start[d];
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
 
             /* calculate vcm and mass (first phase) */
 
-            fmd_real_t m = md->potsys.atomkinds[item_p->P.atomkind].mass;
+            fmd_real_t m = md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
 
             mass[itc[0]][itc[1]][itc[2]] += m;
             for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] += m * item_p->P.v[d];
+                vcm[itc[0]][itc[1]][itc[2]][d] += m * cell->parts[i].core.v[d];
         }
 
     /* TO-DO: do communications */
 
     /* calculate vcm and mass (last phase) */
-    ITERATE(itc, fmd_ThreeZeros, t->tdims)
+    ITERATE(itc, _fmd_ThreeZeros, t->tdims)
         for (int d=0; d<3; d++)
             vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
 }

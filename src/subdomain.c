@@ -46,7 +46,7 @@ void fmd_subd_free(fmd_t *md)
 {
     if (md->SubDomain.grid != NULL)
     {
-        _fmd_cleanGridSegment(md->SubDomain.grid, fmd_ThreeZeros, md->SubDomain.cell_num);
+        _fmd_cleanGridSegment(md->SubDomain.grid, _fmd_ThreeZeros, md->SubDomain.cell_num);
         _fmd_array_3d_free(&md->SubDomain.grid_array);
         md->SubDomain.grid = NULL;
     }
@@ -101,9 +101,5 @@ void fmd_subd_init(fmd_t *md)
     assert(md->SubDomain.grid != NULL);
     /* TO-DO: handle memory error */
 
-    /* set all pointers in the array to NULL */
-    _fmd_array_3d_pointer_clean((fmd_pointer_t ***)md->SubDomain.grid,
-                                md->SubDomain.cell_num[0],
-                                md->SubDomain.cell_num[1],
-                                md->SubDomain.cell_num[2]);
+    _fmd_initialize_grid(md->SubDomain.grid, md->SubDomain.cell_num[0], md->SubDomain.cell_num[1], md->SubDomain.cell_num[2]);
 }

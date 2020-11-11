@@ -27,32 +27,34 @@ void fmd_computeMorse(fmd_t *md)
 {
     fmd_ituple_t jc, kc;
     int d;
-    ParticleListItem_t *item1_p, *item2_p;
+    particle_t *p1, *p2;
     fmd_real_t r2;
     fmd_rtuple_t rv;
     int ic0, ic1, ic2;
     fmd_real_t potEnergy = 0.0;
     potpair_t **pottable = md->potsys.pottable;
 
-    // iterate over all cells(lists)
-    #pragma omp parallel for private(ic0,ic1,ic2,item1_p,d,kc,jc,item2_p,rv,r2) \
+    /* iterate over all cells */
+    #pragma omp parallel for private(ic0,ic1,ic2,p1,d,kc,jc,p2,rv,r2) \
       shared(md,pottable) default(none) collapse(3) reduction(+:potEnergy) schedule(static,1)
     for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
         for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
             for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
             {
-                // iterate over all items in cell ic
-                for (item1_p = md->SubDomain.grid[ic0][ic1][ic2]; item1_p != NULL; item1_p = item1_p->next_p)
+                /* iterate over all particles in cell ic */
+                for (int i1=0; i1 < md->SubDomain.grid[ic0][ic1][ic2].parts_num; i1++)
                 {
-                    if (!(md->ActiveGroup == -1 || item1_p->P.GroupID == md->ActiveGroup))
+                    p1 = &md->SubDomain.grid[ic0][ic1][ic2].parts[i1];
+
+                    if (!(md->ActiveGroup == -1 || p1->core.GroupID == md->ActiveGroup))
                         continue;
 
-                    unsigned atomkind1 = item1_p->P.atomkind;
+                    unsigned atomkind1 = p1->core.atomkind;
 
                     for (d=0; d<3; d++)
-                        item1_p->F[d] = 0.0;
+                        p1->F[d] = 0.0;
 
-                    // iterate over neighbor cells of cell ic
+                    /* iterate over neighbor cells of cell ic */
                     for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
                     {
                         SET_jc_IN_DIRECTION(0)
@@ -62,15 +64,17 @@ void fmd_computeMorse(fmd_t *md)
                             for (kc[2]=ic2-1; kc[2]<=ic2+1; kc[2]++)
                             {
                                 SET_jc_IN_DIRECTION(2)
-                                // iterate over all items in cell jc
-                                for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                                /* iterate over all particles in cell jc */
+                                for (int i2=0; i2 < md->SubDomain.grid[jc[0]][jc[1]][jc[2]].parts_num; i2++)
                                 {
-                                    if (!(md->ActiveGroup == -1 || item2_p->P.GroupID == md->ActiveGroup))
+                                    p2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]].parts[i2];
+
+                                    if (!(md->ActiveGroup == -1 || p2->core.GroupID == md->ActiveGroup))
                                         continue;
 
-                                    if (item1_p != item2_p)
+                                    if (p1 != p2)
                                     {
-                                        unsigned atomkind2 = item2_p->P.atomkind;
+                                        unsigned atomkind2 = p2->core.atomkind;
 
                                         COMPUTE_rv_AND_r2;
 
@@ -78,16 +82,16 @@ void fmd_computeMorse(fmd_t *md)
 
                                         if (r2 < morse->cutoff_sqr)
                                         {
-                                            // force, F = -(d/dr)U
+                                            /* force, F = -(d/dr)U */
                                             fmd_real_t r = sqrt(r2);
                                             fmd_real_t inv_r = 1.0/r;
                                             fmd_real_t exp1 = exp( -morse->alpha * (r - morse->r0) );
                                             fmd_real_t exp2 = SQR(exp1);
                                             fmd_real_t factor = morse->alpha * morse->D0 * inv_r * (exp2 - exp1);
                                             for (d=0; d<3; d++)
-                                                item1_p->F[d] += factor * rv[d];
+                                                p1->F[d] += factor * rv[d];
 
-                                            // potential energy, U = D0 * ( exp(-2*alpha*(r-r0)) - 2*exp(-alpha*(r-r0)) )
+                                            /* potential energy, U = D0 * ( exp(-2*alpha*(r-r0)) - 2*exp(-alpha*(r-r0)) ) */
                                             potEnergy += morse->D0 * (exp2 - 2.0 * exp1);
                                         }
                                     }
@@ -96,7 +100,7 @@ void fmd_computeMorse(fmd_t *md)
                         }
                     }
                     for (d=0; d<3; d++)
-                        item1_p->F[d] *= 2;
+                        p1->F[d] *= 2;
                 }
             }
 

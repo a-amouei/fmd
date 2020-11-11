@@ -24,9 +24,14 @@
 #include "types.h"
 #include "array.h"
 
-typedef struct _ParticleListItem ParticleListItem_t;
+typedef struct _particle particle_t;
 
-typedef ParticleListItem_t *cell_t;
+typedef struct
+{
+    particle_t *parts;
+    unsigned parts_num;
+    unsigned capacity;
+} cell_t;
 
 typedef struct
 {

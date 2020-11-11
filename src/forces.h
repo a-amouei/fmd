@@ -28,15 +28,15 @@
         if (md->ns[d] == 1)                                                  \
         {                                                                    \
             if (kc[d]==-1)                                                   \
-                rv[d] = item1_p->P.x[d] - item2_p->P.x[d] + md->l[d];        \
+                rv[d] = p1->core.x[d] - p2->core.x[d] + md->l[d];            \
             else                                                             \
                 if (kc[d] == md->nc[d])                                      \
-                    rv[d] = item1_p->P.x[d] - item2_p->P.x[d] - md->l[d];    \
+                    rv[d] = p1->core.x[d] - p2->core.x[d] - md->l[d];        \
                 else                                                         \
-                    rv[d] = item1_p->P.x[d] - item2_p->P.x[d];               \
+                    rv[d] = p1->core.x[d] - p2->core.x[d];                   \
         }                                                                    \
         else                                                                 \
-            rv[d] = item1_p->P.x[d] - item2_p->P.x[d];                       \
+            rv[d] = p1->core.x[d] - p2->core.x[d];                           \
     }                                                                        \
     r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
 

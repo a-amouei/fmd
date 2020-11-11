@@ -144,10 +144,14 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     return i+1;
 }
 
-#define FIND_NEIGHBOR_IN_jc(jc)                                                                             \
-    for (item_p = md->SubDomain.grid[(jc)[0]][(jc)[1]][(jc)[2]]; item_p != NULL; item_p = item_p->next_p)   \
-        if (item_p->P.MolID == MolID && item_p->P.AtomID_local == neighborID)                               \
-            break;
+inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
+{
+    for (int i=0; i < c->parts_num; i++)
+        if (c->parts[i].core.MolID == MolID && c->parts[i].core.AtomID_local == neighborID)
+            return i;
+
+    return -1;
+}
 
 #define MAP_kc_TO_jc(kc, jc, d)                                             \
     if ((kc)[(d)] < md->SubDomain.ic_start[(d)])                            \
@@ -194,10 +198,30 @@ unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
     else                                                                    \
         (jc)[(d)] = (kc)[(d)];
 
-static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned MolID,
-                                         unsigned neighborID)
+#define SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(xc)             \
+    do                                                                      \
+    {                                                                       \
+        cell_t *cell = &md->SubDomain.grid[(xc)[0]][(xc)[1]][(xc)[2]];      \
+        ind = find_neighbor_in_cell(cell, MolID, neighborID);               \
+                                                                            \
+        if (ind > -1) /* if the described neighbor was found */             \
+        {                                                                   \
+            *cnb = cell;                                                    \
+            *index_nb = ind;                                                \
+            return;                                                         \
+        }                                                                   \
+    } while (0)
+
+/* the last two parameters are outputs of the function:
+   (they determine the place of the neighbor particle in grid, if any found)
+
+   (*c)[*index_nb] is the found neighbor.
+
+   if index_nb equals -1, it means no neighbor is found                         */
+static void find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned MolID, unsigned neighborID,
+                          cell_t **cnb, int *index_nb)
 {
-    // calculate maximum distance
+    /* calculate maximum distance */
     int max_dist = 0;
     for (int d=0; d<3; d++)
     {
@@ -215,19 +239,18 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
         if (max_d > max_dist) max_dist = max_d;
     }
 
-    ParticleListItem_t *item_p;
+    int ind;
 
-    // treat dist=0 separately
-    FIND_NEIGHBOR_IN_jc(ic);
-    if (item_p != NULL) return item_p;
+    /* treat dist=0 separately */
+    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(ic);
 
-    // other dist values
+    /* other dist values */
     for (int dist=1; dist <= max_dist; dist++)
     {
         fmd_ituple_t jc, kc;
         fmd_bool_t map_done;
 
-        // segment 1 out of 6
+        /* segment 1 out of 6 */
         kc[0] = ic[0] + dist;
         MAP_kc_TO_jc(kc, jc, 0);
         if (map_done)
@@ -237,12 +260,11 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
                 for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
                 {
                     MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
-                    FIND_NEIGHBOR_IN_jc(jc);
-                    if (item_p != NULL) return item_p;
+                    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(jc);
                 }
             }
 
-        // segment 2 out of 6
+        /* segment 2 out of 6 */
         kc[0] = ic[0] - dist;
         MAP_kc_TO_jc(kc, jc, 0);
         if (map_done)
@@ -252,12 +274,11 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
                 for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
                 {
                     MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
-                    FIND_NEIGHBOR_IN_jc(jc);
-                    if (item_p != NULL) return item_p;
+                    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(jc);
                 }
             }
 
-        // segment 3 out of 6
+        /* segment 3 out of 6 */
         kc[1] = ic[1] + dist;
         MAP_kc_TO_jc(kc, jc, 1);
         if (map_done)
@@ -267,12 +288,11 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
                 for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
                 {
                     MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
-                    FIND_NEIGHBOR_IN_jc(jc);
-                    if (item_p != NULL) return item_p;
+                    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(jc);
                 }
             }
 
-        // segment 4 out of 6
+        /* segment 4 out of 6 */
         kc[1] = ic[1] - dist;
         MAP_kc_TO_jc(kc, jc, 1);
         if (map_done)
@@ -282,12 +302,11 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
                 for (kc[2]=ic[2]-dist; kc[2]<=ic[2]+dist; kc[2]++)
                 {
                     MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 2);
-                    FIND_NEIGHBOR_IN_jc(jc);
-                    if (item_p != NULL) return item_p;
+                    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(jc);
                 }
             }
 
-        // segment 5 out of 6
+        /* segment 5 out of 6 */
         kc[2] = ic[2] + dist;
         MAP_kc_TO_jc(kc, jc, 2);
         if (map_done)
@@ -297,12 +316,11 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
                 for (kc[1]=ic[1]-(dist-1); kc[1]<=ic[1]+(dist-1); kc[1]++)
                 {
                     MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 1);
-                    FIND_NEIGHBOR_IN_jc(jc);
-                    if (item_p != NULL) return item_p;
+                    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(jc);
                 }
             }
 
-        // segment 6 out of 6
+        /* segment 6 out of 6 */
         kc[2] = ic[2] - dist;
         MAP_kc_TO_jc(kc, jc, 2);
         if (map_done)
@@ -312,13 +330,12 @@ static ParticleListItem_t *find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned Mo
                 for (kc[1]=ic[1]-(dist-1); kc[1]<=ic[1]+(dist-1); kc[1]++)
                 {
                     MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, 1);
-                    FIND_NEIGHBOR_IN_jc(jc);
-                    if (item_p != NULL) return item_p;
+                    SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(jc);
                 }
             }
     }
 
-    return NULL;
+    *index_nb = -1;  /* if the specified neighbor atom was not found */
 }
 
 static int compare_LocalID_in_ln(const void *a, const void *b)
@@ -329,52 +346,81 @@ static int compare_LocalID_in_ln(const void *a, const void *b)
         return 1;
 }
 
-void fmd_matt_updateNeighbors(fmd_t *md)
+void _fmd_matt_updateAtomNeighbors(fmd_t *md)
 {
     fmd_ituple_t ic;
-    ParticleListItem_t *item_p;
+    cell_t *cell;
+    int i;
 
+    /* iterate over all particles in current subdomain */
     ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item_p != NULL; item_p = item_p->next_p)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
-            if (item_p->P.molkind == 0) continue;
-            list_t *mkln = md->potsys.molkinds[item_p->P.molkind].atoms[item_p->P.AtomID_local].neighbors;
+            particle_t *p = &cell->parts[i];
+
+            if (p->core.molkind == 0) continue;
+
+            /* iterate over all neighbor atoms in the template for the molecule */
+            list_t *mkln = md->potsys.molkinds[p->core.molkind].atoms[p->core.AtomID_local].neighbors;
 
             while (mkln != NULL)
             {
                 unsigned nblocal = ((molkind_atom_neighbor_t *)mkln->data)->atom->LocalID;
 
-                list_t *res = fmd_list_find_custom(item_p->neighbors, &nblocal, compare_LocalID_in_ln);
+                /* does "neighbors" list of atom p contain an entry for a neighbor atom with local ID nblocal? */
+                list_t *res = fmd_list_find_custom(p->neighbors, &nblocal, compare_LocalID_in_ln);
 
-                if (res == NULL)
+                if (res == NULL) /* NO */
                 {
+                    /* create that entry */
                     mol_atom_neighbor_t *man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
                     man->LocalID = nblocal;
                     man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
-                    ParticleListItem_t *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
-                    man->atom = item_nb;
-                    item_p->neighbors = fmd_list_prepend(item_p->neighbors, man);
 
-                    if (item_nb != NULL)
+                    /* the following two variables will describe the place of the neighbor atom */
+                    cell_t *cnb;
+                    int index;
+
+                    find_neighbor(md, ic, p->core.MolID, nblocal, &cnb, &index);
+                    man->cell = cnb;
+                    man->index = index;
+                    p->neighbors = fmd_list_prepend(p->neighbors, man);
+
+                    /* does a neighbor atom with local ID nblocal actually exist in current subdomain? */
+                    if (index != -1)  /* neighbor atom was found indeed */
                     {
+                        /* also add an entry in the neighbor list of that neighbor atom and update it */
                         man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
-                        man->LocalID = item_p->P.AtomID_local;
+                        man->LocalID = p->core.AtomID_local;
                         man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
-                        man->atom = item_p;
-                        item_nb->neighbors = fmd_list_prepend(item_nb->neighbors, man);
+                        man->index = i;
+                        man->cell = cell;
+                        cnb->parts[index].neighbors = fmd_list_prepend(cnb->parts[index].neighbors, man);
                     }
                 }
-                else
+                else /* YES. It contains such entry. */
                 {
-                    if ( ((mol_atom_neighbor_t *)res->data)->atom == NULL )
-                    {
-                        ParticleListItem_t *item_nb = find_neighbor(md, ic, item_p->P.MolID, nblocal);
-                        ((mol_atom_neighbor_t *)res->data)->atom = item_nb;
+                    /* does that entry refer to an atom existing in current subdomain? */
 
-                        if (item_nb != NULL)
+                    if ( ((mol_atom_neighbor_t *)res->data)->index == -1 ) /* no, it refers to nothing. */
+                    {
+                        /* try to find that neighbor atom in the subdomain, and update the entry accordingly */
+
+                        /* the following two variables will describe the place of the neighbor atom */
+                        cell_t *cnb;
+                        int index;
+
+                        find_neighbor(md, ic, p->core.MolID, nblocal, &cnb, &index);
+                        ((mol_atom_neighbor_t *)res->data)->cell = cnb;
+                        ((mol_atom_neighbor_t *)res->data)->index = index;
+
+                        if (index != -1)  /* neighbor atom was found */
                         {
-                            list_t *f = fmd_list_find_custom(item_nb->neighbors, &item_p->P.AtomID_local, compare_LocalID_in_ln);
-                            ((mol_atom_neighbor_t *)f->data)->atom = item_p;
+                            /* also update the corresponding entry in the neighbors list of the neighbor atom */
+                            list_t *f = fmd_list_find_custom(cnb->parts[index].neighbors, &p->core.AtomID_local,
+                                                             compare_LocalID_in_ln);
+                            ((mol_atom_neighbor_t *)f->data)->cell = cell;
+                            ((mol_atom_neighbor_t *)f->data)->index = i;
                         }
                     }
                 }
@@ -384,10 +430,10 @@ void fmd_matt_updateNeighbors(fmd_t *md)
         }
 }
 
-#define _COMPUTE_rv_AND_r2(item1, item2, r0)                                 \
+#define _COMPUTE_rv_AND_r2(p1, p2, r0)                                       \
     for (d=0; d<3; d++)                                                      \
     {                                                                        \
-        rv[d] = (item1)->P.x[d] - (item2)->P.x[d];                           \
+        rv[d] = (p1)->core.x[d] - (p2)->core.x[d];                           \
         if (md->ns[d] == 1)                                                  \
         {                                                                    \
             if (rv[d] > 2*(r0))                                              \
@@ -403,37 +449,43 @@ void fmd_dync_computeBondForce(fmd_t *md)
     int ic0, ic1, ic2;
     fmd_real_t PotEnergy = 0.0;
 
-    // iterate over all cells(lists)
+    /* iterate over all cells(lists) */
     #pragma omp parallel for private(ic0,ic1,ic2) \
       shared(md) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
     for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
         for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
             for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
             {
-                // iterate over all items in cell ic
-                for (ParticleListItem_t *item1 = md->SubDomain.grid[ic0][ic1][ic2]; item1 != NULL; item1 = item1->next_p)
-                {
-                    if (item1->P.molkind != 0)
-                    {
-                        ParticleListItem_t *item2 = ((mol_atom_neighbor_t *)(item1->neighbors->data))->atom;
+                cell_t *cell;
+                int i;
 
-                        if (item1->P.AtomID_local > item2->P.AtomID_local)
+                /* iterate over all atoms in cell ic */
+                for (cell = &md->SubDomain.grid[ic0][ic1][ic2], i=0; i < cell->parts_num; i++)
+                {
+                    particle_t *p1 = &cell->parts[i];
+
+                    if (p1->core.molkind != 0)
+                    {
+                        int index = ((mol_atom_neighbor_t *)(p1->neighbors->data))->index;
+                        particle_t *p2 = &((mol_atom_neighbor_t *)(p1->neighbors->data))->cell->parts[index];;
+
+                        if (p1->core.AtomID_local > p2->core.AtomID_local)
                         {
                             fmd_real_t r2;
                             fmd_rtuple_t rv;
                             int d;
 
-                            bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(item1->neighbors->data))->bond;
+                            bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(p1->neighbors->data))->bond;
                             fmd_real_t r0 = bond->r0;
-                            _COMPUTE_rv_AND_r2(item1, item2, r0);
+                            _COMPUTE_rv_AND_r2(p1, p2, r0);
                             fmd_real_t k = bond->k;
                             fmd_real_t r = sqrt(r2);
                             fmd_rtuple_t vek;
                             for (d=0; d<3; d++)
                             {
                                 vek[d] = -2*k*(r-r0)*rv[d]/r;
-                                item1->F[d] += vek[d];
-                                item2->F[d] -= vek[d];
+                                p1->F[d] += vek[d];
+                                p2->F[d] -= vek[d];
                             }
                             PotEnergy += k*(r-r0)*(r-r0);
                         }
