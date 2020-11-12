@@ -154,8 +154,8 @@ typedef struct
 {
     fmd_rtuple_t x;
     fmd_rtuple_t v;
-    fmd_rtuple_t x_bak;
-    fmd_rtuple_t v_bak;
+    //fmd_rtuple_t x_bak;
+    //fmd_rtuple_t v_bak;
     float LocOrdParam;
     float x_avgd[3];
     unsigned AtomID;
@@ -280,7 +280,7 @@ void identifyProcess(fmd_t *md);
 void handleFileOpenError(FILE *fp, char *filename);
 void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
-void restoreBackups(fmd_t *md);
+//void restoreBackups(fmd_t *md);
 void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to);
 void _fmd_initialize_grid(cell_t ***grid, unsigned dim1, unsigned dim2, unsigned dim3);
 

@@ -226,11 +226,11 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 
             for (d=0; d<3; d++)
             {
-                if (md->UseAutoStep)
+                /*if (md->UseAutoStep)
                 {
                     p->core.v_bak[d] = p->core.v[d];
                     p->core.x_bak[d] = p->core.x[d];
-                }
+                }*/
 
                 if (UseThermostat) p->core.v[d] *= velocityScale;
 
@@ -796,7 +796,7 @@ void rescaleVelocities(fmd_t *md)
     md->GlobalTemperature = md->DesiredTemperature;
 }
 
-void restoreBackups(fmd_t *md)
+/*void restoreBackups(fmd_t *md)
 {
     fmd_ituple_t ic;
     int d;
@@ -820,7 +820,7 @@ void restoreBackups(fmd_t *md)
 #ifdef USE_TTM
     ttm_restoreBackups();
 #endif
-}
+}*/
 
 void fmd_matt_saveConfiguration(fmd_t *md)
 {
