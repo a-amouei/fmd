@@ -237,7 +237,7 @@ struct _fmd
     fmd_real_t GlobalTemperature;
     fmd_bool_t Is_MD_process;
     fmd_bool_t Is_MD_comm_root;
-    int LOP_iteration;              // must be initialized with zero
+    int LOP_iteration;                    // must be initialized with zero
     int LOP_period;
     MPI_Comm MD_comm;
     fmd_real_t TotalKineticEnergy;

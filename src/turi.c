@@ -281,7 +281,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
         if (t->comms[i].num_tcells > t->num_tcells_max) t->num_tcells_max = t->comms[i].num_tcells;
 }
 
-unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
+unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime)
 {
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
@@ -296,6 +296,8 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz)
     t->tdims_global[0] = dimx;
     t->tdims_global[1] = dimy;
     t->tdims_global[2] = dimz;
+
+    t->starttime = starttime;
 
     t->tcells_global_num = dimx * dimy * dimz;
 
@@ -534,7 +536,7 @@ void fmd_field_update_test(fmd_t *md)
     }
 }*/
 
-unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, fmd_real_t interval)
+unsigned fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
 {
     unsigned i;
     field_t *f;

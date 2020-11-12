@@ -150,7 +150,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature);
 
-unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz);
-unsigned fmd_field_add(fmd_t *md, unsigned turi, fmd_field_t cat, fmd_real_t interval);
+unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime);
+unsigned fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
 
 #endif /* FMD_H */
