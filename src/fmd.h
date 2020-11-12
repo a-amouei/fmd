@@ -33,6 +33,8 @@ typedef double fmd_real_t;
 
 typedef fmd_real_t fmd_rtuple_t[3];
 
+typedef int fmd_handle_t;
+
 typedef enum
 {
     FMD_SCM_XYZ_PARTICLESNUM,
@@ -61,6 +63,7 @@ typedef enum
 } fmd_field_t;
 
 typedef char *fmd_string_t;
+
 typedef int fmd_bool_t;
 
 typedef enum
@@ -72,11 +75,11 @@ typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param)
 
 /* functions */
 
-unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[]);
-void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
+fmd_handle_t fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[]);
+void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
   unsigned atom1, unsigned atom2);
 
-unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
+fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
   unsigned AtomKinds[], fmd_rtuple_t AtomPositions[]);
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz);
@@ -94,7 +97,7 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
-void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, fmd_real_t xa,
+void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
   fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
   int GroupID);
 void fmd_matt_saveConfiguration(fmd_t *md);

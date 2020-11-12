@@ -23,9 +23,9 @@
 #include "array.h"
 #include "list.h"
 
-unsigned fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[])
+fmd_handle_t fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[])
 {
-    unsigned i = md->potsys.bondkinds_num;
+    int i = md->potsys.bondkinds_num;
 
     md->potsys.bondkinds = (bondkindp_t *)realloc(md->potsys.bondkinds,
       (i+1) * sizeof(bondkindp_t));
@@ -62,7 +62,7 @@ static int compare_LocalID_in_mkln(const void *a, const void *b)
         return 1;
 }
 
-void fmd_bond_apply(fmd_t *md, unsigned bondkind, unsigned molkind,
+void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
   unsigned atom1, unsigned atom2)
 {
     // TO-DO
@@ -114,10 +114,10 @@ void fmd_molecule_freeKinds()
     //free(md->potsys.molkinds + 1);  // the +1 shift is important here ( see fmd_molecule_addKind() )
 }
 
-unsigned fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
+fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
   unsigned AtomKinds[], fmd_rtuple_t AtomPositions[])
 {
-    unsigned i = md->potsys.molkinds_num;
+    int i = md->potsys.molkinds_num;
 
     // molkinds data start from index 1 because molkind=0 has special meaning
     molkind_t *genuine_pointer = (md->potsys.molkinds == NULL ? NULL : md->potsys.molkinds+1);

@@ -192,7 +192,7 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
     free(proportions);
 }
 
-void fmd_matt_scatterMolecule(fmd_t *md, unsigned molkind, fmd_real_t xa,
+void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
   fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
   int GroupID)
 {
