@@ -27,6 +27,7 @@
 #include "timer.h"
 #include "molecule.h"
 #include "array.h"
+#include "turi.h"
 
 const fmd_ituple_t _fmd_ThreeZeros = {0, 0, 0};
 
@@ -296,6 +297,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
     }
     MPI_Reduce(momentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM,
                ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+
     MPI_Allreduce(&particlesNum, &(md->ActiveGroupParticlesNum), 1, MPI_INT, MPI_SUM, md->MD_comm);
 
     if (md->ActiveGroup == -1)
@@ -305,7 +307,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
     md->TotalKineticEnergy = 0.5 * m_vSqd_SumSum;
     md->TotalMDEnergy = md->TotalKineticEnergy + md->TotalPotentialEnergy;
 
-    if (md->UseAutoStep)
+    /*if (md->UseAutoStep)
     {
         if (md->_OldTotalMDEnergy!=0. && fabs((md->TotalMDEnergy-md->_OldTotalMDEnergy)/md->_OldTotalMDEnergy) > md->AutoStepSensitivity)
         {
@@ -328,7 +330,8 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
         }
         md->_PrevFailedMDEnergy = 0.;
         md->_OldTotalMDEnergy = md->TotalMDEnergy;
-    }
+    }*/
+
     md->GlobalTemperature = m_vSqd_SumSum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
 
     return returnVal;
@@ -1124,6 +1127,7 @@ fmd_t *fmd_create()
     md->LOP_iteration = 0;
     md->UseAutoStep = FMD_FALSE;
     md->MD_time = 0.0;
+    md->time_iteration = 0;
     md->SaveDirectory[0] = '\0';
     md->CompLocOrdParam = FMD_FALSE;
     md->SubDomain.grid = NULL;
@@ -1236,7 +1240,9 @@ fmd_real_t fmd_dync_getTime(fmd_t *md)
 void fmd_dync_incTime(fmd_t *md)
 {
     md->MD_time += md->delta_t;
-    if (md->EventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
+    md->time_iteration++;
+    if (md->turies_num > 0) _fmd_turies_update(md);
+    if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
 }
 
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
@@ -1255,7 +1261,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
 
     // initialize
     md->MD_time = 0.0;
-    md->delta_t = timestep;
+    fmd_dync_setTimeStep(md, timestep);
     md->DesiredTemperature = temperature;
     md->GlobalTemperature = temperature;
     md->BerendsenThermostatParam = strength;
@@ -1275,14 +1281,13 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
         // take last step of velocity Verlet integrator
         fmd_dync_VelocityVerlet_finishStep(md);
 
-        md->MD_time += md->delta_t;
-        if (md->EventHandler != NULL) fmd_timer_sendTimerTickEvents(md);
+        fmd_dync_incTime(md);
     }
     // end of the time loop
 
     // restore backups
     md->MD_time = bak_mdTime;
-    md->delta_t = bak_delta_t;
+    fmd_dync_setTimeStep(md, bak_delta_t);
     md->DesiredTemperature = bak_DesiredTemperature;
     md->BerendsenThermostatParam = bak_BerendsenThermostatParam;
     md->ActiveGroup = bak_activeGroup;

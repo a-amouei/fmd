@@ -68,10 +68,18 @@ typedef int fmd_bool_t;
 
 typedef enum
 {
-    FMD_EVENT_TIMERTICK
+    FMD_EVENT_TIMER_TICK,
+    FMD_EVENT_FIELD_UPDATE
 } fmd_event_t;
 
-typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
+typedef struct _fmd_event_params fmd_event_params_t;
+
+typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_event_params_t *params);
+
+typedef struct
+{
+    fmd_handle_t timer;
+} fmd_event_params_timer_tick_t;
 
 /* functions */
 
@@ -131,7 +139,7 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
 void fmd_subd_init(fmd_t *md);
 void fmd_subd_free(fmd_t *md);
 
-unsigned fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop);
+fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop);
 
 fmd_real_t fmd_proc_getWallTime(fmd_t *md);
 fmd_bool_t fmd_proc_isMD(fmd_t *md);
@@ -153,7 +161,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature);
 
-unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime);
-unsigned fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
+fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
+fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
 
 #endif /* FMD_H */

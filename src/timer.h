@@ -22,6 +22,7 @@
 
 #include "config.h"
 #include "types.h"
+#include "tgmath.h"
 
 typedef enum
 {
@@ -40,6 +41,17 @@ typedef struct _fmd_timer
 typedef struct _fmd fmd_t;
 
 void fmd_timer_free(fmd_t *md);
-void fmd_timer_sendTimerTickEvents(fmd_t *md);
+void _fmd_timer_sendTimerTickEvents(fmd_t *md);
+
+inline fmd_bool_t _fmd_timer_is_its_time(fmd_real_t t, fmd_real_t dt_half, fmd_real_t starttime, fmd_real_t interval)
+{
+    fmd_real_t tc = round((t - starttime) / interval) * interval + starttime;
+    fmd_real_t d = t - tc;
+
+    if (d >= -dt_half && d < dt_half)
+        return FMD_TRUE;
+    else
+        return FMD_FALSE;
+}
 
 #endif /* TIMER_H */

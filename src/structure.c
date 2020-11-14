@@ -96,7 +96,7 @@ static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd
             fmd_real_t rn = prps_sum * gsl_rng_uniform(rng);
 
             int j;
-            for (int j=0; j < md->potsys.atomkinds_num; j++)
+            for (j=0; j < md->potsys.atomkinds_num; j++)
                 if (rn < prps_cumult[j]) break;
             pc.atomkind = j;
 

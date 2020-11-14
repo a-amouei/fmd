@@ -20,6 +20,21 @@
 #include "turi.h"
 #include "base.h"
 #include "subdomain.h"
+#include "timer.h"
+#include "events.h"
+
+/* If the argument x is extremely close to an integer,
+   returns the integer. Otherwise returns x unchanged. */
+inline fmd_real_t impreal(fmd_real_t x)
+{
+    fmd_real_t e = fabs(x - round(x));
+
+#ifdef FMD_FLOAT_CALCS
+    return e < 1e-5 ? round(x) : x;
+#else
+    return e < 1e-10 ? round(x) : x;
+#endif
+}
 
 static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
 {
@@ -96,8 +111,8 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
 
     for (int d=0; d<3; d++)
     {
-        is_start[d] = (int)slo[d];
-        is_stop[d] = (int)ceil(shi[d]);
+        is_start[d] = (int)impreal(slo[d]);
+        is_stop[d] = (int)ceil(impreal(shi[d]));
         np *= is_stop[d] - is_start[d];
     }
 
@@ -281,7 +296,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
         if (t->comms[i].num_tcells > t->num_tcells_max) t->num_tcells_max = t->comms[i].num_tcells;
 }
 
-unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime)
+fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime)
 {
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
@@ -298,6 +313,7 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, f
     t->tdims_global[2] = dimz;
 
     t->starttime = starttime;
+    t->stoptime = stoptime;
 
     t->tcells_global_num = dimx * dimy * dimz;
 
@@ -306,9 +322,9 @@ unsigned fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, f
         t->tcellh[d] = md->l[d] / t->tdims_global[d];
 
         fmd_real_t xlo = md->SubDomain.ic_global_firstcell[d] * md->cellh[d];
-        t->tcell_start[d] = (int)(xlo / t->tcellh[d]);
+        t->tcell_start[d] = (int)impreal(xlo / t->tcellh[d]);
         fmd_real_t xhi = xlo + md->SubDomain.cell_num_nonmarg[d] * md->cellh[d];
-        t->tcell_stop[d] = (int)ceil(xhi / t->tcellh[d]);
+        t->tcell_stop[d] = (int)ceil(impreal(xhi / t->tcellh[d]));
 
         t->tdims[d] = t->tcell_stop[d] - t->tcell_start[d];
     }
@@ -512,13 +528,11 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
             vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
 }
 
-/*
+
 void fmd_field_update_test(fmd_t *md)
 {
     turi_t *t = &md->turies[0];
     field_t *f = &t->fields[0];
-
-    update_field_number(md, f, t);
 
     fmd_array3D_t num;
 
@@ -534,11 +548,11 @@ void fmd_field_update_test(fmd_t *md)
 
         _fmd_array_3d_free(&num);
     }
-}*/
+}
 
-unsigned fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
+fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
 {
-    unsigned i;
+    int i;
     field_t *f;
     unsigned dep1;
     turi_t *t = &md->turies[turi];
@@ -609,17 +623,52 @@ unsigned fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t
     return i;
 }
 
-/*void fmd_field_report(fmd_t *md, unsigned turi)
+static void update_field(fmd_t *md, field_t *f, turi_t *t, int fi, int ti)
 {
-    turi_t *t = &md->turies[turi];
-    printf("number of added fields = %d\n\n", t->fields_num);
-    for (int i=0; i < t->fields_num; i++)
+    switch (f->cat)
     {
-        printf("FIELD %d:\n", i);
-        field_t *f = &t->fields[i];
-        printf("cat = %d\n", f->cat);
-        printf("timestep = %d\n", f->timestep);
-        printf("number of dependency fields = %d\n", f->dependcs_num);
-        printf("number of intervals = %d\n\n", f->intervals_num);
+        case FMD_FIELD_NUMBER:
+            update_field_number(md, f, t);
+            break;
     }
-}*/
+
+    f->timestep = md->time_iteration; /* mark as updated */
+
+    if (md->EventHandler != NULL)
+    {
+        fmd_event_params_field_update_t params;
+
+        params.field = fi;
+        params.turi = ti;
+
+        md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, &params);
+    }
+}
+
+void _fmd_turies_update(fmd_t *md)
+{
+    for (int ti=0; ti < md->turies_num; ti++)
+    {
+        turi_t *t = &md->turies[ti];
+
+        if (md->MD_time >= t->starttime && !(md->MD_time > t->stoptime && t->stoptime >= t->starttime))
+        {
+            for (int fi=0; fi < t->fields_num; fi++)
+            {
+                field_t *f = &t->fields[fi];
+
+                if (f->timestep == md->time_iteration) continue; /* see if is already updated */
+
+                for (int j=0; j < f->intervals_num; j++)
+                {
+                    if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals[j]))
+                    {
+                        update_field(md, f, t, fi, ti);
+
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}

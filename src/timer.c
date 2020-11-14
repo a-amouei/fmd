@@ -19,6 +19,7 @@
 
 #include "timer.h"
 #include "base.h"
+#include "events.h"
 
 void fmd_timer_free(fmd_t *md)
 {
@@ -30,7 +31,7 @@ void fmd_timer_free(fmd_t *md)
     }
 }
 
-unsigned fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop)
+fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop)
 {
     int i = md->timers_num;
 
@@ -47,17 +48,22 @@ unsigned fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, 
     return i;
 }
 
-void fmd_timer_sendTimerTickEvents(fmd_t *md)
+void _fmd_timer_sendTimerTickEvents(fmd_t *md)
 {
-    for (unsigned i=0; i < md->timers_num; i++)
+    for (int i=0; i < md->timers_num; i++)
     {
         if ( md->timers[i].enabled && md->MD_time >= md->timers[i].start &&
              !(md->MD_time > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
         {
             if (md->timers[i].cat == TIMER_SIMPLE)
             {
-                if (fmod( fabs(md->MD_time - md->timers[i].start), md->timers[i].interval ) < md->delta_t)
-                    md->EventHandler(md, FMD_EVENT_TIMERTICK, i);
+                if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, md->timers[i].start, md->timers[i].interval))
+                {
+                    fmd_event_params_timer_tick_t params;
+
+                    params.timer = i;
+                    md->EventHandler(md, FMD_EVENT_TIMER_TICK, &params);
+                }
             }
         }
     }

@@ -24,23 +24,29 @@
 
 #include <fmd.h>
 
-void handleEvents(fmd_t *md, fmd_event_t event, unsigned param)
+fmd_handle_t timer1, timer2;
+
+void handleEvents(fmd_t *md, fmd_event_t event, fmd_event_params_t *params)
 {
     switch (event)
     {
-        case FMD_EVENT_TIMERTICK:
-            if (param == 0)
+        case FMD_EVENT_TIMER_TICK: ;
+
+            fmd_handle_t timer = ((fmd_event_params_timer_tick_t *)params)->timer;
+
+            if (timer == timer1)
             {
-                // report some quantities if the event is caused by timer #0
+                // report some quantities if the event is caused by timer1
                 fmd_io_printf(md, "%f\t%f\t%e\n", fmd_dync_getTime(md),
                                                   fmd_matt_getGlobalTemperature(md),
                                                   fmd_matt_getTotalEnergy(md));
             }
-            else if (param == 1)
+            else if (timer == timer2)
             {
-                // save configuration if the event is caused by timer #1
+                // save configuration if the event is caused by timer2
                 fmd_matt_saveConfiguration(md);
             }
+
             break;
     }
 }
@@ -55,9 +61,9 @@ int main(int argc, char *argv[])
     // assign an event handler to the instance
     fmd_setEventHandler(md, handleEvents);
 
-    // make two simple timers (timer #0 and timer #1)
-    fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
-    fmd_timer_makeSimple(md, 0.0, 0.04, -1.0);
+    // make two simple timers
+    timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
+    timer2 = fmd_timer_makeSimple(md, 0.0, 0.04, -1.0);
 
     // set size of the simulation box (in Angstrom)
     double latticeParameter = 5.26;

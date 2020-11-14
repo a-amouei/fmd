@@ -1,7 +1,7 @@
 /*
-  config.h: This file is part of Free Molecular Dynamics
+  events.h: This file is part of Free Molecular Dynamics
 
-  Copyright (C) 2019 Arham Amouye Foumani
+  Copyright (C) 2020 Arham Amouye Foumani
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,11 +17,31 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef EVENTS_H
+#define EVENTS_H
 
-// #define NDEBUG
-// #define FMD_FLOAT_CALCS
-#define USE_CSPLINE
+#include "config.h"
+#include "types.h"
 
-#endif /* CONFIG_H */
+typedef enum
+{
+    FMD_EVENT_TIMER_TICK,
+    FMD_EVENT_FIELD_UPDATE
+} fmd_event_t;
+
+typedef struct _fmd_event_params fmd_event_params_t;
+
+typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_event_params_t *params);
+
+typedef struct
+{
+    fmd_handle_t timer;
+} fmd_event_params_timer_tick_t;
+
+typedef struct
+{
+    fmd_handle_t turi;
+    fmd_handle_t field;
+} fmd_event_params_field_update_t;
+
+#endif /* EVENTS_H */

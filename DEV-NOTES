@@ -7,6 +7,7 @@ TO-DO:
   #5    Check logic of fmd_box_setSize()
   #6    Now that arrays are used instead of linked-lists to store particles, if an atom of a molecule leaves a grid cell and enters another 
         cell or if its place in a cell is changed, the references to it in the data structures of the neighbor atoms must be updated.
+  #7    In md_ghost.c, only data of atoms belonging to the active group should be communicated.
 
 Questions:
 

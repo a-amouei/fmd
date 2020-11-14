@@ -22,21 +22,21 @@
 
 #include "config.h"
 
+#include <tgmath.h>
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <string.h>
 #include <time.h>
 #include <mpi.h>
 #include <assert.h>
 #include <limits.h>
-#include <complex.h>
 #include <omp.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 #include "potential.h"
 #include "subdomain.h"
+#include "events.h"
 
 /* Global macroes and symbolic constants */
 
@@ -201,13 +201,6 @@ typedef enum
 typedef struct _fmd fmd_t;
 typedef struct _fmd_timer fmd_timer_t;
 
-typedef enum
-{
-    FMD_EVENT_TIMERTICK
-} fmd_event_t;
-
-typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, unsigned param);
-
 typedef struct
 {
     MPI_Datatype mpi_ituple;
@@ -231,6 +224,7 @@ struct _fmd
     fmd_bool_t PBCdetermined;
     fmd_real_t CutoffRadius;
     fmd_real_t MD_time;
+    int time_iteration;
     fmd_real_t delta_t;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
@@ -283,6 +277,7 @@ void rescaleVelocities(fmd_t *md);
 //void restoreBackups(fmd_t *md);
 void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to);
 void _fmd_initialize_grid(cell_t ***grid, unsigned dim1, unsigned dim2, unsigned dim3);
+void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t timeStep);
 
 inline unsigned new_particle(cell_t *c)
 {

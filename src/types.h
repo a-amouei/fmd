@@ -25,21 +25,20 @@
 #define FMD_TRUE 1
 #define FMD_FALSE 0
 
+#ifdef FMD_FLOAT_CALCS
+#define FMD_MPI_REAL  MPI_FLOAT
+  typedef float fmd_real_t;
+#else
+#define FMD_MPI_REAL  MPI_DOUBLE
+  typedef double fmd_real_t;
+#endif
+
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 typedef void *fmd_pointer_t;
 typedef int fmd_ituple_t[3];
 typedef unsigned fmd_utuple_t[3];
-typedef REAL fmd_real_t;
 typedef fmd_real_t fmd_rtuple_t[3];
 typedef int fmd_handle_t;
-
-#if REAL==double
-  #define FMD_MPI_REAL  MPI_DOUBLE
-#else
-  #if REAL==float
-    #define FMD_MPI_REAL  MPI_FLOAT
-  #endif
-#endif
 
 #endif /* TYPES_H */
