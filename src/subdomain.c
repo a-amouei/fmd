@@ -19,6 +19,7 @@
 
 #include "subdomain.h"
 #include "base.h"
+#include "general.h"
 
 /* This function receives the position of a point in MD simulation box
    and determines its coordinates in subdomain space.
@@ -46,7 +47,7 @@ void fmd_subd_free(fmd_t *md)
 {
     if (md->SubDomain.grid != NULL)
     {
-        _fmd_cleanGridSegment(md->SubDomain.grid, _fmd_ThreeZeros, md->SubDomain.cell_num);
+        _fmd_cleanGridSegment(md->SubDomain.grid, _fmd_ThreeZeros_int, md->SubDomain.cell_num);
         _fmd_array_3d_free(&md->SubDomain.grid_array);
         md->SubDomain.grid = NULL;
     }
@@ -95,8 +96,7 @@ void fmd_subd_init(fmd_t *md)
         md->SubDomain.cell_num_nonmarg[d] = md->SubDomain.ic_stop[d] - md->SubDomain.ic_start[d];
     }
 
-    _fmd_array_3d_create(md->SubDomain.cell_num[0], md->SubDomain.cell_num[1], md->SubDomain.cell_num[2],
-                         sizeof(cell_t), &md->SubDomain.grid_array);
+    _fmd_array_3d_create(md->SubDomain.cell_num, sizeof(cell_t), DATATYPE_CELL, &md->SubDomain.grid_array);
     md->SubDomain.grid = (cell_t ***)md->SubDomain.grid_array.data;
     assert(md->SubDomain.grid != NULL);
     /* TO-DO: handle memory error */

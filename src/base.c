@@ -28,8 +28,7 @@
 #include "molecule.h"
 #include "array.h"
 #include "turi.h"
-
-const fmd_ituple_t _fmd_ThreeZeros = {0, 0, 0};
+#include "general.h"
 
 static void refreshGrid(fmd_t *md, int reverse);
 
@@ -49,7 +48,7 @@ void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic
 {
     fmd_ituple_t ic;
 
-    ITERATE(ic, ic_from, ic_to)
+    LOOP3D(ic, ic_from, ic_to)
         FREE_CELL(grid[ic[0]][ic[1]][ic[2]]);
 }
 
@@ -57,7 +56,7 @@ void compLocOrdParam(fmd_t *md)
 {
 /*
     float latticeParameter = md->EAM.elements[0].latticeParameter;
-    float rCutSqd = SQR(1.32 * latticeParameter);
+    float rCutSqd = sqrr(1.32 * latticeParameter);
     fmd_ituple_t ic, jc, kc;
     int d;
     ParticleListItem_t *item1_p, *item2_p;
@@ -68,7 +67,7 @@ void compLocOrdParam(fmd_t *md)
     int i;
 
     if (md->LOP_iteration == 0)
-        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
             for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
             {
                 item1_p->P.LocOrdParam = 0.;
@@ -82,7 +81,7 @@ void compLocOrdParam(fmd_t *md)
         for (d=0; d<3; d++)
             q[i][d] *= 4.0 * M_PI / latticeParameter * q[i][d];
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
         {
             fmd_real_t = img = 0.;
@@ -116,7 +115,7 @@ void compLocOrdParam(fmd_t *md)
                                     else
                                         rv[d] = item1_p->P.x[d] - item2_p->P.x[d];
                                 }
-                                r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
+                                r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);
                                 if (r2 < rCutSqd)
                                 {
                                     Z++;
@@ -133,7 +132,7 @@ void compLocOrdParam(fmd_t *md)
                     }
                 }
             }
-            item1_p->P.LocOrdParam += (SQR(fmd_real_t)+SQR(img)) / SQR(Z);
+            item1_p->P.LocOrdParam += (sqrr(fmd_real_t)+sqrr(img)) / sqrr(Z);
             for (d=0; d<3; d++)
                 item1_p->P.x_avgd[d] += item1_p->P.x[d];
         }
@@ -142,7 +141,7 @@ void compLocOrdParam(fmd_t *md)
 
     fmd_ghostparticles_update_LocOrdParam(md);
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
         {
             fmd_real_t = item1_p->P.LocOrdParam;
@@ -176,7 +175,7 @@ void compLocOrdParam(fmd_t *md)
                                     else
                                         rv[d] = item1_p->P.x[d] - item2_p->P.x[d];
                                 }
-                                r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
+                                r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);
                                 if (r2 < rCutSqd)
                                 {
                                     Z++;
@@ -206,7 +205,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
     if (UseThermostat) velocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
                        (md->DesiredTemperature / md->GlobalTemperature - 1));
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
         /* iterate over all particles in cell ic */
 
@@ -290,9 +289,9 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
                         p->core.v[d] += md->delta_t * 0.5 / mass * p->F[d];
                         momentumSum[d] += mass * p->core.v[d];
                     }
-                    m_vSqd_Sum += mass * ( SQR(p->core.v[0]) +
-                                           SQR(p->core.v[1]) +
-                                           SQR(p->core.v[2]) );
+                    m_vSqd_Sum += mass * ( sqrr(p->core.v[0]) +
+                                           sqrr(p->core.v[1]) +
+                                           sqrr(p->core.v[2]) );
                 }
     }
     MPI_Reduce(momentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM,
@@ -347,7 +346,7 @@ static fmd_real_t compVirial_internal(fmd_t *md)
     int i;
     cell_t *cell;
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
             particle_t *p = &cell->parts[i];
@@ -394,7 +393,7 @@ void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
     int i;
     cell_t *cell;
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
             for (d=0; d<3; d++)
             {
@@ -454,7 +453,7 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
     }
     else
     {
-        start = _fmd_ThreeZeros;
+        start = _fmd_ThreeZeros_int;
         if (md->Is_MD_comm_root)
         {
             grid = md->global_grid;
@@ -468,7 +467,7 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
     cell_t *cell;
     particle_core_t *pc;
 
-    ITERATE(ic, start, stop)
+    LOOP3D(ic, start, stop)
         for (cell = &grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
             if (pc = &cell->parts[i].core, GroupID == -1 || GroupID == pc->GroupID)
             {
@@ -500,14 +499,14 @@ void fmd_matt_distribute(fmd_t *md)
         ttm_comp_min_atomsNo(global_grid, s_p);
 #endif
 
-        ITERATE(ic, _fmd_ThreeZeros, md->nc)
+        LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
             for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
             {
                 particle_core_t *pc = &cell->parts[pind].core;
 
                 mass = md->potsys.atomkinds[pc->atomkind].mass;
                 for (d=0; d<3; d++)
-                    m_vSqd_Sum += mass * SQR(pc->v[d]);
+                    m_vSqd_Sum += mass * sqrr(pc->v[d]);
             }
 
         md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->TotalNoOfParticles * K_BOLTZMANN);
@@ -535,7 +534,7 @@ void fmd_matt_distribute(fmd_t *md)
             }
             ic_length = (int *)malloc((nct+1) * sizeof(int));
             k = sum_length = 0;
-            ITERATE(ic, global_icstart, global_icstop)
+            LOOP3D(ic, global_icstart, global_icstop)
             {
                 ic_length[k] = md->global_grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length += ic_length[k++];
@@ -550,7 +549,7 @@ void fmd_matt_distribute(fmd_t *md)
             is_partcores = (particle_core_t *)malloc(sum_length);
 
             k = 0;
-            ITERATE(ic, global_icstart, global_icstop)
+            LOOP3D(ic, global_icstart, global_icstop)
                 for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
                     is_partcores[k++] = cell->parts[pind].core;
 
@@ -560,7 +559,7 @@ void fmd_matt_distribute(fmd_t *md)
         }
 
         md->SubDomain.NumberOfParticles = 0;
-        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         {
             cell = &md->global_grid[ ic[0] - md->SubDomain.ic_start[0] + md->SubDomain.ic_global_firstcell[0] ]
                                    [ ic[1] - md->SubDomain.ic_start[1] + md->SubDomain.ic_global_firstcell[1] ]
@@ -600,7 +599,7 @@ void fmd_matt_distribute(fmd_t *md)
                  ROOTPROCESS(md->SubDomain.numprocs), 51, md->MD_comm, &status);
 
         kreceive = k = 0;
-        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         {
             cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
 
@@ -719,7 +718,7 @@ static void refreshGrid(fmd_t *md, int reverse)
     int d;
 
     /* iterate over all cells */
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
 
         /* iterate over all particles in cell ic */
@@ -791,7 +790,7 @@ void rescaleVelocities(fmd_t *md)
     cell_t *cell;
     int i;
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
             for (d=0; d<3; d++)
                 cell->parts[i].core.v[d] *= scale;
@@ -806,7 +805,7 @@ void rescaleVelocities(fmd_t *md)
     cell_t *cell;
     int pind;
 
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
         {
             particle_core_t *pc = &cell->parts[pind].core;
@@ -836,7 +835,7 @@ void fmd_matt_saveConfiguration(fmd_t *md)
 
     localData = (XYZ_struct_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t));
     k=0;
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
         {
             particle_core_t *pc = &cell->parts[pind].core;
@@ -1019,7 +1018,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         fprintf(fp, "%.16e\t%.16e\t%.16e\n", md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
 
-        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
             for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
             {
                 particle_core_t *pc = &cell->parts[pind].core;
@@ -1057,7 +1056,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         is_partcores = (particle_core_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(particle_core_t));
 
         k = 0;
-        ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
             for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
                 is_partcores[k++] = cell->parts[pind].core;
 
@@ -1152,6 +1151,7 @@ fmd_t *fmd_create()
     md->_PrevFailedMDEnergy = 0.0;
     fmd_potsys_init(md);
     create_mpi_types(md);
+    _fmd_h5_ds_init(&md->h5_dataspaces);
 
     // this must be the last statement before return
     md->WallTimeOrigin = MPI_Wtime();
@@ -1202,7 +1202,7 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
 
     if (md->Is_MD_comm_root)
     {
-        md->global_grid = (cell_t ***)_fmd_array_ordinary3d_create(md->nc[0], md->nc[1], md->nc[2], sizeof(cell_t));
+        md->global_grid = (cell_t ***)_fmd_array_ordinary3d_create(md->nc, sizeof(cell_t));
         assert(md->global_grid != NULL);
         /* TO-DO: handle memory error */
 
@@ -1324,7 +1324,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     }
     else
     {
-        start = _fmd_ThreeZeros;
+        start = _fmd_ThreeZeros_int;
         if (md->Is_MD_comm_root)
         {
             grid = md->global_grid;
@@ -1342,7 +1342,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     cell_t *cell;
     int pind;
 
-    ITERATE(ic, start, stop)
+    LOOP3D(ic, start, stop)
         for (cell = &grid[ic[0]][ic[1]][ic[2]], pind = 0; pind < cell->parts_num; pind++)
         {
             particle_core_t *pc = &cell->parts[pind].core;
@@ -1376,6 +1376,7 @@ void fmd_free(fmd_t *md)
     fmd_potsys_free(md);
     fmd_timer_free(md);
     free_mpi_types(md);
+    _fmd_h5_ds_free(&md->h5_dataspaces);
 
     free(md);
 

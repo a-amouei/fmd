@@ -36,9 +36,29 @@
 typedef char *fmd_string_t;
 typedef int fmd_bool_t;
 typedef void *fmd_pointer_t;
-typedef int fmd_ituple_t[3];
-typedef unsigned fmd_utuple_t[3];
-typedef fmd_real_t fmd_rtuple_t[3];
+
+typedef int fmd_itriple_t[3];
+typedef fmd_itriple_t fmd_ituple_t;
+
+typedef unsigned fmd_utriple_t[3];
+typedef fmd_utriple_t fmd_utuple_t;
+
+typedef fmd_real_t fmd_rtriple_t[3];
+typedef fmd_rtriple_t fmd_rtuple_t;
+
+typedef float fmd_ftriple_t[3];
+
 typedef int fmd_handle_t;
+
+typedef enum
+{
+    DATATYPE_REAL,
+    DATATYPE_FLOAT,
+    DATATYPE_DOUBLE,
+    DATATYPE_INT,
+    DATATYPE_UNSIGNED,
+    DATATYPE_RTUPLE,
+    DATATYPE_CELL             /* a cell_t */
+} datatype_t;
 
 #endif /* TYPES_H */

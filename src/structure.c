@@ -20,6 +20,7 @@
 #include "base.h"
 #include "molecule.h"
 #include "array.h"
+#include "general.h"
 
 #define RESERVED_GROUP  -2
 
@@ -29,7 +30,7 @@ static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *Momentum
 {
     fmd_ituple_t ic;
 
-    ITERATE(ic, _fmd_ThreeZeros, md->nc)
+    LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
         for (int i=0; i < md->global_grid[ic[0]][ic[1]][ic[2]].parts_num; i++)
         {
             particle_core_t *pc = &md->global_grid[ic[0]][ic[1]][ic[2]].parts[i].core;
@@ -88,7 +89,7 @@ static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd
             break;
     }
 
-    ITERATE(CrystalCell, _fmd_ThreeZeros, dims)
+    LOOP3D(CrystalCell, _fmd_ThreeZeros_int, dims)
         for (i=0; i<points_per_cell; i++)
         {
             particle_core_t pc;

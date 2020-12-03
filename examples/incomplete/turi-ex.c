@@ -24,17 +24,30 @@
 
 #include <math.h>
 #include <fmd.h>
+#include <stdio.h>
 
-void fmd_field_update_test(fmd_t *md);
+fmd_handle_t turi, field;
 
 void handleEvents(fmd_t *md, fmd_event_t event, fmd_event_params_t *params)
 {
+    static int counter = 0;
+
     switch (event)
     {
         case FMD_EVENT_FIELD_UPDATE: ;
+            fmd_event_params_field_update_t *p = (fmd_event_params_field_update_t *)params;
+            if (p->field == field && p->turi == turi)
+            {
+                char str[32];
 
-            fmd_io_printf(md, "%f\t%s\n", fmd_dync_getTime(md), "field update!");
-            fmd_field_update_test(md);
+                fmd_io_printf(md, "%f\t%s\n", fmd_dync_getTime(md), "number-density field updated!");
+
+                sprintf(str, "out-%05d.h5", counter++);
+
+                fmd_field_save_as_hdf5(md, turi, field, str);
+            }
+            else
+                fmd_io_printf(md, "%f\t%s\n", fmd_dync_getTime(md), "another field updated!");
 
             break;
     }
@@ -118,22 +131,22 @@ int main(int argc, char *argv[])
 
     // equilibrate the two colliding objects
     fmd_io_printf(md, "equilibrating the copper object...\n");
-    fmd_dync_equilibrate(md, 0, 1.0, 2e-3, 2e-2, 40.0);
+    fmd_dync_equilibrate(md, 0, 1., 2e-3, 2e-2, 40.0);
     fmd_io_printf(md, "equilibrating the argon object...\n");
-    fmd_dync_equilibrate(md, 1, 1.0, 2e-3, 2e-2, 40.0);
+    fmd_dync_equilibrate(md, 1, 1., 2e-3, 2e-2, 40.0);
 
     // add some center-of-mass velocity to the atoms of the objects (groups 0 and 1)
     fmd_matt_addVelocity(md, 0, +8., 0., 0.);
     fmd_matt_addVelocity(md, 1, -8., 0., 0.);
 
-    fmd_handle_t turi = fmd_turi_add(md, FMD_TURI_CUSTOM, 10, 10, 10, 0.1, -1.);
-    fmd_field_add(md, turi, FMD_FIELD_NUMBER, 0.2);
+    turi = fmd_turi_add(md, FMD_TURI_CUSTOM, 10, 10, 10, 0.0, -1.);
+    field = fmd_field_add(md, turi, FMD_FIELD_NUMBER_DENSITY, 0.1);
 
     // activate all groups for dynamics; -1 as a groupID means all groups
     fmd_matt_setActiveGroup(md, -1);
 
     // simulate for 6.5 picoseconds
-    double final_time = 6.5;
+    double final_time = 1.0;
 
     // compute forces for the first time
     fmd_dync_updateForces(md);

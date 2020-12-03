@@ -37,6 +37,7 @@
 #include "potential.h"
 #include "subdomain.h"
 #include "events.h"
+#include "h5.h"
 
 /* Global macroes and symbolic constants */
 
@@ -46,14 +47,6 @@
     ((ic)[0]= (i)%(nc)[0],                                             \
      (ic)[1]=((i)/(nc)[0])%(nc)[1],                                    \
      (ic)[2]=((i)/(nc)[0])/(nc)[1])
-
-#define SQR(x)          ((x)*(x))
-#define CUBE(x)         ((x)*(x)*(x))
-
-#define ITERATE(iv, minv, upv)                                         \
-    for ( (iv)[0]=(minv)[0]; (iv)[0]<(upv)[0]; (iv)[0]++ )             \
-        for ( (iv)[1]=(minv)[1]; (iv)[1]<(upv)[1]; (iv)[1]++ )         \
-            for ( (iv)[2]=(minv)[2]; (iv)[2]<(upv)[2]; (iv)[2]++ )
 
 #define SET_jc_IN_DIRECTION(dd)                                        \
     if (md->ns[dd] == 1)                                               \
@@ -258,6 +251,7 @@ struct _fmd
     fmd_rtuple_t TotalMomentum;
     fmd_bool_t ParticlesDistributed;
     fmd_bool_t MPI_initialized_by_me;
+    h5_dataspaces_t h5_dataspaces;
     int _OldNumberOfParticles;
     int _FileIndex;
     fmd_real_t _OldTotalMDEnergy;
@@ -284,9 +278,5 @@ inline unsigned new_particle(cell_t *c)
     if (c->parts_num == c->capacity) RESIZE_CELL(*c);
     return c->parts_num++;
 }
-
-/* */
-
-extern const fmd_ituple_t _fmd_ThreeZeros;
 
 #endif /* BASE_H */

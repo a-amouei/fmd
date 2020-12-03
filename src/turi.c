@@ -22,6 +22,18 @@
 #include "subdomain.h"
 #include "timer.h"
 #include "events.h"
+#include "general.h"
+#include "h5.h"
+
+static void call_field_update_event_handler(fmd_t *md, int field_index, int turi_index)
+{
+    fmd_event_params_field_update_t params;
+
+    params.field = field_index;
+    params.turi = turi_index;
+
+    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, &params);
+}
 
 /* If the argument x is extremely close to an integer,
    returns the integer. Otherwise returns x unchanged. */
@@ -34,6 +46,57 @@ inline fmd_real_t impreal(fmd_real_t x)
 #else
     return e < 1e-10 ? round(x) : x;
 #endif
+}
+
+static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
+{
+    out->data = NULL;
+    turi_ownerscomm_t *owcomm = &t->ownerscomm;
+
+    /* only "owners" participate in the collective communication below */
+    if (owcomm->owned_tcells_num == 0) return;
+
+    fmd_real_t ***lcd = (fmd_real_t ***)f->data.data;
+
+    fmd_real_t *sendbuf = (fmd_real_t *)malloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
+    assert(sendbuf != NULL);
+    /* TO-DO: handle memory error */
+
+    for (int i=0; i < owcomm->owned_tcells_num; i++)
+    {
+        int *itc = owcomm->owned_tcells[i];
+        sendbuf[i] = lcd[itc[0]][itc[1]][itc[2]];
+    }
+
+    fmd_real_t *recvbuf;
+
+    if (md->Is_MD_comm_root)
+    {
+        recvbuf = (fmd_real_t *)malloc(t->tcells_global_num * sizeof(*recvbuf));
+        assert(recvbuf != NULL);
+        /* TO-DO: handle memory error */
+    }
+
+    MPI_Gatherv(sendbuf, owcomm->owned_tcells_num, FMD_MPI_REAL,
+                recvbuf, owcomm->recvcounts, owcomm->displs,
+                FMD_MPI_REAL, 0, owcomm->comm);
+
+    free(sendbuf);
+
+    if (md->Is_MD_comm_root)
+    {
+        _fmd_array_3d_create(t->tdims_global, sizeof(fmd_real_t), f->datatype, out);
+        assert(out->data != NULL);
+        /* TO-DO: handle memory error */
+
+        for (int i=0; i < t->tcells_global_num; i++)
+        {
+            int *itc = owcomm->global_indexes[i];
+            ((fmd_real_t ***)out->data)[itc[0]][itc[1]][itc[2]] = recvbuf[i];
+        }
+
+        free(recvbuf);
+    }
 }
 
 static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
@@ -73,8 +136,7 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
 
     if (md->Is_MD_comm_root)
     {
-        _fmd_array_3d_create(t->tdims_global[0], t->tdims_global[1], t->tdims_global[2],
-                             sizeof(unsigned), out);
+        _fmd_array_3d_create(t->tdims_global, sizeof(unsigned), f->datatype, out);
         assert(out->data != NULL);
         /* TO-DO: handle memory error */
 
@@ -123,7 +185,7 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
     fmd_ituple_t is;
     int i=0;
 
-    ITERATE(is, is_start, is_stop)
+    LOOP3D(is, is_start, is_stop)
         (*pset)[i++] = INDEX(is, md->ns);
 
     /* if root process of the MD communicator exists in pset, let it
@@ -223,7 +285,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
     fmd_ituple_t itc;
 
-    ITERATE(itc, t->tcell_start, t->tcell_stop)
+    LOOP3D(itc, t->tcell_start, t->tcell_stop)
     {
         turi_comm_t *tcomm;
         int *pset, np;
@@ -308,6 +370,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     turi_t *t = &md->turies[ti];
 
+    t->turi_index = ti;
+
     t->tdims_global[0] = dimx;
     t->tdims_global[1] = dimy;
     t->tdims_global[2] = dimz;
@@ -329,6 +393,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         t->tdims[d] = t->tcell_stop[d] - t->tcell_start[d];
     }
 
+    t->tcell_volume = t->tcellh[0] * t->tcellh[1] * t->tcellh[2];
+
     t->cat = cat;
     switch (cat)
     {
@@ -344,36 +410,25 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     prepare_turi_for_communication(md, t);
 
-    /* only for test */
-    /* for (int i=0; i < md->ns[0]; i++)
-        for (int j=0; j < md->ns[1]; j++)
-            for (int k=0; k < md->ns[2]; k++)
-            {
-                MPI_Barrier(md->MD_comm);
-                if (md->SubDomain.is[0] == i && md->SubDomain.is[1] == j && md->SubDomain.is[2] == k)
-                    printf("subdomain(%d, %d, %d)\n", i, j, k);
-            }
-    */
-
     return ti;
 }
 
 static void set_field_data_el_size_and_type(field_t *f)
 {
-    if (f->cat == FMD_FIELD_MASS || f->cat == FMD_FIELD_TEMPERATURE)
+    if (f->cat == FMD_FIELD_MASS || f->cat == FMD_FIELD_TEMPERATURE || f->cat == FMD_FIELD_NUMBER_DENSITY)
     {
         f->data_el_size = sizeof(fmd_real_t);
-        f->data_type = FIELD_DATA_REAL;
+        f->datatype = DATATYPE_REAL;
     }
     else if (f->cat == FMD_FIELD_VCM)
     {
         f->data_el_size = sizeof(fmd_rtuple_t);
-        f->data_type = FIELD_DATA_RTUPLE;
+        f->datatype = DATATYPE_RTUPLE;
     }
     else if (f->cat == FMD_FIELD_NUMBER)
     {
         f->data_el_size = sizeof(unsigned);
-        f->data_type = FIELD_DATA_UNSIGNED;
+        f->datatype = DATATYPE_UNSIGNED;
     }
     else
         assert(0);  /* TO-DO */
@@ -456,22 +511,21 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     free(buf2);
 }
 
-static void update_field_number(fmd_t *md, field_t *f, turi_t *t)
+static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     fmd_ituple_t ic, itc;
 
     unsigned ***num = (unsigned ***)f->data.data;
 
     /* clean data of number field (initialize with zeros) */
-    _fmd_array_3d_unsigned_clean(num, t->tdims[0], t->tdims[1], t->tdims[2]);
+    _fmd_array_3d_unsigned_clean(num, t->tdims);
 
     cell_t *cell;
     int i;
     /* iterate over all particles in current subdomain */
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
-
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
                 itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
@@ -481,7 +535,30 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t)
         }
 
     /* do communications */
-    perform_field_comm_unsigned(md, f, t, FMD_FALSE);
+    perform_field_comm_unsigned(md, f, t, allreduce);
+
+    f->timestep = md->time_iteration; /* mark as updated */
+
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
+}
+
+static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+{
+    field_t *fdep = &t->fields[f->dependcs[0]];
+    /* update the dependency field if not already updated */
+    if (fdep->timestep != md->time_iteration) update_field_number(md, fdep, t, allreduce);
+
+    unsigned ***num = (unsigned ***)fdep->data.data;
+    fmd_real_t ***nd = (fmd_real_t ***)f->data.data;
+
+    fmd_ituple_t itc;
+
+    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+        nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
+
+    f->timestep = md->time_iteration; /* mark as updated */
+
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
 }
 
 static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
@@ -492,7 +569,7 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
     fmd_real_t ***mass = (fmd_real_t ***)t->fields[f->dependcs[0]].data.data;
 
     /* clean data of mass and vcm fields (initialize with zeros) */
-    ITERATE(itc, _fmd_ThreeZeros, t->tdims)
+    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
     {
         mass[itc[0]][itc[1]][itc[2]] = 0.0;
         for (int d=0; d<3; d++)
@@ -503,7 +580,7 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
     int i;
 
     /* iterate over all particles in current subdomain */
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
 
@@ -523,34 +600,55 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
     /* TO-DO: do communications */
 
     /* calculate vcm and mass (last phase) */
-    ITERATE(itc, _fmd_ThreeZeros, t->tdims)
+    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
         for (int d=0; d<3; d++)
             vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
 }
 
+#define ADD_interval_TO_ARRAY(array, num, interval)                            \
+    do                                                                         \
+    {                                                                          \
+        (array) = (fmd_real_t *)realloc(array, ((num)+1)*sizeof(fmd_real_t));  \
+        assert((array) != NULL);      /* TO-DO */                              \
+        (array)[(num)++] = (interval);                                         \
+    } while(0)
 
-void fmd_field_update_test(fmd_t *md)
+static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allreduce)
 {
-    turi_t *t = &md->turies[0];
-    field_t *f = &t->fields[0];
+    unsigned j;
 
-    fmd_array3D_t num;
+    /* see if the interval already exists in "intervals_allreduce" array */
+    for (j=0; j < f->intervals_allreduce_num; j++)
+        if (f->intervals_allreduce[j] == interval) break;
 
-    gather_field_data_unsigned(md, t, f, &num);
-
-    if (md->Is_MD_comm_root)
+    if (j == f->intervals_allreduce_num) /* no, doesn't exist there */
     {
-        for (int i=0; i < num.dim1; i++)
-            for (int j=0; j < num.dim2; j++)
-                for (int k=0; k < num.dim3; k++)
-                    printf("%d ", ((unsigned ***)(num.data))[i][j][k]);
-        printf("\n");
+        /* see if the interval already exists in "intervals" array */
+        for (j=0; j < f->intervals_num; j++)
+            if (f->intervals[j] == interval) break;
 
-        _fmd_array_3d_free(&num);
+        if (j == f->intervals_num) /* doesn't exist in "intervals" either */
+        {
+            if (allreduce) /* add it to "intervals_allreduce" */
+                ADD_interval_TO_ARRAY(f->intervals_allreduce, f->intervals_allreduce_num, interval);
+            else /* add it to "intervals" */
+                ADD_interval_TO_ARRAY(f->intervals, f->intervals_num, interval);
+        }
+        else /* it exists in "intervals" array */
+        {
+            if (allreduce)
+            {
+                /* remove it from "intervals" */
+                f->intervals[j] = --f->intervals_num;
+
+                /* add it to "intervals_allreduce" */
+                ADD_interval_TO_ARRAY(f->intervals_allreduce, f->intervals_allreduce_num, interval);
+            }
+        }
     }
 }
 
-fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
+static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce)
 {
     int i;
     field_t *f;
@@ -561,11 +659,15 @@ fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_re
     switch (cat)
     {
         case FMD_FIELD_TEMPERATURE:
-            dep1 = fmd_field_add(md, turi, FMD_FIELD_VCM, interval);
+            dep1 = field_add(md, turi, FMD_FIELD_VCM, interval, FMD_TRUE);
             break;
 
         case FMD_FIELD_VCM:
-            dep1 = fmd_field_add(md, turi, FMD_FIELD_MASS, interval);
+            dep1 = field_add(md, turi, FMD_FIELD_MASS, interval, FMD_TRUE);
+            break;
+
+        case FMD_FIELD_NUMBER_DENSITY:
+            dep1 = field_add(md, turi, FMD_FIELD_NUMBER, interval, allreduce);
             break;
 
         default:
@@ -585,13 +687,17 @@ fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_re
         /* TO-DO: handle memory error */
         assert(t->fields != NULL);
 
-        f = &t->fields[t->fields_num++];
+        f = &t->fields[t->fields_num];
+        f->field_index = t->fields_num;
         f->cat = cat;
         f->timestep = -1;
+        f->intervals_allreduce = NULL;
+        f->intervals_allreduce_num = 0;
         f->intervals = NULL;
         f->intervals_num = 0;
+        t->fields_num++;
 
-        if (cat == FMD_FIELD_TEMPERATURE || cat == FMD_FIELD_VCM)
+        if (cat == FMD_FIELD_TEMPERATURE || cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY)
         {
             f->dependcs_num = 1;
             f->dependcs = (unsigned *)malloc(sizeof(unsigned));
@@ -603,45 +709,34 @@ fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_re
         set_field_data_el_size_and_type(f);
 
         /* allocate space for field data */
-        _fmd_array_3d_create(t->tdims[0], t->tdims[1], t->tdims[2], f->data_el_size, &f->data);
+        _fmd_array_3d_create(t->tdims, f->data_el_size, f->datatype, &f->data);
         assert(f->data.data != NULL);
     }
     else
         f = &t->fields[i];
 
-    /* add the interval if doesn't already exist in the intervals array */
-    unsigned j;
-    for (j=0; j < f->intervals_num; j++)
-        if (f->intervals[j] == interval) break;
-
-    if (j == f->intervals_num)
-    {
-        f->intervals = (fmd_real_t *)realloc(f->intervals, (f->intervals_num+1) * sizeof(fmd_real_t));
-        f->intervals[f->intervals_num++] = interval;
-    }
+    /* add the interval if doesn't already exist in "intervals" or "intervals_allreduce" arrays */
+    field_intervals_add(f, interval, allreduce);
 
     return i;
 }
 
-static void update_field(fmd_t *md, field_t *f, turi_t *t, int fi, int ti)
+fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
+{
+    return field_add(md, turi, cat, interval, FMD_FALSE);
+}
+
+static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     switch (f->cat)
     {
         case FMD_FIELD_NUMBER:
-            update_field_number(md, f, t);
+            update_field_number(md, f, t, allreduce);
             break;
-    }
 
-    f->timestep = md->time_iteration; /* mark as updated */
-
-    if (md->EventHandler != NULL)
-    {
-        fmd_event_params_field_update_t params;
-
-        params.field = fi;
-        params.turi = ti;
-
-        md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, &params);
+        case FMD_FIELD_NUMBER_DENSITY:
+            update_field_number_density(md, f, t, allreduce);
+            break;
     }
 }
 
@@ -657,18 +752,56 @@ void _fmd_turies_update(fmd_t *md)
             {
                 field_t *f = &t->fields[fi];
 
-                if (f->timestep == md->time_iteration) continue; /* see if is already updated */
+                if (f->timestep == md->time_iteration) continue; /* see if it is already updated */
 
-                for (int j=0; j < f->intervals_num; j++)
+                int j;
+
+                for (j=0; j < f->intervals_allreduce_num; j++)
                 {
-                    if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals[j]))
+                    if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals_allreduce[j]))
                     {
-                        update_field(md, f, t, fi, ti);
+                        update_field(md, f, t, FMD_TRUE);
 
                         break;
                     }
                 }
+
+                if (j == f->intervals_allreduce_num)
+                {
+                    for (j=0; j < f->intervals_num; j++)
+                    {
+                        if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals[j]))
+                        {
+                            update_field(md, f, t, FMD_FALSE);
+
+                            break;
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path)
+{
+    turi_t *t = &md->turies[turi];
+    field_t *f = &t->fields[field];
+
+    fmd_array3D_t data;
+
+    switch(f->cat)
+    {
+        case FMD_FIELD_NUMBER_DENSITY:
+            gather_field_data_real(md, t, f, &data);
+            if (md->Is_MD_comm_root)
+            {
+                _fmd_h5_save_scalar_float(md, "number-density", t, path, &data);
+                _fmd_array_3d_free(&data);
+            }
+            break;
+
+        default:
+            assert(0);
     }
 }

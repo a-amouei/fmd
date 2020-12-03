@@ -22,6 +22,7 @@
 #include "forces.h"
 #include "list.h"
 #include "potential.h"
+#include "general.h"
 
 void fmd_computeMorse(fmd_t *md)
 {
@@ -86,7 +87,7 @@ void fmd_computeMorse(fmd_t *md)
                                             fmd_real_t r = sqrt(r2);
                                             fmd_real_t inv_r = 1.0/r;
                                             fmd_real_t exp1 = exp( -morse->alpha * (r - morse->r0) );
-                                            fmd_real_t exp2 = SQR(exp1);
+                                            fmd_real_t exp2 = sqrr(exp1);
                                             fmd_real_t factor = morse->alpha * morse->D0 * inv_r * (exp2 - exp1);
                                             for (d=0; d<3; d++)
                                                 p1->F[d] += factor * rv[d];
@@ -115,7 +116,7 @@ fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2
     morse->D0 = D0;
     morse->alpha = alpha;
     morse->r0 = r0;
-    morse->cutoff_sqr = SQR(cutoff);
+    morse->cutoff_sqr = sqrr(cutoff);
 
     fmd_pot_t *pot = (fmd_pot_t *)malloc(sizeof(fmd_pot_t));
     pot->cat = POT_MORSE;

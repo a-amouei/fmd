@@ -20,6 +20,7 @@
 #include "eam.h"
 #include "base.h"
 #include "list.h"
+#include "general.h"
 
 #define EAM_TTM_UPDATE_FORCE                                                    \
     {                                                                           \
@@ -267,8 +268,8 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         fscanf(fp, "%d%lf%d%lf%lf", &eam->Nrho, &eam->drho, &eam->Nr, &eam->dr, &cutoff);
         eam->Nr2 = (eam->Nr += 2);
         assert( (eam->Nr-1) * eam->dr > cutoff );
-        eam->cutoff_sqr = SQR(cutoff);
-        eam->dr2 = SQR((eam->Nr-1) * eam->dr) / (eam->Nr2-1);
+        eam->cutoff_sqr = sqrr(cutoff);
+        eam->dr2 = sqrr((eam->Nr-1) * eam->dr) / (eam->Nr2-1);
 
         fmd_real_t *tempArray = (fmd_real_t *)malloc(eam->Nr * sizeof(fmd_real_t));
         for (i=0; i < eam->elementsNo; i++)

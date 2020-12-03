@@ -17,10 +17,10 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 PREFIX = /usr
-CC = mpicc
+CC = h5pcc
 SHAREDLIB = libfmd.so
 CFLAGS = -fPIC -Wall -Wno-unused-result -O3 -fopenmp
-LFLAGS = -fopenmp -lgsl -lgslcblas
+LFLAGS = -fopenmp -lgsl -lgslcblas -shlib
 
 OBJS ::= $(patsubst %.c,%.o,$(wildcard *.c))
 

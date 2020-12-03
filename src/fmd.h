@@ -59,7 +59,8 @@ typedef enum
     FMD_FIELD_MASS,
     FMD_FIELD_VCM,
     FMD_FIELD_TEMPERATURE,
-    FMD_FIELD_NUMBER
+    FMD_FIELD_NUMBER,
+    FMD_FIELD_NUMBER_DENSITY
 } fmd_field_t;
 
 typedef char *fmd_string_t;
@@ -80,6 +81,12 @@ typedef struct
 {
     fmd_handle_t timer;
 } fmd_event_params_timer_tick_t;
+
+typedef struct
+{
+    fmd_handle_t turi;
+    fmd_handle_t field;
+} fmd_event_params_field_update_t;
 
 /* functions */
 
@@ -163,5 +170,6 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
+void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path);
 
 #endif /* FMD_H */

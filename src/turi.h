@@ -27,30 +27,27 @@
 
 typedef enum
 {
-    FIELD_DATA_UNSIGNED,
-    FIELD_DATA_REAL,
-    FIELD_DATA_RTUPLE
-} field_data_type_t;
-
-typedef enum
-{
     FMD_FIELD_MASS,
     FMD_FIELD_VCM,
     FMD_FIELD_TEMPERATURE,
-    FMD_FIELD_NUMBER
+    FMD_FIELD_NUMBER,
+    FMD_FIELD_NUMBER_DENSITY
 } fmd_field_t; /* category of the field */
 
 typedef struct
 {
+    int field_index;
     fmd_field_t cat;
-    int timestep;               /* the last timestep this field was updated */
-    unsigned dependcs_num;      /* number of the dependency fields */
-    unsigned *dependcs;         /* indexes of the dependency fields */
+    int timestep;                    /* the last timestep this field was updated */
+    unsigned dependcs_num;           /* number of the dependency fields */
+    unsigned *dependcs;              /* indexes of the dependency fields */
+    unsigned intervals_allreduce_num;
+    fmd_real_t *intervals_allreduce; /* at these intervals a field update and "allreduce" MPI communication is done */
     unsigned intervals_num;
-    fmd_real_t *intervals;      /* intervals determine when to update the field */
+    fmd_real_t *intervals;           /* intervals determine when to update the field and perform "reduce" MPI communication */
     fmd_array3D_t data;
-    unsigned data_el_size;      /* size of each data element in bytes */
-    field_data_type_t data_type;
+    unsigned data_el_size;           /* size of each data element in bytes */
+    datatype_t datatype;
 } field_t;
 
 typedef enum
@@ -81,6 +78,7 @@ typedef struct
 
 typedef struct _turi
 {
+    int turi_index;
     fmd_turi_t cat;
     fmd_ituple_t tdims_global;  /* global dimenstions of the turi */
     fmd_ituple_t tdims;         /* dimenstions of the turi in current subdomain.
@@ -90,6 +88,7 @@ typedef struct _turi
     fmd_ituple_t tcell_start;   /* global index of the first turi-cell in current subdomain */
     fmd_ituple_t tcell_stop;    /* global index of the first turi-cell outside current subdomain */
     fmd_rtuple_t tcellh;        /* size of each cell of the turi (global) */
+    fmd_real_t tcell_volume;    /* equals tcellh[0] x tcellh[1] x tcellh[2] */
     unsigned fields_num;
     field_t *fields;
     unsigned comms_num;         /* number of communicators = number of elements of the following array */

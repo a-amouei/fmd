@@ -35,9 +35,9 @@
                                                                                     \
             /* force, F = -(d/dr)U */                                               \
             inv_r2 = 1.0/r2;                                                        \
-            inv_rs2 = SQR(lj->sig) * inv_r2;                                        \
+            inv_rs2 = sqrr(lj->sig) * inv_r2;                                       \
             inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;                                  \
-            inv_rs12 = SQR(inv_rs6);                                                \
+            inv_rs12 = sqrr(inv_rs6);                                               \
             fmd_real_t factor = 48.0 * lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6); \
             for (d=0; d<3; d++)                                                     \
                 p1->F[d] += rv[d] * factor;                                         \

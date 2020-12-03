@@ -25,6 +25,7 @@
 #include "md_ghost.h"
 #include "list.h"
 #include "molecule.h"
+#include "general.h"
 
 static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {

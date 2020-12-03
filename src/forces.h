@@ -38,7 +38,7 @@
         else                                                                 \
             rv[d] = p1->core.x[d] - p2->core.x[d];                           \
     }                                                                        \
-    r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
+    r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);
 
 typedef struct _fmd fmd_t;
 

@@ -22,6 +22,7 @@
 #include "base.h"
 #include "array.h"
 #include "list.h"
+#include "general.h"
 
 fmd_handle_t fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[])
 {
@@ -353,7 +354,7 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
     int i;
 
     /* iterate over all particles in current subdomain */
-    ITERATE(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
             particle_t *p = &cell->parts[i];
@@ -442,7 +443,7 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                 rv[d] += md->l[d];                                           \
         }                                                                    \
     }                                                                        \
-    r2 = SQR(rv[0])+SQR(rv[1])+SQR(rv[2]);
+    r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);
 
 void fmd_dync_computeBondForce(fmd_t *md)
 {

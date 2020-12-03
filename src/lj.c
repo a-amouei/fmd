@@ -22,6 +22,7 @@
 #include "base.h"
 #include "list.h"
 #include "forces.h"
+#include "general.h"
 
 void fmd_computeLJ(fmd_t *md)
 {
@@ -91,9 +92,9 @@ void fmd_computeLJ(fmd_t *md)
 
                                             /* force, F = -(d/dr)U */
                                             inv_r2 = 1.0/r2;
-                                            inv_rs2 = SQR(lj->sig) * inv_r2;
+                                            inv_rs2 = sqrr(lj->sig) * inv_r2;
                                             inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;
-                                            inv_rs12 = SQR(inv_rs6);
+                                            inv_rs12 = sqrr(inv_rs6);
                                             fmd_real_t factor = lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6);
                                             for (d=0; d<3; d++)
                                                 p1->F[d] += rv[d] * factor;
@@ -122,7 +123,7 @@ fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
     LJ_6_12_t *lj = (LJ_6_12_t *)malloc(sizeof(LJ_6_12_t));
     lj->sig = sigma;
     lj->eps = epsilon;
-    lj->cutoff_sqr = SQR(cutoff);
+    lj->cutoff_sqr = sqrr(cutoff);
 
     fmd_pot_t *pot = (fmd_pot_t *)malloc(sizeof(fmd_pot_t));
     pot->cat = POT_LJ_6_12;

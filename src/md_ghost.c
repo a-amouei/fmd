@@ -24,6 +24,7 @@
 #include "base.h"
 #include "md_ghost.h"
 #include "types.h"
+#include "general.h"
 
 typedef struct
 {
@@ -66,7 +67,7 @@ static void particles_migrate_in_direction_d(
                      md->SubDomain.rank_of_upper_subd[d], 2, md->MD_comm, &status);
 
             kreceive = k = 0;
-            ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+            LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
             {
                 for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
                     INSERT_PART_CORE_IN_CELL(pcs_receive[k++], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
@@ -76,7 +77,7 @@ static void particles_migrate_in_direction_d(
             free(cells_length_receive);
             free(pcs_receive);
             /* */
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             {
                 md->SubDomain.NumberOfParticles -= md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
@@ -85,7 +86,7 @@ static void particles_migrate_in_direction_d(
             /* sending to upper process */
             cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
             k = sum_length_send = 0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             {
                 cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
@@ -99,7 +100,7 @@ static void particles_migrate_in_direction_d(
             pcs_send = (particle_core_t *)malloc(sum_length_send);
 
             k=0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             {
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
@@ -119,7 +120,7 @@ static void particles_migrate_in_direction_d(
                 cells_num *= ic_stop_send_lower[dd] - ic_start_send_lower[dd];
             cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
             k = sum_length_send = 0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             {
                 cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
@@ -133,7 +134,7 @@ static void particles_migrate_in_direction_d(
             pcs_send = (particle_core_t *)malloc(sum_length_send);
 
             k=0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             {
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
@@ -155,7 +156,7 @@ static void particles_migrate_in_direction_d(
             MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
                      md->SubDomain.rank_of_lower_subd[d], 4, md->MD_comm, &status);
             kreceive = k = 0;
-            ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+            LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
             {
                 for (int cc=0; cc<cells_length_receive[kreceive]; cc++)
                     INSERT_PART_CORE_IN_CELL(pcs_receive[k++], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
@@ -164,7 +165,7 @@ static void particles_migrate_in_direction_d(
             free(cells_length_receive);
             free(pcs_receive);
             /* */
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             {
                 md->SubDomain.NumberOfParticles -= md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
@@ -180,7 +181,7 @@ static void particles_migrate_in_direction_d(
         cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
         cells_length_receive = (int *)malloc((cells_num+1) * sizeof(int));
         k = sum_length_send = 0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
         {
             cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
@@ -198,7 +199,7 @@ static void particles_migrate_in_direction_d(
         pcs_receive = (particle_core_t *)malloc(sum_length_receive);
 
         k=0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
         {
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
@@ -214,7 +215,7 @@ static void particles_migrate_in_direction_d(
         free(pcs_send);
 
         kreceive = k = 0;
-        ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+        LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
         {
             for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
@@ -229,7 +230,7 @@ static void particles_migrate_in_direction_d(
 
         /* sending to upper process, receiving from lower process */
         k = sum_length_send = 0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
         {
             cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
@@ -248,7 +249,7 @@ static void particles_migrate_in_direction_d(
         pcs_receive = (particle_core_t *)malloc(sum_length_receive);
 
         k=0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
         {
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 pcs_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core;
@@ -264,7 +265,7 @@ static void particles_migrate_in_direction_d(
         free(pcs_send);
 
         kreceive = k = 0;
-        ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+        LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
         {
             for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
@@ -312,7 +313,7 @@ static void ghostparticles_init_in_direction_d(
                      md->SubDomain.rank_of_upper_subd[d], 6, md->MD_comm, &status);
 
             kreceive = k = 0;
-            ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+            LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
             {
                 for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
                 {
@@ -332,7 +333,7 @@ static void ghostparticles_init_in_direction_d(
             /* sending to upper process */
             cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
             k = sum_length_send = 0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             {
                 cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
@@ -345,7 +346,7 @@ static void ghostparticles_init_in_direction_d(
             data_send = (position_struct_t *)malloc(sum_length_send);
 
             k=0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             {
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 {
@@ -369,7 +370,7 @@ static void ghostparticles_init_in_direction_d(
                 cells_num *= ic_stop_send_lower[dd] - ic_start_send_lower[dd];
             cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
             k = sum_length_send = 0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             {
                 cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
                 sum_length_send += cells_length_send[k++];
@@ -382,7 +383,7 @@ static void ghostparticles_init_in_direction_d(
             data_send = (position_struct_t *)malloc(sum_length_send);
 
             k=0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             {
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 {
@@ -408,7 +409,7 @@ static void ghostparticles_init_in_direction_d(
                      md->SubDomain.rank_of_lower_subd[d], 8, md->MD_comm, &status);
 
             kreceive = k = 0;
-            ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+            LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
             {
                 for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
                 {
@@ -435,7 +436,7 @@ static void ghostparticles_init_in_direction_d(
         cells_length_send = (int *)malloc((cells_num+1) * sizeof(int));
         cells_length_receive = (int *)malloc((cells_num+1) * sizeof(int));
         k = sum_length_send = 0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
         {
             cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
@@ -452,7 +453,7 @@ static void ghostparticles_init_in_direction_d(
         data_receive = (position_struct_t *)malloc(sum_length_receive);
 
         k=0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
         {
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
             {
@@ -472,7 +473,7 @@ static void ghostparticles_init_in_direction_d(
         free(data_send);
 
         kreceive = k = 0;
-        ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+        LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
         {
             for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
@@ -492,7 +493,7 @@ static void ghostparticles_init_in_direction_d(
 
         /* sending to upper process, receiving from lower process */
         k = sum_length_send = 0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
         {
             cells_length_send[k] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             sum_length_send += cells_length_send[k++];
@@ -510,7 +511,7 @@ static void ghostparticles_init_in_direction_d(
         data_receive = (position_struct_t *)malloc(sum_length_receive);
 
         k=0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
         {
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
             {
@@ -530,7 +531,7 @@ static void ghostparticles_init_in_direction_d(
         free(data_send);
 
         kreceive = k = 0;
-        ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+        LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
         {
             for (int cc=0; cc < cells_length_receive[kreceive]; cc++)
             {
@@ -577,7 +578,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
                      md->SubDomain.rank_of_upper_subd[d], 101, md->MD_comm, &status);
 
             k = 0;
-            ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+            LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
 
@@ -585,7 +586,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
 
             /* sending to upper process */
             sum_length_send = 0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
                 sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
 
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 102,
@@ -593,7 +594,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
             data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
 
             k = 0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
 
@@ -605,14 +606,14 @@ static void ghostparticles_update_Fprime_in_direction_d(
         {
             /* sending to lower process */
             sum_length_send = 0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
                 sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 100,
                      md->MD_comm);
             data_send = (fmd_real_t *)malloc(sum_length_send * sizeof(fmd_real_t));
 
             k = 0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
 
@@ -628,7 +629,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
                      md->SubDomain.rank_of_lower_subd[d], 103, md->MD_comm, &status);
 
             k = 0;
-            ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+            LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
 
@@ -639,7 +640,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
     {
         /* sending to lower process, receiving from upper process */
         sum_length_send = 0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 100,
                   md->MD_comm, &request);
@@ -650,7 +651,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
         data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
 
         k = 0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
 
@@ -662,7 +663,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
         free(data_send);
 
         k = 0;
-        ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+        LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
 
@@ -670,7 +671,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
 
         /* sending to upper process, receiving from lower process */
         sum_length_send = 0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 102,
                   md->MD_comm, &request);
@@ -681,7 +682,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
         data_receive = (fmd_real_t *)malloc(sum_length_receive * sizeof(fmd_real_t));
 
         k = 0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime;
 
@@ -693,7 +694,7 @@ static void ghostparticles_update_Fprime_in_direction_d(
         free(data_send);
 
         k = 0;
-        ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+        LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].FembPrime = data_receive[k++];
 
@@ -727,7 +728,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
                      md->SubDomain.rank_of_upper_subd[d], 131, md->MD_comm, &status);
 
             k = 0;
-            ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+            LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
 
@@ -735,14 +736,14 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
 
             /* sending to upper process */
             sum_length_send = 0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
                 sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 132,
                      md->MD_comm);
             data_send = (float *)malloc(sum_length_send * sizeof(float));
 
             k = 0;
-            ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+            LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
 
@@ -754,14 +755,14 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         {
             /* sending to lower process */
             sum_length_send = 0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
                 sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
             MPI_Send(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 130,
                      md->MD_comm);
             data_send = (float *)malloc(sum_length_send * sizeof(float));
 
             k = 0;
-            ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+            LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
 
@@ -777,7 +778,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
                      md->SubDomain.rank_of_lower_subd[d], 133, md->MD_comm, &status);
 
             k = 0;
-            ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+            LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
                 for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                     md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
 
@@ -788,7 +789,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
     {
         /* sending to lower process, receiving from upper process */
         sum_length_send = 0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_lower_subd[d], 130,
                   md->MD_comm, &request);
@@ -799,7 +800,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         data_receive = (float *)malloc(sum_length_receive * sizeof(float));
 
         k = 0;
-        ITERATE(ic, ic_start_send_lower, ic_stop_send_lower)
+        LOOP3D(ic, ic_start_send_lower, ic_stop_send_lower)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
 
@@ -811,7 +812,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         free(data_send);
 
         k = 0;
-        ITERATE(ic, ic_start_receive_upper, ic_stop_receive_upper)
+        LOOP3D(ic, ic_start_receive_upper, ic_stop_receive_upper)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
 
@@ -819,7 +820,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
 
         /* sending to upper process, receiving from lower process */
         sum_length_send = 0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             sum_length_send += md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num;
         MPI_Isend(&sum_length_send, 1, MPI_INT, md->SubDomain.rank_of_upper_subd[d], 132,
                   md->MD_comm, &request);
@@ -830,7 +831,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         data_receive = (float *)malloc(sum_length_receive * sizeof(float));
 
         k = 0;
-        ITERATE(ic, ic_start_send_upper, ic_stop_send_upper)
+        LOOP3D(ic, ic_start_send_upper, ic_stop_send_upper)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 data_send[k++] = md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam;
 
@@ -842,7 +843,7 @@ static void ghostparticles_update_LocOrdParam_in_direction_d(
         free(data_send);
 
         k = 0;
-        ITERATE(ic, ic_start_receive_lower, ic_stop_receive_lower)
+        LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
             for (int cc=0; cc < md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts_num; cc++)
                 md->SubDomain.grid[ic[0]][ic[1]][ic[2]].parts[cc].core.LocOrdParam = data_receive[k++];
 
