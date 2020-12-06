@@ -1377,7 +1377,7 @@ void fmd_free(fmd_t *md)
     fmd_timer_free(md);
     free_mpi_types(md);
     _fmd_h5_ds_free(&md->h5_dataspaces);
-
+    fmd_turi_free(md);
     free(md);
 
     if (md->MPI_initialized_by_me)

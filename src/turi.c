@@ -805,3 +805,60 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
             assert(0);
     }
 }
+
+static void field_free(field_t *f)
+{
+    if (f->dependcs_num > 0) free(f->dependcs);
+    free(f->intervals_allreduce);
+    free(f->intervals);
+    _fmd_array_3d_free(&f->data);
+}
+
+static void turi_comm_free(turi_comm_t *tcm)
+{
+    if (tcm->commsize > 1)
+    {
+        int res = MPI_Comm_free(&tcm->comm);
+        assert(res == MPI_SUCCESS);
+    }
+    free(tcm->pset);
+    free(tcm->itcs);
+}
+
+static void turi_ownerscomm_free(fmd_t *md, turi_ownerscomm_t *towcm)
+{
+    free(towcm->owned_tcells);
+
+    int res = MPI_Comm_free(&towcm->comm);
+    assert(res == MPI_SUCCESS);
+
+    if (md->Is_MD_comm_root)
+    {
+        free(towcm->global_indexes);
+        free(towcm->recvcounts);
+        free(towcm->displs);
+    }
+}
+
+static void turi_free(fmd_t *md, turi_t *t)
+{
+    for (unsigned u=0; u < t->fields_num; u++)
+        field_free(&t->fields[u]);
+    free(t->fields);
+
+    for (unsigned u=0; u < t->comms_num; u++)
+        turi_comm_free(&t->comms[u]);
+    free(t->comms);
+
+    turi_ownerscomm_free(md, &t->ownerscomm);
+}
+
+void fmd_turi_free(fmd_t *md)
+{
+    for (unsigned u=0; u < md->turies_num; u++)
+        turi_free(md, &md->turies[u]);
+    free(md->turies);
+
+    md->turies = NULL;
+    md->turies_num = 0;
+}

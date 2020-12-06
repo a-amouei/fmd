@@ -104,5 +104,6 @@ typedef struct _fmd fmd_t;
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
 void _fmd_turies_update(fmd_t *md);
+void fmd_turi_free(fmd_t *md);
 
 #endif /* TURI_H */
