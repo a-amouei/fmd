@@ -770,8 +770,8 @@ static void refreshGrid(fmd_t *md, int reverse)
                 INSERT_PARTICLE_IN_CELL(*p, md->SubDomain.grid[jc[0]][jc[1]][jc[2]]);
                 REMOVE_PARTICLE_FROM_CELL(*cell, pind);
             }
-
-            pind++;
+            else
+                pind++;
         }
     }
 
