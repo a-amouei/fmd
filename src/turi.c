@@ -465,6 +465,52 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
     }
 }
 
+static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+{
+    /* allocate memory for buf1 and buf2 */
+    fmd_real_t *buf1 = malloc(t->num_tcells_max * sizeof(*buf1));
+    assert(buf1 != NULL);
+    fmd_real_t *buf2 = malloc(t->num_tcells_max * sizeof(*buf2));
+    assert(buf2 != NULL);
+    /* TO-DO: handle memory error */
+
+    /* perform communication for every communicator */
+
+    for (int i=0; i < t->comms_num; i++)
+    {
+        turi_comm_t *tcm = &t->comms[i];
+
+        if (tcm->commsize > 1)
+        {
+            /* prepare buf1 (send-buffer) */
+
+            prepare_buf1_real(buf1, tcm, f);
+
+            /* do communication */
+
+            if (allreduce)
+                MPI_Allreduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
+            else
+                MPI_Reduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
+
+            /* copy from buf2 to data array */
+
+            if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+            {
+                for (int j=0; j < tcm->num_tcells; j++)
+                {
+                    int *itc = tcm->itcs[j];
+
+                    ((fmd_real_t ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((fmd_real_t *)buf2)[j];
+                }
+            }
+        }
+    }
+
+    free(buf1);
+    free(buf2);
+}
+
 static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     /* allocate memory for buf1 and buf2 */
@@ -513,13 +559,12 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
 
 static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
-    fmd_ituple_t ic, itc;
-
     unsigned ***num = (unsigned ***)f->data.data;
 
     /* clean data of number field (initialize with zeros) */
     _fmd_array_3d_unsigned_clean(num, t->tdims);
 
+    fmd_ituple_t ic, itc;
     cell_t *cell;
     int i;
     /* iterate over all particles in current subdomain */
@@ -551,10 +596,51 @@ static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     unsigned ***num = (unsigned ***)fdep->data.data;
     fmd_real_t ***nd = (fmd_real_t ***)f->data.data;
 
-    fmd_ituple_t itc;
+    if (allreduce)
+    {
+        fmd_ituple_t itc;
 
-    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
-        nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
+        LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+            nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
+    }
+    else
+    {
+        for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
+        {
+            int *itc = t->ownerscomm.owned_tcells[i];
+            nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
+        }
+    }
+
+    f->timestep = md->time_iteration; /* mark as updated */
+
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
+}
+
+static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+{
+    fmd_real_t ***mass = (fmd_real_t ***)f->data.data;
+
+    /* clean data of mass field (initialize with zeros) */
+    _fmd_array_3d_real_clean(mass, t->tdims);
+
+    fmd_ituple_t ic, itc;
+    cell_t *cell;
+    int i;
+    /* iterate over all particles in current subdomain */
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        {
+            /* find index of turi-cell from particle's position */
+            for (int d=0; d<3; d++)
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
+
+            /* update mass for turi-cell with index of itc */
+            mass[itc[0]][itc[1]][itc[2]] += md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
+        }
+
+    /* do communications */
+    perform_field_comm_real(md, f, t, allreduce);
 
     f->timestep = md->time_iteration; /* mark as updated */
 
@@ -737,6 +823,10 @@ static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
         case FMD_FIELD_NUMBER_DENSITY:
             update_field_number_density(md, f, t, allreduce);
             break;
+
+        case FMD_FIELD_MASS:
+            update_field_mass(md, f, t, allreduce);
+            break;
     }
 }
 
@@ -783,6 +873,14 @@ void _fmd_turies_update(fmd_t *md)
     }
 }
 
+static void convert_inmass_to_outmass(fmd_array3D_t *ar)
+{
+    fmd_utriple_t iv;
+
+    LOOP3D(iv, _fmd_ThreeZeros_int, ar->dims)
+        ((fmd_real_t ***)(ar->data))[iv[0]][iv[1]][iv[2]] *= MD_MASS_UNIT;
+}
+
 void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path)
 {
     turi_t *t = &md->turies[turi];
@@ -797,6 +895,16 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
             if (md->Is_MD_comm_root)
             {
                 _fmd_h5_save_scalar_float(md, "number-density", t, path, &data);
+                _fmd_array_3d_free(&data);
+            }
+            break;
+
+        case FMD_FIELD_MASS:
+            gather_field_data_real(md, t, f, &data);
+            if (md->Is_MD_comm_root)
+            {
+                convert_inmass_to_outmass(&data);
+                _fmd_h5_save_scalar_float(md, "mass", t, path, &data);
                 _fmd_array_3d_free(&data);
             }
             break;
