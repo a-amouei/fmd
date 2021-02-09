@@ -36,6 +36,7 @@ typedef struct _fmd fmd_t;
 
 void _fmd_h5_ds_init(h5_dataspaces_t *ds);
 void _fmd_h5_ds_free(h5_dataspaces_t *ds);
-void _fmd_h5_save_scalar_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr);
+void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr);
+void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr);
 
 #endif /* H5_H */

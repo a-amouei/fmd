@@ -197,6 +197,7 @@ typedef struct _fmd_timer fmd_timer_t;
 typedef struct
 {
     MPI_Datatype mpi_ituple;
+    MPI_Datatype mpi_rtuple;
 } mpi_types_t;
 
 typedef struct _turi turi_t;

@@ -48,6 +48,6 @@ void _fmd_array_3d_unsigned_clean(unsigned ***array, fmd_utriple_t dims);
 void ***_fmd_array_semineat3d_create(fmd_utriple_t dims, unsigned elsize);
 void _fmd_array_semineat3d_free(void ***array, unsigned dim1);
 float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3D_t *array);
-
+float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3D_t *array);
 
 #endif /* ARRAY_H */

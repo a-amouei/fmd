@@ -43,6 +43,7 @@ typedef struct
     unsigned *dependcs;              /* indexes of the dependency fields */
     unsigned intervals_allreduce_num;
     fmd_real_t *intervals_allreduce; /* at these intervals a field update and "allreduce" MPI communication is done */
+    fmd_bool_t allreduce_now;
     unsigned intervals_num;
     fmd_real_t *intervals;           /* intervals determine when to update the field and perform "reduce" MPI communication */
     fmd_array3D_t data;

@@ -126,7 +126,7 @@ static void create_mesh(h5_dataspaces_t *ds, hid_t parent, fmd_ituple_t dims, fm
     assert(status >= 0);
 }
 
-void _fmd_h5_save_scalar_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr)
+void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr)
 {
     hid_t file_id, dataset_id, dataspace_id;
     herr_t status;
@@ -154,6 +154,52 @@ void _fmd_h5_save_scalar_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd
     set_attr_string(&md->h5_dataspaces, dataset_id, "vsIndexOrder", "compMinorC");
 
     float *data = _fmd_array_convert_numerical_scalar_3d_to_flat_float(arr);
+    assert(data != NULL);
+
+    status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, data);
+    assert(status >= 0);
+
+    free(data);
+
+    status = H5Dclose(dataset_id);
+    assert(status >= 0);
+
+    status = H5Sclose(dataspace_id);
+    assert(status >= 0);
+
+    status = H5Fclose(file_id);
+    assert(status >= 0);
+}
+
+void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr)
+{
+    hid_t file_id, dataset_id, dataspace_id;
+    herr_t status;
+
+    file_id = H5Fcreate(path, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    assert(file_id >= 0);
+
+    fmd_ftriple_t ubound = {md->l[0], md->l[1], md->l[2]};
+    create_mesh(&md->h5_dataspaces, file_id, t->tdims_global, ubound);
+
+    hsize_t s[4];
+    s[0] = t->tdims_global[0];
+    s[1] = t->tdims_global[1];
+    s[2] = t->tdims_global[2];
+    s[3] = 3;
+
+    dataspace_id = H5Screate_simple(4, s, NULL);
+    assert(dataspace_id >= 0);
+
+    dataset_id = H5Dcreate1(file_id, fieldname, H5T_IEEE_F32LE, dataspace_id, H5P_DEFAULT);
+    assert(dataset_id >= 0);
+
+    set_attr_string(&md->h5_dataspaces, dataset_id, "vsType", "variable");
+    set_attr_string(&md->h5_dataspaces, dataset_id, "vsMesh", "meshA");
+    set_attr_string(&md->h5_dataspaces, dataset_id, "vsCentering", "zonal");
+    set_attr_string(&md->h5_dataspaces, dataset_id, "vsIndexOrder", "compMinorC");
+
+    float *data = _fmd_array_convert_numerical_tuple_3d_to_flat_float(arr);
     assert(data != NULL);
 
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, data);

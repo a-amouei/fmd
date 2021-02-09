@@ -1099,11 +1099,14 @@ static void create_mpi_types(fmd_t *md)
 {
     MPI_Type_vector(1, 3, 0, MPI_INT, &md->mpi_types.mpi_ituple);
     MPI_Type_commit(&md->mpi_types.mpi_ituple);
+    MPI_Type_vector(1, 3, 0, FMD_MPI_REAL, &md->mpi_types.mpi_rtuple);
+    MPI_Type_commit(&md->mpi_types.mpi_rtuple);
 }
 
 static void free_mpi_types(fmd_t *md)
 {
     MPI_Type_free(&md->mpi_types.mpi_ituple);
+    MPI_Type_free(&md->mpi_types.mpi_rtuple);
 }
 
 fmd_t *fmd_create()

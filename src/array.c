@@ -258,3 +258,26 @@ float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3D_t *array
 
     return f;
 }
+
+float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3D_t *array)
+{
+    float *f = (float *)malloc(3 * array->dims[0] * array->dims[1] * array->dims[2] * sizeof(*f));
+    if (f == NULL) return NULL;
+
+    int cc = 0;
+    fmd_utriple_t iv;
+
+    switch(array->datatype)
+    {
+        case DATATYPE_RTUPLE:
+            LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
+                for (int d=0; d<3; d++)
+                    f[cc++] = ((fmd_rtuple_t ***)(array->data))[iv[0]][iv[1]][iv[2]][d];
+            break;
+
+        default:
+            assert(0);
+    }
+
+    return f;
+}

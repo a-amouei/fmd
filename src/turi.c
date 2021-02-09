@@ -150,6 +150,60 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
     }
 }
 
+static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
+{
+    out->data = NULL;
+    turi_ownerscomm_t *owcomm = &t->ownerscomm;
+
+    /* only "owners" participate in the collective communication below */
+    if (owcomm->owned_tcells_num == 0) return;
+
+    fmd_rtuple_t ***lcd = (fmd_rtuple_t ***)f->data.data;
+
+    fmd_rtuple_t *sendbuf = (fmd_rtuple_t *)malloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
+    assert(sendbuf != NULL);
+    /* TO-DO: handle memory error */
+
+    for (int i=0; i < owcomm->owned_tcells_num; i++)
+    {
+        int *itc = owcomm->owned_tcells[i];
+        for (int d=0; d<3; d++)
+            sendbuf[i][d] = lcd[itc[0]][itc[1]][itc[2]][d];
+    }
+
+    fmd_rtuple_t *recvbuf;
+
+    if (md->Is_MD_comm_root)
+    {
+        recvbuf = (fmd_rtuple_t *)malloc(t->tcells_global_num * sizeof(*recvbuf));
+        assert(recvbuf != NULL);
+        /* TO-DO: handle memory error */
+    }
+
+    MPI_Gatherv(sendbuf, owcomm->owned_tcells_num, md->mpi_types.mpi_rtuple,
+                recvbuf, owcomm->recvcounts, owcomm->displs,
+                md->mpi_types.mpi_rtuple, 0, owcomm->comm);
+
+    free(sendbuf);
+
+    if (md->Is_MD_comm_root)
+    {
+        _fmd_array_3d_create(t->tdims_global, sizeof(fmd_rtuple_t), f->datatype, out);
+        assert(out->data != NULL);
+        /* TO-DO: handle memory error */
+
+        for (int i=0; i < t->tcells_global_num; i++)
+        {
+            int *itc = owcomm->global_indexes[i];
+
+            for (int d=0; d<3; d++)
+                ((fmd_rtuple_t ***)out->data)[itc[0]][itc[1]][itc[2]][d] = recvbuf[i][d];
+        }
+
+        free(recvbuf);
+    }
+}
+
 /* This function receives the index of a turi-cell and returns the number
    of processes that share it. The ranks of those processes in MD_comm
    will be written in pset. */
@@ -465,6 +519,53 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
     }
 }
 
+static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+{
+    /* allocate memory for buf1 and buf2 */
+    fmd_rtuple_t *buf1 = malloc(t->num_tcells_max * sizeof(*buf1));
+    assert(buf1 != NULL);
+    fmd_rtuple_t *buf2 = malloc(t->num_tcells_max * sizeof(*buf2));
+    assert(buf2 != NULL);
+    /* TO-DO: handle memory error */
+
+    /* perform communication for every communicator */
+
+    for (int i=0; i < t->comms_num; i++)
+    {
+        turi_comm_t *tcm = &t->comms[i];
+
+        if (tcm->commsize > 1)
+        {
+            /* prepare buf1 (send-buffer) */
+
+            prepare_buf1_rtuple(buf1, tcm, f);
+
+            /* do communication */
+
+            if (allreduce)
+                MPI_Allreduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
+            else
+                MPI_Reduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
+
+            /* copy from buf2 to data array */
+
+            if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+            {
+                for (int j=0; j < tcm->num_tcells; j++)
+                {
+                    int *itc = tcm->itcs[j];
+
+                    for (int d=0; d<3; d++)
+                        ((fmd_rtuple_t ***)f->data.data)[itc[0]][itc[1]][itc[2]][d] = ((fmd_rtuple_t *)buf2)[j][d];
+                }
+            }
+        }
+    }
+
+    free(buf1);
+    free(buf2);
+}
+
 static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     /* allocate memory for buf1 and buf2 */
@@ -591,7 +692,7 @@ static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bo
 {
     field_t *fdep = &t->fields[f->dependcs[0]];
     /* update the dependency field if not already updated */
-    if (fdep->timestep != md->time_iteration) update_field_number(md, fdep, t, allreduce);
+    if (fdep->timestep != md->time_iteration) update_field_number(md, fdep, t, allreduce || fdep->allreduce_now);
 
     unsigned ***num = (unsigned ***)fdep->data.data;
     fmd_real_t ***nd = (fmd_real_t ***)f->data.data;
@@ -647,12 +748,68 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
     if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
+static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allreduce)
 {
     fmd_ituple_t ic, itc;
 
-    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)f->data.data;
-    fmd_real_t ***mass = (fmd_real_t ***)t->fields[f->dependcs[0]].data.data;
+    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
+
+    /* clean data of vcm field (initialize with zeros) */
+    _fmd_array_3d_rtuple_clean(vcm, t->tdims);
+
+    cell_t *cell;
+    int i;
+
+    /* iterate over all particles in current subdomain */
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        {
+
+            /* find index of turi-cell from particle's position */
+            for (int d=0; d<3; d++)
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
+
+            /* calculate vcm and mass (first phase) */
+
+            fmd_real_t m = md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
+
+            for (int d=0; d<3; d++)
+                vcm[itc[0]][itc[1]][itc[2]][d] += m * cell->parts[i].core.v[d];
+        }
+
+    /* do communications */
+    perform_field_comm_rtuple(md, fvcm, t, allreduce);
+
+    /* calculate vcm (last phase) */
+
+    fmd_real_t ***mass = (fmd_real_t ***)fmass->data.data;
+
+    if (allreduce)
+    {
+        LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+            for (int d=0; d<3; d++)
+                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+    }
+    else
+    {
+        for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
+        {
+            int *itc = t->ownerscomm.owned_tcells[i];
+            for (int d=0; d<3; d++)
+                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+        }
+    }
+
+    fvcm->timestep = md->time_iteration; /* mark as updated */
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, fvcm->field_index, t->turi_index);
+}
+
+static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allreduce)
+{
+    fmd_ituple_t ic, itc;
+
+    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
+    fmd_real_t ***mass = (fmd_real_t ***)fmass->data.data;
 
     /* clean data of mass and vcm fields (initialize with zeros) */
     LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
@@ -683,12 +840,41 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t)
                 vcm[itc[0]][itc[1]][itc[2]][d] += m * cell->parts[i].core.v[d];
         }
 
-    /* TO-DO: do communications */
+    /* do communications */
+    perform_field_comm_real(md, fmass, t, allreduce || fmass->allreduce_now);
+    perform_field_comm_rtuple(md, fvcm, t, allreduce);
 
-    /* calculate vcm and mass (last phase) */
-    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
-        for (int d=0; d<3; d++)
-            vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+    /* calculate vcm (last phase) */
+    if (allreduce)
+    {
+        LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+            for (int d=0; d<3; d++)
+                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+    }
+    else
+    {
+        for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
+        {
+            int *itc = t->ownerscomm.owned_tcells[i];
+            for (int d=0; d<3; d++)
+                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+        }
+    }
+
+    fmass->timestep = md->time_iteration; /* mark as updated */
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, fmass->field_index, t->turi_index);
+    fvcm->timestep = md->time_iteration; /* mark as updated */
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, fvcm->field_index, t->turi_index);
+}
+
+static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+{
+    field_t *fmass = &t->fields[f->dependcs[0]];
+
+    if (fmass->timestep != md->time_iteration)  /* if fmass is not already updated */
+        update_field_vcm_and_mass(md, f, fmass, t, allreduce);
+    else
+        update_field_vcm_only(md, f, fmass, t, allreduce);
 }
 
 #define ADD_interval_TO_ARRAY(array, num, interval)                            \
@@ -749,7 +935,7 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
             break;
 
         case FMD_FIELD_VCM:
-            dep1 = field_add(md, turi, FMD_FIELD_MASS, interval, FMD_TRUE);
+            dep1 = field_add(md, turi, FMD_FIELD_MASS, interval, allreduce);
             break;
 
         case FMD_FIELD_NUMBER_DENSITY:
@@ -827,6 +1013,28 @@ static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
         case FMD_FIELD_MASS:
             update_field_mass(md, f, t, allreduce);
             break;
+
+        case FMD_FIELD_VCM:
+            update_field_vcm(md, f, t, allreduce);
+            break;
+    }
+}
+
+/* this subroutine updates the variable allreduce_now in all fields */
+static inline void allreduce_now_update(fmd_t *md, turi_t *t)
+{
+    for (int fi = 0; fi < t->fields_num; fi++)
+    {
+        field_t *f = &t->fields[fi];
+
+        f->allreduce_now = FMD_FALSE;
+
+        for (int j = 0; j < f->intervals_allreduce_num; j++)
+            if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals_allreduce[j]))
+            {
+                f->allreduce_now = FMD_TRUE;
+                break;
+            }
     }
 }
 
@@ -838,35 +1046,28 @@ void _fmd_turies_update(fmd_t *md)
 
         if (md->MD_time >= t->starttime && !(md->MD_time > t->stoptime && t->stoptime >= t->starttime))
         {
-            for (int fi=0; fi < t->fields_num; fi++)
+            allreduce_now_update(md, t);
+
+            /* start from fields with higher indexes */
+            for (int fi = t->fields_num-1; fi >= 0; fi--)
             {
                 field_t *f = &t->fields[fi];
 
-                if (f->timestep == md->time_iteration) continue; /* see if it is already updated */
+                if (f->timestep == md->time_iteration) continue; /* see if the field is already updated */
 
-                int j;
-
-                for (j=0; j < f->intervals_allreduce_num; j++)
+                if (f->allreduce_now)
                 {
-                    if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals_allreduce[j]))
-                    {
-                        update_field(md, f, t, FMD_TRUE);
-
-                        break;
-                    }
+                    update_field(md, f, t, FMD_TRUE);
+                    break;
                 }
-
-                if (j == f->intervals_allreduce_num)
+                else
                 {
-                    for (j=0; j < f->intervals_num; j++)
-                    {
+                    for (int j=0; j < f->intervals_num; j++)
                         if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals[j]))
                         {
                             update_field(md, f, t, FMD_FALSE);
-
                             break;
                         }
-                    }
                 }
             }
         }
@@ -890,11 +1091,20 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
 
     switch(f->cat)
     {
+        case FMD_FIELD_VCM:
+            gather_field_data_rtuple(md, t, f, &data);
+            if (md->Is_MD_comm_root)
+            {
+                _fmd_h5_save_tuple_field_float(md, "vcm", t, path, &data);
+                _fmd_array_3d_free(&data);
+            }
+            break;
+
         case FMD_FIELD_NUMBER_DENSITY:
             gather_field_data_real(md, t, f, &data);
             if (md->Is_MD_comm_root)
             {
-                _fmd_h5_save_scalar_float(md, "number-density", t, path, &data);
+                _fmd_h5_save_scalar_field_float(md, "number-density", t, path, &data);
                 _fmd_array_3d_free(&data);
             }
             break;
@@ -904,7 +1114,7 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
             if (md->Is_MD_comm_root)
             {
                 convert_inmass_to_outmass(&data);
-                _fmd_h5_save_scalar_float(md, "mass", t, path, &data);
+                _fmd_h5_save_scalar_field_float(md, "mass", t, path, &data);
                 _fmd_array_3d_free(&data);
             }
             break;
