@@ -244,6 +244,7 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
 
     /* if root process of the MD communicator exists in pset, let it
     occupy the first array element, so that it becomes an "owner". */
+    /*
     for (int i=1; i < np; i++)
         if ((*pset)[i] == ROOTPROCESS(md->SubDomain.numprocs))
         {
@@ -251,6 +252,7 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
             (*pset)[0] = (*pset)[i];
             (*pset)[i] = process;
         }
+    */
 
     return np;
 }

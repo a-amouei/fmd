@@ -294,8 +294,7 @@ int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
                                            sqrr(p->core.v[2]) );
                 }
     }
-    MPI_Reduce(momentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM,
-               ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+    MPI_Reduce(momentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
 
     MPI_Allreduce(&particlesNum, &(md->ActiveGroupParticlesNum), 1, MPI_INT, MPI_SUM, md->MD_comm);
 
@@ -356,8 +355,7 @@ static fmd_real_t compVirial_internal(fmd_t *md)
                       p->core.x[2] * p->F[2];
         }
 
-    MPI_Reduce(&virial, &virial_global, 1, FMD_MPI_REAL, MPI_SUM,
-      ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+    MPI_Reduce(&virial, &virial_global, 1, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
 
     return virial_global;
 }
@@ -511,7 +509,7 @@ void fmd_matt_distribute(fmd_t *md)
 
         md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->TotalNoOfParticles * K_BOLTZMANN);
 
-        for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
+        for (i=1; i < md->SubDomain.numprocs; i++)
         {
             INVERSEINDEX(i, md->ns, is);
             nct = 1;
@@ -589,14 +587,12 @@ void fmd_matt_distribute(fmd_t *md)
         for (d=0; d<3; d++)
             nct *= md->SubDomain.cell_num_nonmarg[d];
         ic_length = (int *)malloc((nct+1) * sizeof(int));
-        MPI_Recv(ic_length, nct+1, MPI_INT, ROOTPROCESS(md->SubDomain.numprocs),
-                 50, md->MD_comm, &status);
+        MPI_Recv(ic_length, nct+1, MPI_INT, RANK0, 50, md->MD_comm, &status);
         md->SubDomain.NumberOfParticles = sum_length = ic_length[nct];
         sum_length *= sizeof(particle_core_t);
         is_partcores = (particle_core_t *)malloc(sum_length);
 
-        MPI_Recv(is_partcores, sum_length, MPI_CHAR,
-                 ROOTPROCESS(md->SubDomain.numprocs), 51, md->MD_comm, &status);
+        MPI_Recv(is_partcores, sum_length, MPI_CHAR, RANK0, 51, md->MD_comm, &status);
 
         kreceive = k = 0;
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -616,12 +612,9 @@ void fmd_matt_distribute(fmd_t *md)
         free(is_partcores);
     }
 
-    MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs),
-              md->MD_comm);
-    MPI_Bcast(&md->TotalNoOfMolecules, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs),
-              md->MD_comm);
-    MPI_Bcast(&md->GlobalTemperature, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs),
-              md->MD_comm);
+    MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+    MPI_Bcast(&md->TotalNoOfMolecules, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+    MPI_Bcast(&md->GlobalTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
 
     if (md->TotalNoOfMolecules > 0) _fmd_matt_updateAtomNeighbors(md);
 
@@ -662,7 +655,9 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
             md->l[1] = l1;
             md->l[2] = l2;
         }
-        MPI_Bcast(&md->l, 3, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+
+        MPI_Bcast(&md->l, 3, FMD_MPI_REAL, RANK0, md->MD_comm);
+
         md->BoxSizeDetermined = 1;
     }
 
@@ -674,7 +669,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
             md->PBC[1] = PBC1;
             md->PBC[2] = PBC2;
         }
-        MPI_Bcast(&md->PBC, 3, MPI_INT, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&md->PBC, 3, MPI_INT, RANK0, md->MD_comm);
         md->PBCdetermined = 1;
     }
 
@@ -682,7 +677,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
         fmd_box_createGrid(md, md->CutoffRadius);
 
     if (UseTime)
-        MPI_Bcast(&md->MD_time, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&md->MD_time, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
@@ -879,10 +874,12 @@ void fmd_matt_saveConfiguration(fmd_t *md)
             displ += recvcounts[k];
         }
     }
+
     free(nums);
+
     MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t), MPI_CHAR,
-        globalData, recvcounts, displs, MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs),
-        md->MD_comm);
+        globalData, recvcounts, displs, MPI_CHAR, RANK0, md->MD_comm);
+
     free(localData);
 
     if (md->Is_MD_comm_root)
@@ -1003,8 +1000,8 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     if (md->Is_MD_comm_root)
     {
         nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
-        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-                   ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+
+        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT, RANK0, md->MD_comm);
 
         md->TotalNoOfParticles = 0;
         for (k=0; k < md->SubDomain.numprocs; k++)
@@ -1028,7 +1025,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
                 fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->v[0], pc->v[1], pc->v[2]);
             }
 
-        for (i=0; i < ROOTPROCESS(md->SubDomain.numprocs); i++)
+        for (i=1; i < md->SubDomain.numprocs; i++)
         {
             is_partcores = (particle_core_t *)malloc(nums[i] * sizeof(particle_core_t));
             MPI_Recv(is_partcores, nums[i] * sizeof(particle_core_t), MPI_CHAR, i, 150,
@@ -1051,8 +1048,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     }
     else
     {
-        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-                   ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT, RANK0, md->MD_comm);
         is_partcores = (particle_core_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(particle_core_t));
 
         k = 0;
@@ -1060,8 +1056,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
             for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
                 is_partcores[k++] = cell->parts[pind].core;
 
-        MPI_Send(is_partcores, md->SubDomain.NumberOfParticles * sizeof(particle_core_t), MPI_CHAR,
-                 ROOTPROCESS(md->SubDomain.numprocs), 150, md->MD_comm);
+        MPI_Send(is_partcores, md->SubDomain.NumberOfParticles * sizeof(particle_core_t), MPI_CHAR, RANK0, 150, md->MD_comm);
         free(is_partcores);
     }
 }
@@ -1090,7 +1085,7 @@ void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
     {
         MPI_Comm_size(md->MD_comm, &md->SubDomain.numprocs);
         MPI_Comm_rank(md->MD_comm, &md->SubDomain.myrank);
-        if (md->SubDomain.myrank == ROOTPROCESS(md->SubDomain.numprocs))
+        if (md->SubDomain.myrank == RANK0)
             md->Is_MD_comm_root = FMD_TRUE;
     }
 }

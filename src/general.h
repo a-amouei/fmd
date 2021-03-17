@@ -23,6 +23,8 @@
 #include "config.h"
 #include "types.h"
 
+#define RANK0 0
+
 #define LOOP3D(iv, minv, upv)                                         \
     for ( (iv)[0]=(minv)[0]; (iv)[0]<(upv)[0]; (iv)[0]++ )            \
         for ( (iv)[1]=(minv)[1]; (iv)[1]<(upv)[1]; (iv)[1]++ )        \

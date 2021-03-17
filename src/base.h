@@ -116,7 +116,6 @@
             RESIZE_CELL(c);                                  \
     } while (0)
 
-#define ROOTPROCESS(numprocs)       ((numprocs) - 1)
 #define K_BOLTZMANN                 8.6173303e-5       // (eV / Kelvin)
 #define LIGHT_SPEED                 2.9979245800e+06   // (ang / ps)
 #define METER_PER_SECOND            1e-2               // (ang / ps)

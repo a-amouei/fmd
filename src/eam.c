@@ -323,8 +323,8 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         fclose(fp);
     }
 
-    MPI_Bcast(eam, sizeof(eam_t), MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-    if (md->SubDomain.myrank != ROOTPROCESS(md->SubDomain.numprocs))
+    MPI_Bcast(eam, sizeof(eam_t), MPI_CHAR, RANK0, md->MD_comm);
+    if (!md->Is_MD_comm_root)
     {
         eam->elements = (eam_element_t *)malloc(eam->elementsNo * sizeof(eam_element_t));
         for (i=0; i < eam->elementsNo; i++)
@@ -353,28 +353,31 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
 
     for (i=0; i < eam->elementsNo; i++)
     {
-        MPI_Bcast(&eam->elements[i].mass, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        MPI_Bcast(&eam->elements[i].latticeParameter, 1, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&eam->elements[i].mass, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
+        MPI_Bcast(&eam->elements[i].latticeParameter, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
 
         unsigned namelen;
+
         if (md->Is_MD_comm_root)
             namelen = strlen(eam->elements[i].name);
-        MPI_Bcast(&namelen, 1, MPI_UNSIGNED, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        if (md->SubDomain.myrank != ROOTPROCESS(md->SubDomain.numprocs))
-            eam->elements[i].name = (char *)malloc(namelen + 1);
-        MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
 
-        MPI_Bcast(eam->elements[i].F, eam->Nrho, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        MPI_Bcast(eam->elements[i].rho, eam->Nr2, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(&namelen, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+
+        if (!md->Is_MD_comm_root)
+            eam->elements[i].name = (char *)malloc(namelen + 1);
+
+        MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, RANK0, md->MD_comm);
+
+        MPI_Bcast(eam->elements[i].F, eam->Nrho, FMD_MPI_REAL, RANK0, md->MD_comm);
+        MPI_Bcast(eam->elements[i].rho, eam->Nr2, FMD_MPI_REAL, RANK0, md->MD_comm);
         for (j=0; j<=i; j++)
-            MPI_Bcast(eam->elements[i].phi[j], eam->Nr2, FMD_MPI_REAL,
-                      ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+            MPI_Bcast(eam->elements[i].phi[j], eam->Nr2, FMD_MPI_REAL, RANK0, md->MD_comm);
 #ifdef USE_CSPLINE
-        MPI_Bcast(eam->elements[i].F_DD, eam->Nrho, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
-        MPI_Bcast(eam->elements[i].rhoDD, eam->Nr2, FMD_MPI_REAL, ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+        MPI_Bcast(eam->elements[i].F_DD, eam->Nrho, FMD_MPI_REAL, RANK0, md->MD_comm);
+
+        MPI_Bcast(eam->elements[i].rhoDD, eam->Nr2, FMD_MPI_REAL, RANK0, md->MD_comm);
         for (j=0; j<=i; j++)
-            MPI_Bcast(eam->elements[i].phiDD[j], eam->Nr2, FMD_MPI_REAL,
-                      ROOTPROCESS(md->SubDomain.numprocs), md->MD_comm);
+            MPI_Bcast(eam->elements[i].phiDD[j], eam->Nr2, FMD_MPI_REAL, RANK0, md->MD_comm);
 #endif
     }
 
