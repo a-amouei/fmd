@@ -362,46 +362,50 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             t->ownerscomm.owned_tcells_num++;
         }
 
-        int icomm = find_this_pset_in_comms(np, pset, t->comms_num, t->comms);
-
-        if (icomm == -1) /* if this is a new pset */
+        if (np > 1)
         {
-            /* add it to t->comms */
+            int icomm = find_this_pset_in_comms(np, pset, t->comms_num, t->comms);
 
-            t->comms = (turi_comm_t *)realloc(t->comms, (t->comms_num+1) * sizeof(turi_comm_t));
-            /* TO-DO: handle memory error */
-            assert(t->comms != NULL);
-
-            tcomm = &t->comms[t->comms_num++];
-            tcomm->commsize = np;
-            tcomm->pset = pset;
-            tcomm->num_tcells = 0;
-            tcomm->itcs = NULL;
-
-            if (np > 1) /* create MPI communicator */
+            if (icomm == -1) /* if this is a new pset */
             {
+                /* add it to t->comms */
+
+                t->comms = (turi_comm_t *)realloc(t->comms, (t->comms_num+1) * sizeof(turi_comm_t));
+                /* TO-DO: handle memory error */
+                assert(t->comms != NULL);
+
+                tcomm = &t->comms[t->comms_num++];
+                tcomm->commsize = np;
+                tcomm->pset = pset;
+                tcomm->num_tcells = 0;
+                tcomm->itcs = NULL;
+
+                /* create MPI communicator */
                 MPI_Group_incl(mdgroup, np, pset, &newgroup);
                 int res = MPI_Comm_create_group(md->MD_comm, newgroup, 0, &tcomm->comm);
                 assert(res == MPI_SUCCESS);
                 MPI_Group_free(&newgroup);
             }
+            else
+            {
+                free(pset);
+                tcomm = &t->comms[icomm];
+            }
+
+            /* now, add the local index of the current turi-cell to "itcs" array */
+
+            tcomm->itcs = (fmd_ituple_t *)realloc(tcomm->itcs, (tcomm->num_tcells+1) * sizeof(fmd_ituple_t));
+            /* TO-DO: handle memory error */
+            assert(tcomm->itcs != NULL);
+
+            for (int d=0; d<3; d++)
+                tcomm->itcs[tcomm->num_tcells][d] = itc[d] - t->tcell_start[d];
+
+            tcomm->num_tcells++;
+
         }
         else
-        {
             free(pset);
-            tcomm = &t->comms[icomm];
-        }
-
-        /* now, add the local index of the current turi-cell to "itcs" array */
-
-        tcomm->itcs = (fmd_ituple_t *)realloc(tcomm->itcs, (tcomm->num_tcells+1) * sizeof(fmd_ituple_t));
-        /* TO-DO: handle memory error */
-        assert(tcomm->itcs != NULL);
-
-        for (int d=0; d<3; d++)
-            tcomm->itcs[tcomm->num_tcells][d] = itc[d] - t->tcell_start[d];
-
-        tcomm->num_tcells++;
     }
 
     MPI_Group_free(&mdgroup);
@@ -536,30 +540,27 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
     {
         turi_comm_t *tcm = &t->comms[i];
 
-        if (tcm->commsize > 1)
+        /* prepare buf1 (send-buffer) */
+
+        prepare_buf1_rtuple(buf1, tcm, f);
+
+        /* do communication */
+
+        if (allreduce)
+            MPI_Allreduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
+        else
+            MPI_Reduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
+
+        /* copy from buf2 to data array */
+
+        if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
         {
-            /* prepare buf1 (send-buffer) */
-
-            prepare_buf1_rtuple(buf1, tcm, f);
-
-            /* do communication */
-
-            if (allreduce)
-                MPI_Allreduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
-            else
-                MPI_Reduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
-
-            /* copy from buf2 to data array */
-
-            if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+            for (int j=0; j < tcm->num_tcells; j++)
             {
-                for (int j=0; j < tcm->num_tcells; j++)
-                {
-                    int *itc = tcm->itcs[j];
+                int *itc = tcm->itcs[j];
 
-                    for (int d=0; d<3; d++)
-                        ((fmd_rtuple_t ***)f->data.data)[itc[0]][itc[1]][itc[2]][d] = ((fmd_rtuple_t *)buf2)[j][d];
-                }
+                for (int d=0; d<3; d++)
+                    ((fmd_rtuple_t ***)f->data.data)[itc[0]][itc[1]][itc[2]][d] = ((fmd_rtuple_t *)buf2)[j][d];
             }
         }
     }
@@ -583,29 +584,26 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
     {
         turi_comm_t *tcm = &t->comms[i];
 
-        if (tcm->commsize > 1)
+        /* prepare buf1 (send-buffer) */
+
+        prepare_buf1_real(buf1, tcm, f);
+
+        /* do communication */
+
+        if (allreduce)
+            MPI_Allreduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
+        else
+            MPI_Reduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
+
+        /* copy from buf2 to data array */
+
+        if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
         {
-            /* prepare buf1 (send-buffer) */
-
-            prepare_buf1_real(buf1, tcm, f);
-
-            /* do communication */
-
-            if (allreduce)
-                MPI_Allreduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
-            else
-                MPI_Reduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
-
-            /* copy from buf2 to data array */
-
-            if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+            for (int j=0; j < tcm->num_tcells; j++)
             {
-                for (int j=0; j < tcm->num_tcells; j++)
-                {
-                    int *itc = tcm->itcs[j];
+                int *itc = tcm->itcs[j];
 
-                    ((fmd_real_t ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((fmd_real_t *)buf2)[j];
-                }
+                ((fmd_real_t ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((fmd_real_t *)buf2)[j];
             }
         }
     }
@@ -629,31 +627,29 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     {
         turi_comm_t *tcm = &t->comms[i];
 
-        if (tcm->commsize > 1)
+        /* prepare buf1 (send-buffer) */
+
+        prepare_buf1_unsigned(buf1, tcm, f);
+
+        /* do communication */
+
+        if (allreduce)
+            MPI_Allreduce(buf1, buf2, tcm->num_tcells, MPI_UNSIGNED, MPI_SUM, tcm->comm);
+        else
+            MPI_Reduce(buf1, buf2, tcm->num_tcells, MPI_UNSIGNED, MPI_SUM, 0, tcm->comm);
+
+        /* copy from buf2 to data array */
+
+        if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
         {
-            /* prepare buf1 (send-buffer) */
-
-            prepare_buf1_unsigned(buf1, tcm, f);
-
-            /* do communication */
-
-            if (allreduce)
-                MPI_Allreduce(buf1, buf2, tcm->num_tcells, MPI_UNSIGNED, MPI_SUM, tcm->comm);
-            else
-                MPI_Reduce(buf1, buf2, tcm->num_tcells, MPI_UNSIGNED, MPI_SUM, 0, tcm->comm);
-
-            /* copy from buf2 to data array */
-
-            if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+            for (int j=0; j < tcm->num_tcells; j++)
             {
-                for (int j=0; j < tcm->num_tcells; j++)
-                {
-                    int *itc = tcm->itcs[j];
+                int *itc = tcm->itcs[j];
 
-                    ((unsigned ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((unsigned *)buf2)[j];
-                }
+                ((unsigned ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((unsigned *)buf2)[j];
             }
         }
+
     }
 
     free(buf1);
@@ -683,7 +679,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
         }
 
     /* do communications */
-    perform_field_comm_unsigned(md, f, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_unsigned(md, f, t, allreduce);
 
     f->timestep = md->time_iteration; /* mark as updated */
 
@@ -743,7 +739,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
         }
 
     /* do communications */
-    perform_field_comm_real(md, f, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_real(md, f, t, allreduce);
 
     f->timestep = md->time_iteration; /* mark as updated */
 
@@ -780,7 +776,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
         }
 
     /* do communications */
-    perform_field_comm_rtuple(md, fvcm, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_rtuple(md, fvcm, t, allreduce);
 
     /* calculate vcm (last phase) */
 
@@ -843,8 +839,11 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
         }
 
     /* do communications */
-    perform_field_comm_real(md, fmass, t, allreduce || fmass->allreduce_now);
-    perform_field_comm_rtuple(md, fvcm, t, allreduce);
+    if (t->comms_num > 0)
+    {
+        perform_field_comm_real(md, fmass, t, allreduce || fmass->allreduce_now);
+        perform_field_comm_rtuple(md, fvcm, t, allreduce);
+    }
 
     /* calculate vcm (last phase) */
     if (allreduce)
