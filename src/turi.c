@@ -240,7 +240,7 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
     int i=0;
 
     LOOP3D(is, is_start, is_stop)
-        (*pset)[i++] = INDEX(is, md->ns);
+        (*pset)[i++] = INDEX_FLAT(is, md->ns);
 
     /* if root process of the MD communicator exists in pset, let it
     occupy the first array element, so that it becomes an "owner". */
@@ -462,6 +462,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
             t->fields = NULL;
             t->fields_num = 0;
             break;
+
         default:
             assert(0);  /* TO-DO */
     }

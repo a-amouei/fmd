@@ -25,10 +25,19 @@
 
 #define RANK0 0
 
-#define LOOP3D(iv, minv, upv)                                         \
-    for ( (iv)[0]=(minv)[0]; (iv)[0]<(upv)[0]; (iv)[0]++ )            \
-        for ( (iv)[1]=(minv)[1]; (iv)[1]<(upv)[1]; (iv)[1]++ )        \
-            for ( (iv)[2]=(minv)[2]; (iv)[2]<(upv)[2]; (iv)[2]++ )
+#define LOOP3D(i3, min3, up3)                                         \
+    for ( (i3)[0]=(min3)[0]; (i3)[0]<(up3)[0]; (i3)[0]++ )            \
+        for ( (i3)[1]=(min3)[1]; (i3)[1]<(up3)[1]; (i3)[1]++ )        \
+            for ( (i3)[2]=(min3)[2]; (i3)[2]<(up3)[2]; (i3)[2]++ )
+
+/* converts index from 3D space to flat space */
+#define INDEX_FLAT(i3, n3)   ((i3)[2] + (n3)[2]*((i3)[1] + (n3)[1]*(i3)[0]))
+
+/* converts index from flat space to 3D space */
+#define INDEX_3D(i, n3, i3)                                            \
+    ((i3)[2]= (i)%(n3)[2],                                             \
+     (i3)[1]=((i)/(n3)[2])%(n3)[1],                                    \
+     (i3)[0]=((i)/(n3)[2])/(n3)[1])
 
 inline fmd_real_t sqrr(fmd_real_t x)
 {

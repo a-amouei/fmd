@@ -41,13 +41,6 @@
 
 /* Global macroes and symbolic constants */
 
-#define INDEX(ic, nc)   ((ic)[0] + (nc)[0]*((ic)[1] + (nc)[1]*(ic)[2]))
-
-#define INVERSEINDEX(i, nc, ic)                                        \
-    ((ic)[0]= (i)%(nc)[0],                                             \
-     (ic)[1]=((i)/(nc)[0])%(nc)[1],                                    \
-     (ic)[2]=((i)/(nc)[0])/(nc)[1])
-
 #define SET_jc_IN_DIRECTION(dd)                                        \
     if (md->ns[dd] == 1)                                               \
     {                                                                  \

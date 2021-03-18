@@ -58,7 +58,7 @@ void fmd_subd_init(fmd_t *md)
     int d;
 
     // initialize is
-    INVERSEINDEX(md->SubDomain.myrank, md->ns, md->SubDomain.is);
+    INDEX_3D(md->SubDomain.myrank, md->ns, md->SubDomain.is);
     // initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes)
     fmd_ituple_t istemp;
     for (d=0; d<3; d++)
@@ -66,9 +66,9 @@ void fmd_subd_init(fmd_t *md)
     for (d=0; d<3; d++)
     {
         istemp[d] = (md->SubDomain.is[d] - 1 + md->ns[d]) % md->ns[d];
-        md->SubDomain.rank_of_lower_subd[d] = INDEX(istemp, md->ns);
+        md->SubDomain.rank_of_lower_subd[d] = INDEX_FLAT(istemp, md->ns);
         istemp[d] = (md->SubDomain.is[d] + 1) % md->ns[d];
-        md->SubDomain.rank_of_upper_subd[d] = INDEX(istemp, md->ns);
+        md->SubDomain.rank_of_upper_subd[d] = INDEX_FLAT(istemp, md->ns);
         istemp[d] = md->SubDomain.is[d];
     }
     //

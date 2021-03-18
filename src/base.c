@@ -511,7 +511,7 @@ void fmd_matt_distribute(fmd_t *md)
 
         for (i=1; i < md->SubDomain.numprocs; i++)
         {
-            INVERSEINDEX(i, md->ns, is);
+            INDEX_3D(i, md->ns, is);
             nct = 1;
             for (d=0; d<3; d++)
             {
