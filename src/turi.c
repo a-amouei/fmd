@@ -25,6 +25,275 @@
 #include "general.h"
 #include "h5.h"
 
+typedef struct
+{
+    void *elms;            /* elements, an array */
+    unsigned size;         /* number of elements */
+} array_t;
+
+static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
+  fmd_ituple_t itc, int **pset);
+
+/* the argument "psets" is a pointer to a single instance of array_t.
+   the "elms" member of "psets" is an array of array_t's. */
+static int find_this_pset_in_psets(int np, int pset[], array_t *psets)
+{
+    for (int i = 0; i < psets->size; i++)
+    {
+        array_t *arrt = &(((array_t *)(psets->elms))[i]);
+
+        if (np == arrt->size)
+        {
+            int *pset2 = arrt->elms;
+            int j;
+
+            for (j=0; pset[j] == pset2[j] && j<np; j++) ;
+
+            if (j==np) return i;
+        }
+    }
+
+    return -1; /* it is not there! */
+}
+
+static int arrtcmp(const void *arrt1, const void *arrt2)
+{
+    const array_t *a1 = arrt1;
+    const array_t *a2 = arrt2;
+    int *pset1 = a1->elms;
+    int *pset2 = a2->elms;
+
+    if (pset1[0] < pset2[0])
+        return -1;
+    else
+        if (pset1[0] > pset2[0])
+            return 1;
+        else
+            if (a1->size > a2->size)
+                return -1;
+            else
+                return 1;
+}
+
+/* the argument "psets" is a pointer to a single instance of array_t.
+   the "elms" member of "psets" is an array of array_t's. */
+static void make_psets_array(fmd_t *md, turi_t *t, array_t *psets)
+{
+    psets->size = 0;
+    psets->elms = NULL;
+
+    fmd_ituple_t itc;
+
+    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims_global)
+    {
+        int *pset, np;
+
+        np = identify_tcell_processes_set(md, t->tcellh, itc, &pset);
+
+        if (np > 1)
+        {
+            int icomm = find_this_pset_in_psets(np, pset, psets);
+
+            if (icomm == -1) /* if this is a new pset */
+            {
+                /* add this pset to psets */
+
+                psets->elms = realloc(psets->elms, (psets->size+1) * sizeof(array_t));
+                assert(psets->elms != NULL); /* TO-DO: handle memory error */
+
+                array_t *elms = psets->elms;
+
+                elms[psets->size].elms = pset;
+                elms[psets->size].size = np;
+
+                psets->size++;
+            }
+            else
+                free(pset);
+        }
+        else
+            free(pset);
+    }
+
+    qsort(psets->elms, psets->size, sizeof(array_t), arrtcmp);
+}
+
+/*static void report_psets(fmd_t *md, turi_t *t)
+{
+    if (!md->Is_MD_comm_root) return;
+
+    array_t psets;
+
+    make_psets_array(md, t, &psets);
+
+    printf("psets.size = %d\n", psets.size);
+
+    for (int i=0; i < psets.size; i++)
+    {
+        array_t *arrt = (array_t *)(psets.elms) + i;
+
+        for (int j=0; j < arrt->size; j++)
+            printf("%d ", ((int *)(arrt->elms))[j]);
+
+        printf("\n");
+    }
+}*/
+
+/*static void report_table(array_t table[], unsigned ncols)
+{
+    int maxval;
+    int irow = 0;
+
+    FILE *fp = fopen("table.txt", "w");
+    assert(fp!=NULL);
+
+    do
+    {
+        maxval = -1;
+
+        for (int icol=0; icol<ncols; icol++)
+        {
+            int val;
+
+            if (table[icol].size < irow+1)
+                val = -1;
+            else
+                val = ((int *)(table[icol].elms))[irow];
+
+            if (val == -1)
+                fprintf(fp, "    ");
+            else
+                fprintf(fp, "%3d ", val);
+
+            if (val > maxval) maxval = val;
+        }
+
+        fprintf(fp, "\n");
+
+        irow++;
+
+    } while (maxval > -1);
+
+    fclose(fp);
+}*/
+
+static fmd_bool_t is_table_row_available(array_t table[], int pset[], int sizepset, int irow)
+{
+    for (int i=0; i < sizepset; i++)
+    {
+        int icol = pset[i];
+
+        if (table[icol].size >= irow+1)
+            if ( ((int *)(table[icol].elms))[irow] != -1 )
+                return FMD_FALSE;
+    }
+
+    return FMD_TRUE;
+}
+
+static void extend_table_column(array_t *col, unsigned newsize)
+{
+    col->elms = realloc(col->elms, newsize * sizeof(int));
+    assert(col->elms != NULL); /* TO-DO: handle memory error */
+
+    for (int i = col->size; i < newsize; i++)
+        ((int *)(col->elms))[i] = -1;
+
+    col->size = newsize;
+}
+
+static void insert_pset_in_table(array_t table[], int pset[], int sizepset, int psets_ind, int irow)
+{
+    for (int i=0; i < sizepset; i++)
+    {
+        int icol = pset[i];
+        array_t *col = table + icol;
+
+        if (col->size < irow+1) extend_table_column(col, irow+1);
+
+        ((int *)(col->elms))[irow] = psets_ind;
+    }
+}
+
+static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
+{
+    /* create the (global) array of psets */
+
+    array_t psets;
+
+    make_psets_array(md, t, &psets);
+
+    /* initialize the table */
+
+    array_t *table;
+
+    table = malloc(md->SubDomain.numprocs * sizeof(array_t));
+    assert(table != NULL);           /* TO-DO: handle memory error */
+    for (int i=0; i < md->SubDomain.numprocs; i++)
+    {
+        table[i].elms = NULL;
+        table[i].size = 0;
+    }
+
+    /* fill the table */
+
+    for (int psets_ind = 0; psets_ind < psets.size; psets_ind++)
+    {
+        array_t *pset = (array_t *)(psets.elms) + psets_ind;
+        int *elpset = pset->elms;
+
+        if (elpset[0] > md->SubDomain.myrank) break; /* because psets is sorted */
+
+        for (int irow=0; ; irow++)
+            if (is_table_row_available(table, elpset, pset->size, irow))
+            {
+                insert_pset_in_table(table, elpset, pset->size, psets_ind, irow);
+                break;
+            }
+    }
+
+    /* write output to lpsets */
+
+    array_t *col = table + md->SubDomain.myrank;
+
+    lpsets->size = 0;
+    lpsets->elms = NULL;
+
+    for (int i=0; i < col->size; i++)
+    {
+        int psets_ind = ((int *)(col->elms))[i];
+
+        if (psets_ind != -1)
+        {
+            /* copy pset from psets to lpsets */
+
+            lpsets->elms = realloc(lpsets->elms, (lpsets->size + 1) * sizeof(array_t));
+            assert(lpsets->elms != NULL); /* TO-DO: handle memory error */
+
+            array_t *pset_src = (array_t *)(psets.elms) + psets_ind;
+            array_t *pset_des = (array_t *)(lpsets->elms) + lpsets->size;
+
+            pset_des->size = pset_src->size;
+            pset_des->elms = malloc(pset_des->size * sizeof(int));
+            assert(pset_des->elms != NULL); /* TO-DO: handle memory error */
+
+            memcpy(pset_des->elms, pset_src->elms, pset_des->size * sizeof(int));
+
+            lpsets->size++;
+        }
+    }
+
+    /* free memory allocated for "table" and "psets" */
+
+    for (int i=0; i < psets.size; i++)
+        free(((array_t *)(psets.elms))[i].elms);
+    free(psets.elms);
+
+    for (int i=0; i < md->SubDomain.numprocs; i++)
+        free(table[i].elms);
+    free(table);
+}
+
 static void call_field_update_event_handler(fmd_t *md, int field_index, int turi_index)
 {
     fmd_event_params_field_update_t params;
@@ -242,18 +511,6 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
     LOOP3D(is, is_start, is_stop)
         (*pset)[i++] = INDEX_FLAT(is, md->ns);
 
-    /* if root process of the MD communicator exists in pset, let it
-    occupy the first array element, so that it becomes an "owner". */
-    /*
-    for (int i=1; i < np; i++)
-        if ((*pset)[i] == ROOTPROCESS(md->SubDomain.numprocs))
-        {
-            int process = (*pset)[0];
-            (*pset)[0] = (*pset)[i];
-            (*pset)[i] = process;
-        }
-    */
-
     return np;
 }
 
@@ -330,25 +587,63 @@ static void prepare_ownerscomm(fmd_t *md, turi_t *t)
 
 static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 {
-    t->comms_num = 0;
-    t->comms = NULL;
-    t->ownerscomm.owned_tcells = NULL;
-    t->ownerscomm.owned_tcells_num = 0;
+    /* obtain local psets and create t->comms based on that */
+
+    array_t lpsets;
+
+    obtain_local_psets(md, t, &lpsets);
+
+    t->comms_num = lpsets.size;
+
+    if (t->comms_num > 0)
+    {
+        t->comms = (turi_comm_t *)malloc(t->comms_num * sizeof(turi_comm_t));
+        /* TO-DO: handle memory error */
+        assert(t->comms != NULL);
+    }
+    else
+        t->comms = NULL;
 
     MPI_Group mdgroup, newgroup;
 
     MPI_Comm_group(md->MD_comm, &mdgroup);
 
+    for (int i=0; i < t->comms_num; i++)
+    {
+        turi_comm_t *tcomm = t->comms + i;
+        array_t *psetarrt = (array_t *)lpsets.elms + i;
+
+        tcomm->commsize = psetarrt->size;
+        tcomm->pset = psetarrt->elms;
+        tcomm->num_tcells = 0;
+        tcomm->itcs = NULL;
+
+        /* create MPI communicator */
+        MPI_Group_incl(mdgroup, tcomm->commsize, tcomm->pset, &newgroup);
+        int res = MPI_Comm_create_group(md->MD_comm, newgroup, 0, &tcomm->comm);
+        assert(res == MPI_SUCCESS);
+        MPI_Group_free(&newgroup);
+    }
+
+    free(lpsets.elms);
+
+    MPI_Group_free(&mdgroup);
+
+    /* find "owned" turi-cells and associate each individual turi-cell with one the turi_comm_t's if necessary */
+
+    t->ownerscomm.owned_tcells = NULL;
+    t->ownerscomm.owned_tcells_num = 0;
+
     fmd_ituple_t itc;
 
-    LOOP3D(itc, t->tcell_start, t->tcell_stop)
+    LOOP3D(itc, t->tcell_start, t->tcell_stop)  /* a loop on all turi-cells in current subdomain */
     {
-        turi_comm_t *tcomm;
         int *pset, np;
 
         np = identify_tcell_processes_set(md, t->tcellh, itc, &pset);
 
         /* do owned_tcells and owned_tcells_num need an update? */
+
         if (pset[0] == md->SubDomain.myrank)
         {
             t->ownerscomm.owned_tcells = (fmd_ituple_t *)realloc(t->ownerscomm.owned_tcells,
@@ -362,35 +657,15 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             t->ownerscomm.owned_tcells_num++;
         }
 
+        /* associate each individual turi-cell with one the turi_comm_t's if necessary */
+
         if (np > 1)
         {
             int icomm = find_this_pset_in_comms(np, pset, t->comms_num, t->comms);
 
-            if (icomm == -1) /* if this is a new pset */
-            {
-                /* add it to t->comms */
+            assert(icomm > -1);
 
-                t->comms = (turi_comm_t *)realloc(t->comms, (t->comms_num+1) * sizeof(turi_comm_t));
-                /* TO-DO: handle memory error */
-                assert(t->comms != NULL);
-
-                tcomm = &t->comms[t->comms_num++];
-                tcomm->commsize = np;
-                tcomm->pset = pset;
-                tcomm->num_tcells = 0;
-                tcomm->itcs = NULL;
-
-                /* create MPI communicator */
-                MPI_Group_incl(mdgroup, np, pset, &newgroup);
-                int res = MPI_Comm_create_group(md->MD_comm, newgroup, 0, &tcomm->comm);
-                assert(res == MPI_SUCCESS);
-                MPI_Group_free(&newgroup);
-            }
-            else
-            {
-                free(pset);
-                tcomm = &t->comms[icomm];
-            }
+            turi_comm_t *tcomm = t->comms + icomm;
 
             /* now, add the local index of the current turi-cell to "itcs" array */
 
@@ -404,15 +679,16 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             tcomm->num_tcells++;
 
         }
-        else
-            free(pset);
+
+        free(pset);
     }
 
-    MPI_Group_free(&mdgroup);
+    /* complete preparation of ownerscomm */
 
     prepare_ownerscomm(md, t);
 
     /* find num_tcells_max */
+
     t->num_tcells_max = 0;
     for (int i=0; i < t->comms_num; i++)
         if (t->comms[i].num_tcells > t->num_tcells_max) t->num_tcells_max = t->comms[i].num_tcells;
