@@ -92,9 +92,9 @@ static void make_psets_array(fmd_t *md, turi_t *t, array_t *psets)
 
         if (np > 1)
         {
-            int icomm = find_this_pset_in_psets(np, pset, psets);
+            int ip = find_this_pset_in_psets(np, pset, psets);
 
-            if (icomm == -1) /* if this is a new pset */
+            if (ip == -1) /* if this is a new pset */
             {
                 /* add this pset to psets */
 
@@ -657,7 +657,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             t->ownerscomm.owned_tcells_num++;
         }
 
-        /* associate each individual turi-cell with one the turi_comm_t's if necessary */
+        /* associate each individual turi-cell with one of the turi_comm_t's if necessary */
 
         if (np > 1)
         {
