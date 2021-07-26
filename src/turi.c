@@ -577,7 +577,7 @@ static void prepare_ownerscomm(fmd_t *md, turi_t *t)
 
     for (int i=0; i < owcomm->owned_tcells_num; i++)
         for (int d=0; d<3; d++)
-            lg[i][d] = owcomm->owned_tcells[i][d] + t->tcell_start[d]; /* convert local indexes to global indexes */
+            lg[i][d] = owcomm->owned_tcells[i][d] - t->itc_glob_to_loc[d];  /* convert local indexes to global indexes */
 
     MPI_Gatherv(lg, owcomm->owned_tcells_num, md->mpi_types.mpi_ituple, owcomm->global_indexes,
                 owcomm->recvcounts, owcomm->displs, md->mpi_types.mpi_ituple, 0, owcomm->comm);
@@ -636,7 +636,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
     fmd_ituple_t itc;
 
-    LOOP3D(itc, t->tcell_start, t->tcell_stop)  /* a loop on all turi-cells in current subdomain */
+    LOOP3D(itc, t->itc_start_global, t->itc_stop_global)  /* a loop on all turi-cells in current subdomain */
     {
         int *pset, np;
 
@@ -652,7 +652,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             assert(t->ownerscomm.owned_tcells != NULL);
 
             for (int d=0; d<3; d++)
-                t->ownerscomm.owned_tcells[t->ownerscomm.owned_tcells_num][d] = itc[d] - t->tcell_start[d];
+                t->ownerscomm.owned_tcells[t->ownerscomm.owned_tcells_num][d] = itc[d] + t->itc_glob_to_loc[d];
 
             t->ownerscomm.owned_tcells_num++;
         }
@@ -674,7 +674,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             assert(tcomm->itcs != NULL);
 
             for (int d=0; d<3; d++)
-                tcomm->itcs[tcomm->num_tcells][d] = itc[d] - t->tcell_start[d];
+                tcomm->itcs[tcomm->num_tcells][d] = itc[d] + t->itc_glob_to_loc[d];
 
             tcomm->num_tcells++;
 
@@ -722,16 +722,24 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         t->tcellh[d] = md->l[d] / t->tdims_global[d];
 
         fmd_real_t xlo = md->SubDomain.ic_global_firstcell[d] * md->cellh[d];
-        t->tcell_start[d] = (int)impreal(xlo / t->tcellh[d]);
+        t->itc_start_global[d] = (int)impreal(xlo / t->tcellh[d]);
         fmd_real_t xhi = xlo + md->SubDomain.cell_num_nonmarg[d] * md->cellh[d];
-        t->tcell_stop[d] = (int)ceil(impreal(xhi / t->tcellh[d]));
+        t->itc_stop_global[d] = (int)ceil(impreal(xhi / t->tcellh[d]));
 
-        t->tdims[d] = t->tcell_stop[d] - t->tcell_start[d];
+        t->tdims_local_nonmarg[d] = t->itc_stop_global[d] - t->itc_start_global[d];
+
+        t->itc_start[d] = (cat == FMD_TURI_TTM) ? 1 : 0;
+        t->itc_stop[d] = t->itc_start[d] + t->tdims_local_nonmarg[d];
+
+        t->tdims_local[d] = t->itc_start[d] + t->itc_stop[d];
+
+        t->itc_glob_to_loc[d] = -t->itc_start_global[d] + t->itc_start[d];
     }
 
     t->tcell_volume = t->tcellh[0] * t->tcellh[1] * t->tcellh[2];
 
     t->cat = cat;
+
     switch (cat)
     {
         case FMD_TURI_CUSTOM:
@@ -938,7 +946,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
     unsigned ***num = (unsigned ***)f->data.data;
 
     /* clean data of number field (initialize with zeros) */
-    _fmd_array_3d_unsigned_clean(num, t->tdims);
+    _fmd_array_3d_unsigned_clean(num, t->tdims_local);
 
     fmd_ituple_t ic, itc;
     cell_t *cell;
@@ -947,9 +955,9 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
         {
-            /* find index of turi-cell from particle's position */
+            /* find local index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* count atoms */
             num[itc[0]][itc[1]][itc[2]]++;
@@ -976,7 +984,7 @@ static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     {
         fmd_ituple_t itc;
 
-        LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+        LOOP3D(itc, t->itc_start, t->itc_stop)
             nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
     }
     else
@@ -998,7 +1006,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
     fmd_real_t ***mass = (fmd_real_t ***)f->data.data;
 
     /* clean data of mass field (initialize with zeros) */
-    _fmd_array_3d_real_clean(mass, t->tdims);
+    _fmd_array_3d_real_clean(mass, t->tdims_local);
 
     fmd_ituple_t ic, itc;
     cell_t *cell;
@@ -1009,7 +1017,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
         {
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* update mass for turi-cell with index of itc */
             mass[itc[0]][itc[1]][itc[2]] += md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
@@ -1030,7 +1038,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
 
     /* clean data of vcm field (initialize with zeros) */
-    _fmd_array_3d_rtuple_clean(vcm, t->tdims);
+    _fmd_array_3d_rtuple_clean(vcm, t->tdims_local);
 
     cell_t *cell;
     int i;
@@ -1042,7 +1050,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* calculate vcm and mass (first phase) */
 
@@ -1061,7 +1069,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
     if (allreduce)
     {
-        LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+        LOOP3D(itc, t->itc_start, t->itc_stop)
             for (int d=0; d<3; d++)
                 vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
     }
@@ -1087,7 +1095,7 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     fmd_real_t ***mass = (fmd_real_t ***)fmass->data.data;
 
     /* clean data of mass and vcm fields (initialize with zeros) */
-    LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+    LOOP3D(itc, t->itc_start, t->itc_stop)
     {
         mass[itc[0]][itc[1]][itc[2]] = 0.0;
         for (int d=0; d<3; d++)
@@ -1104,7 +1112,7 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
 
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) - t->tcell_start[d];
+                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* calculate vcm and mass (first phase) */
 
@@ -1125,7 +1133,7 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     /* calculate vcm (last phase) */
     if (allreduce)
     {
-        LOOP3D(itc, _fmd_ThreeZeros_int, t->tdims)
+        LOOP3D(itc, t->itc_start, t->itc_stop)
             for (int d=0; d<3; d++)
                 vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
     }
@@ -1259,7 +1267,7 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
         set_field_data_el_size_and_type(f);
 
         /* allocate space for field data */
-        _fmd_array_3d_create(t->tdims, f->data_el_size, f->datatype, &f->data);
+        _fmd_array_3d_create(t->tdims_local, f->data_el_size, f->datatype, &f->data);
         assert(f->data.data != NULL);
     }
     else

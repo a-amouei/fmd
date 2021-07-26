@@ -82,14 +82,18 @@ typedef struct _turi
     int turi_index;
     fmd_turi_t cat;
     fmd_ituple_t tdims_global;  /* global dimenstions of the turi */
-    fmd_ituple_t tdims;         /* dimenstions of the turi in current subdomain.
-                                   The subdomain may share some of its turi-cells with
-                                   neighbor subdomains. */
+    fmd_ituple_t tdims_local;   /* dimenstions of the turi in current subdomain.
+                                   turi-margin is included. */
+    fmd_ituple_t tdims_local_nonmarg;/* turi-margin is NOT included */
     unsigned tcells_global_num;
-    fmd_ituple_t tcell_start;   /* global index of the first turi-cell in current subdomain */
-    fmd_ituple_t tcell_stop;    /* global index of the first turi-cell outside current subdomain */
-    fmd_rtuple_t tcellh;        /* size of each cell of the turi (global) */
-    fmd_real_t tcell_volume;    /* equals tcellh[0] x tcellh[1] x tcellh[2] */
+    fmd_ituple_t itc_start;          /* width of turi-margin, refers to the first
+                                        turi-cell in the interior of the local turi */
+    fmd_ituple_t itc_stop;           /* first local index in the upper turi-margin */
+    fmd_ituple_t itc_start_global;   /* global index of the first turi-cell in current subdomain */
+    fmd_ituple_t itc_stop_global;    /* global index of the first turi-cell outside current subdomain */
+    fmd_ituple_t itc_glob_to_loc;    /* itc_local[d] = itc_global[d] + itc_glob_to_loc[d] */
+    fmd_rtuple_t tcellh;             /* size of each cell of the turi (global) */
+    fmd_real_t tcell_volume;         /* equals tcellh[0] x tcellh[1] x tcellh[2] */
     unsigned fields_num;
     field_t *fields;
     unsigned comms_num;         /* number of communicators = number of elements of the following array */
