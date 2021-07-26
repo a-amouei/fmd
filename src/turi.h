@@ -92,6 +92,7 @@ typedef struct _turi
     fmd_ituple_t itc_start_global;   /* global index of the first turi-cell in current subdomain */
     fmd_ituple_t itc_stop_global;    /* global index of the first turi-cell outside current subdomain */
     fmd_ituple_t itc_glob_to_loc;    /* itc_local[d] = itc_global[d] + itc_glob_to_loc[d] */
+    fmd_ituple_t itc_start_owned;    /* local index of the first turi-cell "owned" by current subdomain */
     fmd_rtuple_t tcellh;             /* size of each cell of the turi (global) */
     fmd_real_t tcell_volume;         /* equals tcellh[0] x tcellh[1] x tcellh[2] */
     unsigned fields_num;

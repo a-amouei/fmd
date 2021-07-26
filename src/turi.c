@@ -719,16 +719,22 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     for (int d=0; d<3; d++)
     {
+        t->itc_start[d] = (cat == FMD_TURI_TTM) ? 1 : 0;
+
         t->tcellh[d] = md->l[d] / t->tdims_global[d];
 
         fmd_real_t xlo = md->SubDomain.ic_global_firstcell[d] * md->cellh[d];
-        t->itc_start_global[d] = (int)impreal(xlo / t->tcellh[d]);
+        fmd_real_t xlodiv = impreal(xlo / t->tcellh[d]);
+        t->itc_start_global[d] = (int)xlodiv;
+
+        /* if the fractional part of xlodiv is zero, then t->itc_start_owned[d] = t->itc_start[d] */
+        t->itc_start_owned[d] = t->itc_start[d] + ((fmd_real_t)t->itc_start_global[d] == xlodiv ? 0 : 1);
+
         fmd_real_t xhi = xlo + md->SubDomain.cell_num_nonmarg[d] * md->cellh[d];
         t->itc_stop_global[d] = (int)ceil(impreal(xhi / t->tcellh[d]));
 
         t->tdims_local_nonmarg[d] = t->itc_stop_global[d] - t->itc_start_global[d];
 
-        t->itc_start[d] = (cat == FMD_TURI_TTM) ? 1 : 0;
         t->itc_stop[d] = t->itc_start[d] + t->tdims_local_nonmarg[d];
 
         t->tdims_local[d] = t->itc_start[d] + t->itc_stop[d];
