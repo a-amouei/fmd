@@ -694,6 +694,35 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
         if (t->comms[i].num_tcells > t->num_tcells_max) t->num_tcells_max = t->comms[i].num_tcells;
 }
 
+/* find in each direction the ranks of the upper and lower subdomains which are "owners" of
+   turi-cells, and intialize rank_of_lower_owner and rank_of_upper_owner accordingly. */
+static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
+{
+    fmd_ituple_t is_tempo;
+
+    for (int d=0; d<3; d++)                 /* set is_tempo[] to current subdomain */
+        is_tempo[d] = md->SubDomain.is[d];
+
+    for (int d=0; d<3; d++)
+    {
+        fmd_real_t pos;
+
+        /* initialize rank_of_upper_owner[d] */
+        pos = (t->itc_stop_global[d] % t->tdims_global[d]) * t->tcellh[d];
+        is_tempo[d] = (int)impreal( _fmd_convert_pos_to_subd_coord_1D(md, pos, d) );
+        t->rank_of_upper_owner[d] = INDEX_FLAT(is_tempo, md->ns);
+
+        /* initialize rank_of_lower_owner[d] */
+        int ifst = t->itc_start_owned[d] - t->itc_glob_to_loc[d]; /* convert to global index */
+        pos = ((ifst - 1 + t->tdims_global[d]) % t->tdims_global[d]) * t->tcellh[d];
+        is_tempo[d] = (int)impreal( _fmd_convert_pos_to_subd_coord_1D(md, pos, d) );
+        t->rank_of_lower_owner[d] = INDEX_FLAT(is_tempo, md->ns);
+
+        /* set is_tempo[] back again to current subdomain */
+        is_tempo[d] = md->SubDomain.is[d];
+    }
+}
+
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime)
 {
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
@@ -756,6 +785,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         default:
             assert(0);  /* TO-DO */
     }
+
+    init_rank_of_lower_upper_owner(md, t);
 
     md->turies_num++;
 

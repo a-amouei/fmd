@@ -84,17 +84,21 @@ typedef struct _turi
     fmd_ituple_t tdims_global;  /* global dimenstions of the turi */
     fmd_ituple_t tdims_local;   /* dimenstions of the turi in current subdomain.
                                    turi-margin is included. */
-    fmd_ituple_t tdims_local_nonmarg;/* turi-margin is NOT included */
+    fmd_ituple_t tdims_local_nonmarg;  /* turi-margin is NOT included */
+    fmd_ituple_t rank_of_lower_owner;  /* only if the current subdomain "owns" one or more turi-cells
+                                          and cat == FMD_TURI_TTM, these two variables are initialized
+                                          in a correct way. */
+    fmd_ituple_t rank_of_upper_owner;
     unsigned tcells_global_num;
-    fmd_ituple_t itc_start;          /* width of turi-margin, refers to the first
-                                        turi-cell in the interior of the local turi */
-    fmd_ituple_t itc_stop;           /* first local index in the upper turi-margin */
-    fmd_ituple_t itc_start_global;   /* global index of the first turi-cell in current subdomain */
-    fmd_ituple_t itc_stop_global;    /* global index of the first turi-cell outside current subdomain */
-    fmd_ituple_t itc_glob_to_loc;    /* itc_local[d] = itc_global[d] + itc_glob_to_loc[d] */
-    fmd_ituple_t itc_start_owned;    /* local index of the first turi-cell "owned" by current subdomain */
-    fmd_rtuple_t tcellh;             /* size of each cell of the turi (global) */
-    fmd_real_t tcell_volume;         /* equals tcellh[0] x tcellh[1] x tcellh[2] */
+    fmd_ituple_t itc_start;            /* width of turi-margin, refers to the first
+                                          turi-cell in the interior of the local turi */
+    fmd_ituple_t itc_stop;             /* first local index in the upper turi-margin */
+    fmd_ituple_t itc_start_global;     /* global index of the first turi-cell in current subdomain */
+    fmd_ituple_t itc_stop_global;      /* global index of the first turi-cell outside current subdomain */
+    fmd_ituple_t itc_glob_to_loc;      /* itc_local[d] = itc_global[d] + itc_glob_to_loc[d] */
+    fmd_ituple_t itc_start_owned;      /* local index of the first turi-cell "owned" by current subdomain */
+    fmd_rtuple_t tcellh;               /* size of each cell of the turi (global) */
+    fmd_real_t tcell_volume;           /* equals tcellh[0] x tcellh[1] x tcellh[2] */
     unsigned fields_num;
     field_t *fields;
     unsigned comms_num;         /* number of communicators = number of elements of the following array */

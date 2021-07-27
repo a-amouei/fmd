@@ -21,6 +21,20 @@
 #include "base.h"
 #include "general.h"
 
+fmd_real_t _fmd_convert_pos_to_subd_coord_1D(fmd_t *md, fmd_real_t pos, int d)
+{
+    fmd_real_t pos2, ref2, width1;
+
+    width1 = (md->SubDomain.w[d] + 1) * md->cellh[d];
+    ref2 = md->SubDomain.r[d] * width1;
+    pos2 = pos - ref2;
+
+    if (pos2 <= 0.0)
+        return pos / width1;
+    else
+        return md->SubDomain.r[d] + pos2 / (md->SubDomain.w[d] * md->cellh[d]);
+}
+
 /* This function receives the position of a point in MD simulation box
    and determines its coordinates in subdomain space.
    For example if for a pos[] value we obtain s[] = {1.5, 0.5, 3.5}, it
@@ -28,19 +42,8 @@
    index of is[] = {1, 0, 3}. */
 void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s)
 {
-    fmd_rtuple_t pos2, ref2, width1;
-
     for (int d=0; d<3; d++)
-    {
-        width1[d] = (md->SubDomain.w[d] + 1) * md->cellh[d];
-        ref2[d] = md->SubDomain.r[d] * width1[d];
-        pos2[d] = pos[d] - ref2[d];
-
-        if (pos2[d] <= 0.0)
-            s[d] = pos[d] / width1[d];
-        else
-            s[d] = md->SubDomain.r[d] + pos2[d] / (md->SubDomain.w[d] * md->cellh[d]);
-    }
+        s[d] = _fmd_convert_pos_to_subd_coord_1D(md, pos[d], d);
 }
 
 void fmd_subd_free(fmd_t *md)
