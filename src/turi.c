@@ -593,11 +593,9 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
     obtain_local_psets(md, t, &lpsets);
 
-    t->comms_num = lpsets.size;
-
-    if (t->comms_num > 0)
+    if (lpsets.size > 0)
     {
-        t->comms = (turi_comm_t *)malloc(t->comms_num * sizeof(turi_comm_t));
+        t->comms = (turi_comm_t *)malloc(lpsets.size * sizeof(turi_comm_t));
         /* TO-DO: handle memory error */
         assert(t->comms != NULL);
     }
@@ -608,7 +606,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
     MPI_Comm_group(md->MD_comm, &mdgroup);
 
-    for (int i=0; i < t->comms_num; i++)
+    for (int i=0; i < lpsets.size; i++)
     {
         turi_comm_t *tcomm = t->comms + i;
         array_t *psetarrt = (array_t *)lpsets.elms + i;
@@ -625,11 +623,14 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
         MPI_Group_free(&newgroup);
     }
 
+    t->comms_num = lpsets.size;
+
     free(lpsets.elms);
 
     MPI_Group_free(&mdgroup);
 
-    /* find "owned" turi-cells and associate each individual turi-cell with one the turi_comm_t's if necessary */
+    /* find "owned" turi-cells and associate each individual turi-cell with one of the turi_comm_t's if the
+       turi-cell is shared with other subdomains */
 
     t->ownerscomm.owned_tcells = NULL;
     t->ownerscomm.owned_tcells_num = 0;
@@ -642,7 +643,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
         np = identify_tcell_processes_set(md, t->tcellh, itc, &pset);
 
-        /* do owned_tcells and owned_tcells_num need an update? */
+        /* is this turi-cell owned by current subdomain? (do owned_tcells and owned_tcells_num need an update?) */
 
         if (pset[0] == md->SubDomain.myrank)
         {
@@ -657,7 +658,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
             t->ownerscomm.owned_tcells_num++;
         }
 
-        /* associate each individual turi-cell with one of the turi_comm_t's if necessary */
+        /* if this turi-cell is shared with other subdomains, associate it with one of the turi_comm_t's */
 
         if (np > 1)
         {
