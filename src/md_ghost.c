@@ -939,7 +939,7 @@ static void ghostparticles_prepare_init_update_in_direction_d(
     }
 }
 
-void fmd_ghostparticles_update_LocOrdParam(fmd_t *md)
+void _fmd_ghostparticles_update_LocOrdParam(fmd_t *md)
 {
     int d;
     fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
@@ -965,7 +965,7 @@ void fmd_ghostparticles_update_LocOrdParam(fmd_t *md)
     }
 }
 
-void fmd_ghostparticles_update_Femb(fmd_t *md)
+void _fmd_ghostparticles_update_Femb(fmd_t *md)
 {
     int d;
     fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
@@ -991,7 +991,7 @@ void fmd_ghostparticles_update_Femb(fmd_t *md)
     }
 }
 
-void fmd_ghostparticles_init(fmd_t *md)
+void _fmd_ghostparticles_init(fmd_t *md)
 {
     int d;
     fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
@@ -1017,7 +1017,7 @@ void fmd_ghostparticles_init(fmd_t *md)
     }
 }
 
-void fmd_ghostparticles_delete(fmd_t *md)
+void _fmd_ghostparticles_delete(fmd_t *md)
 {
     int d;
     fmd_ituple_t ic_from, ic_to;
@@ -1040,7 +1040,7 @@ void fmd_ghostparticles_delete(fmd_t *md)
     }
 }
 
-void fmd_particles_migrate(fmd_t *md)
+void _fmd_particles_migrate(fmd_t *md)
 {
     fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
     fmd_ituple_t ic_start_send_upper, ic_stop_send_upper;

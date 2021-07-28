@@ -227,7 +227,7 @@ void fmd_dync_updateForces(fmd_t *md)
     if (md->potsys.potcats == NULL)  // just for one time
         fmd_pot_prepareForForceComp(md);
 
-    fmd_ghostparticles_init(md);
+    _fmd_ghostparticles_init(md);
 
     if (md->potsys.potcats_num == 1) // not hybrid mode
     {
@@ -247,7 +247,7 @@ void fmd_dync_updateForces(fmd_t *md)
                 if (md->CompLocOrdParam) compLocOrdParam(md);
                 fmd_real_t FembSum;
                 fmd_computeEAM_pass1(md, &FembSum);
-                fmd_ghostparticles_update_Femb(md);
+                _fmd_ghostparticles_update_Femb(md);
                 fmd_computeEAM_pass0(md, FembSum);
                 break;
         }
@@ -259,7 +259,7 @@ void fmd_dync_updateForces(fmd_t *md)
         if (md->potsys.hybridpasses[1])
         {
             compute_hybrid_pass1(md, &FembSum);
-            fmd_ghostparticles_update_Femb(md);
+            _fmd_ghostparticles_update_Femb(md);
         }
 
         if (md->potsys.hybridpasses[0])
@@ -268,5 +268,5 @@ void fmd_dync_updateForces(fmd_t *md)
 
     if (md->TotalNoOfMolecules > 0) fmd_dync_computeBondForce(md);   // TO-DO
 
-    fmd_ghostparticles_delete(md);
+    _fmd_ghostparticles_delete(md);
 }

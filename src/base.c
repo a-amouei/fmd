@@ -139,7 +139,7 @@ void compLocOrdParam(fmd_t *md)
 
     if (md->LOP_iteration != md->LOP_period) return;
 
-    fmd_ghostparticles_update_LocOrdParam(md);
+    _fmd_ghostparticles_update_LocOrdParam(md);
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
@@ -771,7 +771,7 @@ static void refreshGrid(fmd_t *md, int reverse)
     }
 
     /* now particles in ghost cells migrate to neighbour subdomains */
-    fmd_particles_migrate(md);
+    _fmd_particles_migrate(md);
 }
 
 void rescaleVelocities(fmd_t *md)

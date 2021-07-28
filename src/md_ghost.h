@@ -22,10 +22,10 @@
 
 #include "config.h"
 
-void fmd_ghostparticles_init(fmd_t *md);
-void fmd_ghostparticles_update_Femb(fmd_t *md);
-void fmd_ghostparticles_update_LocOrdParam(fmd_t *md);
-void fmd_ghostparticles_delete(fmd_t *md);
-void fmd_particles_migrate(fmd_t *md);
+void _fmd_ghostparticles_init(fmd_t *md);
+void _fmd_ghostparticles_update_Femb(fmd_t *md);
+void _fmd_ghostparticles_update_LocOrdParam(fmd_t *md);
+void _fmd_ghostparticles_delete(fmd_t *md);
+void _fmd_particles_migrate(fmd_t *md);
 
 #endif /* MD_GHOST_H */
