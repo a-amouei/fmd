@@ -6,7 +6,8 @@ TO-DO:
   #4    Add the ability to save bond data into VTF files (to view molecules with VMD)
   #5    Check logic of fmd_box_setSize()
   #6    Now that arrays are used instead of linked-lists to store particles, if an atom of a molecule leaves a grid cell and enters another 
-        cell or if its place in a cell is changed, the references to it in the data structures of the neighbor atoms must be updated.
+        cell or if its place in a cell is changed, the references to it in the data structures of the neighbor atoms of the same molecue must
+        be updated.
   #7    In md_ghost.c, only data of atoms belonging to the active group should be communicated.
 
 Questions:
@@ -17,3 +18,7 @@ Questions:
         A: My first guess is that it can be done. But maybe needs more analysis.
 
   #2    Q: Can LocalID be finally removed from mol_atom_neighbor_t?
+
+Remarks:
+
+  #1    Since MPI_BYTE is used to transmit structs, currently the code may not be portable to heterogeneous machines.
