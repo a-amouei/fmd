@@ -323,7 +323,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         fclose(fp);
     }
 
-    MPI_Bcast(eam, sizeof(eam_t), MPI_CHAR, RANK0, md->MD_comm);
+    MPI_Bcast(eam, sizeof(eam_t), MPI_BYTE, RANK0, md->MD_comm);
     if (!md->Is_MD_comm_root)
     {
         eam->elements = (eam_element_t *)malloc(eam->elementsNo * sizeof(eam_element_t));
@@ -366,7 +366,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *filePath)
         if (!md->Is_MD_comm_root)
             eam->elements[i].name = (char *)malloc(namelen + 1);
 
-        MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, RANK0, md->MD_comm);
+        MPI_Bcast(eam->elements[i].name, namelen+1, MPI_BYTE, RANK0, md->MD_comm);
 
         MPI_Bcast(eam->elements[i].F, eam->Nrho, FMD_MPI_REAL, RANK0, md->MD_comm);
         MPI_Bcast(eam->elements[i].rho, eam->Nr2, FMD_MPI_REAL, RANK0, md->MD_comm);

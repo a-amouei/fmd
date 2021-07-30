@@ -63,7 +63,7 @@ static void particles_migrate_in_direction_d(
             md->SubDomain.NumberOfParticles += cells_length_receive[cells_num];
             sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_core_t);
             pcs_receive = (particle_core_t *)malloc(sum_length_receive);
-            MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
+            MPI_Recv(pcs_receive, sum_length_receive, MPI_BYTE,
                      md->SubDomain.rank_of_upper_subd[d], 2, md->MD_comm, &status);
 
             kreceive = k = 0;
@@ -108,7 +108,7 @@ static void particles_migrate_in_direction_d(
                 MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
 
-            MPI_Send(pcs_send, sum_length_send, MPI_CHAR,
+            MPI_Send(pcs_send, sum_length_send, MPI_BYTE,
                      md->SubDomain.rank_of_upper_subd[d], 4, md->MD_comm);
             free(pcs_send);
         }
@@ -142,7 +142,7 @@ static void particles_migrate_in_direction_d(
                 MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
             }
 
-            MPI_Send(pcs_send, sum_length_send, MPI_CHAR,
+            MPI_Send(pcs_send, sum_length_send, MPI_BYTE,
                      md->SubDomain.rank_of_lower_subd[d], 2, md->MD_comm);
             free(pcs_send);
 
@@ -153,7 +153,7 @@ static void particles_migrate_in_direction_d(
             md->SubDomain.NumberOfParticles += cells_length_receive[cells_num];
             sum_length_receive = cells_length_receive[cells_num] * sizeof(particle_core_t);
             pcs_receive = (particle_core_t *)malloc(sum_length_receive);
-            MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
+            MPI_Recv(pcs_receive, sum_length_receive, MPI_BYTE,
                      md->SubDomain.rank_of_lower_subd[d], 4, md->MD_comm, &status);
             kreceive = k = 0;
             LOOP3D(ic, ic_start_receive_lower, ic_stop_receive_lower)
@@ -207,9 +207,9 @@ static void particles_migrate_in_direction_d(
             MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
         }
 
-        MPI_Isend(pcs_send, sum_length_send, MPI_CHAR,
+        MPI_Isend(pcs_send, sum_length_send, MPI_BYTE,
                   md->SubDomain.rank_of_lower_subd[d], 2, md->MD_comm, &request);
-        MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
+        MPI_Recv(pcs_receive, sum_length_receive, MPI_BYTE,
                  md->SubDomain.rank_of_upper_subd[d], 2, md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(pcs_send);
@@ -257,9 +257,9 @@ static void particles_migrate_in_direction_d(
             MINIMIZE_CELL(md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
         }
 
-        MPI_Isend(pcs_send, sum_length_send, MPI_CHAR,
+        MPI_Isend(pcs_send, sum_length_send, MPI_BYTE,
                   md->SubDomain.rank_of_upper_subd[d], 4, md->MD_comm, &request);
-        MPI_Recv(pcs_receive, sum_length_receive, MPI_CHAR,
+        MPI_Recv(pcs_receive, sum_length_receive, MPI_BYTE,
                  md->SubDomain.rank_of_lower_subd[d], 4, md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(pcs_send);
@@ -309,7 +309,7 @@ static void ghostparticles_init_in_direction_d(
                      md->MD_comm, &status);
             sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
             data_receive = (position_struct_t *)malloc(sum_length_receive);
-            MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
+            MPI_Recv(data_receive, sum_length_receive, MPI_BYTE,
                      md->SubDomain.rank_of_upper_subd[d], 6, md->MD_comm, &status);
 
             kreceive = k = 0;
@@ -358,7 +358,7 @@ static void ghostparticles_init_in_direction_d(
                 }
             }
 
-            MPI_Send(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_upper_subd[d],
+            MPI_Send(data_send, sum_length_send, MPI_BYTE, md->SubDomain.rank_of_upper_subd[d],
                      8, md->MD_comm);
             free(data_send);
         }
@@ -395,7 +395,7 @@ static void ghostparticles_init_in_direction_d(
                 }
             }
 
-            MPI_Send(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_lower_subd[d],
+            MPI_Send(data_send, sum_length_send, MPI_BYTE, md->SubDomain.rank_of_lower_subd[d],
                      6, md->MD_comm);
             free(data_send);
 
@@ -405,7 +405,7 @@ static void ghostparticles_init_in_direction_d(
                      md->MD_comm, &status);
             sum_length_receive = sizeof(position_struct_t) * cells_length_receive[cells_num];
             data_receive = (position_struct_t *)malloc(sum_length_receive);
-            MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
+            MPI_Recv(data_receive, sum_length_receive, MPI_BYTE,
                      md->SubDomain.rank_of_lower_subd[d], 8, md->MD_comm, &status);
 
             kreceive = k = 0;
@@ -465,9 +465,9 @@ static void ghostparticles_init_in_direction_d(
             }
         }
 
-        MPI_Isend(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_lower_subd[d], 6,
+        MPI_Isend(data_send, sum_length_send, MPI_BYTE, md->SubDomain.rank_of_lower_subd[d], 6,
                   md->MD_comm, &request);
-        MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
+        MPI_Recv(data_receive, sum_length_receive, MPI_BYTE,
                  md->SubDomain.rank_of_upper_subd[d], 6, md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);
@@ -523,9 +523,9 @@ static void ghostparticles_init_in_direction_d(
             }
         }
 
-        MPI_Isend(data_send, sum_length_send, MPI_CHAR, md->SubDomain.rank_of_upper_subd[d], 8,
+        MPI_Isend(data_send, sum_length_send, MPI_BYTE, md->SubDomain.rank_of_upper_subd[d], 8,
                   md->MD_comm, &request);
-        MPI_Recv(data_receive, sum_length_receive, MPI_CHAR,
+        MPI_Recv(data_receive, sum_length_receive, MPI_BYTE,
                  md->SubDomain.rank_of_lower_subd[d], 8, md->MD_comm, &status);
         MPI_Wait(&request, &status);
         free(data_send);

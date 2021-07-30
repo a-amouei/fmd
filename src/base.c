@@ -551,7 +551,7 @@ void fmd_matt_distribute(fmd_t *md)
                 for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
                     is_partcores[k++] = cell->parts[pind].core;
 
-            MPI_Send(is_partcores, sum_length, MPI_CHAR, i, 51, md->MD_comm);
+            MPI_Send(is_partcores, sum_length, MPI_BYTE, i, 51, md->MD_comm);
 
             free(is_partcores);
         }
@@ -592,7 +592,7 @@ void fmd_matt_distribute(fmd_t *md)
         sum_length *= sizeof(particle_core_t);
         is_partcores = (particle_core_t *)malloc(sum_length);
 
-        MPI_Recv(is_partcores, sum_length, MPI_CHAR, RANK0, 51, md->MD_comm, &status);
+        MPI_Recv(is_partcores, sum_length, MPI_BYTE, RANK0, 51, md->MD_comm, &status);
 
         kreceive = k = 0;
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -877,8 +877,8 @@ void fmd_matt_saveConfiguration(fmd_t *md)
 
     free(nums);
 
-    MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t), MPI_CHAR,
-        globalData, recvcounts, displs, MPI_CHAR, RANK0, md->MD_comm);
+    MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t), MPI_BYTE,
+        globalData, recvcounts, displs, MPI_BYTE, RANK0, md->MD_comm);
 
     free(localData);
 
@@ -1028,7 +1028,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         for (i=1; i < md->SubDomain.numprocs; i++)
         {
             is_partcores = (particle_core_t *)malloc(nums[i] * sizeof(particle_core_t));
-            MPI_Recv(is_partcores, nums[i] * sizeof(particle_core_t), MPI_CHAR, i, 150,
+            MPI_Recv(is_partcores, nums[i] * sizeof(particle_core_t), MPI_BYTE, i, 150,
                      md->MD_comm, &status);
 
             for (k=0; k < nums[i]; k++)
@@ -1056,7 +1056,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
             for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
                 is_partcores[k++] = cell->parts[pind].core;
 
-        MPI_Send(is_partcores, md->SubDomain.NumberOfParticles * sizeof(particle_core_t), MPI_CHAR, RANK0, 150, md->MD_comm);
+        MPI_Send(is_partcores, md->SubDomain.NumberOfParticles * sizeof(particle_core_t), MPI_BYTE, RANK0, 150, md->MD_comm);
         free(is_partcores);
     }
 }
