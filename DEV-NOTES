@@ -9,6 +9,7 @@ TO-DO:
         cell or if its place in a cell is changed, the references to it in the data structures of the neighbor atoms of the same molecue must
         be updated.
   #7    In md_ghost.c, only data of atoms belonging to the active group should be communicated.
+  #8    See how much -ffast-math and -fomit-frame-pointer compiler options affect the performance.
 
 Questions:
 
