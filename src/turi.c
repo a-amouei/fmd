@@ -776,11 +776,15 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     t->cat = cat;
 
+    t->fields = NULL;
+    t->fields_num = 0;
+
     switch (cat)
     {
         case FMD_TURI_CUSTOM:
-            t->fields = NULL;
-            t->fields_num = 0;
+            break;
+
+        case FMD_TURI_TTM:
             break;
 
         default:
