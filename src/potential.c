@@ -17,15 +17,13 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// all functions for loading potential files and preparing or managing data structures related to
-// potentials come here.
-
 #include "potential.h"
 #include "base.h"
 #include "array.h"
 #include "list.h"
 #include "eam.h"
 #include "molecule.h"
+#include "general.h"
 
 void fmd_pot_setCutoffRadius(fmd_t *md, fmd_real_t cutoff)
 {
@@ -38,13 +36,16 @@ void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[
     assert(number > 0);
 
     md->potsys.atomkinds_num = number;
-    md->potsys.atomkinds = (atomkind_t *)malloc(number * sizeof(atomkind_t));
+    md->potsys.atomkinds = (atomkind_t *)m_alloc(number * sizeof(atomkind_t));
+
     for (unsigned i=0; i<number; i++)
     {
         md->potsys.atomkinds[i].mass = masses[i] / MD_MASS_UNIT;  // convert from amu to internal mass unit
         size_t len = strlen(names[i]);
-        md->potsys.atomkinds[i].name = (char *)malloc(len + 1);
+        md->potsys.atomkinds[i].name = (char *)m_alloc(len + 1);
         strcpy(md->potsys.atomkinds[i].name, names[i]);
+
+        md->potsys.atomkinds[i].eam_element = NULL;
     }
 }
 
@@ -117,9 +118,9 @@ void fmd_potsys_init(fmd_t *md)
     md->potsys.potlist = NULL;
     md->potsys.pottable = NULL;
     md->potsys.potcats = NULL;
-    md->potsys.bondkinds = NULL;    // first realloc() call needs this
+    md->potsys.bondkinds = NULL;
     md->potsys.bondkinds_num = 0;
-    md->potsys.molkinds = NULL;     // first realloc() call needs this
+    md->potsys.molkinds = NULL;
     md->potsys.molkinds_num = 0;
 }
 
@@ -227,11 +228,6 @@ void fmd_pot_prepareForForceComp(fmd_t *md)
                 md->potsys.potcats_num++;
                 md->potsys.potcats = fmd_list_prepend(md->potsys.potcats, &potpair->cat);
             }
-
-            // do these two atomkinds use EAM?
-            if (potpair->cat != POT_EAM_ALLOY)
-                md->potsys.atomkinds[i].eam_element =
-                md->potsys.atomkinds[j].eam_element = NULL;
         }
 
     pot_hybridpasses_update(md);

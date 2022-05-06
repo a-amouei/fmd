@@ -44,7 +44,7 @@ typedef struct
     unsigned iloc, jloc;    // local indexes inside the potential, used in potentials like EAM
 } potpair_t;
 
-typedef struct eam_element_t eam_element_t;
+typedef struct _eam_element eam_element_t;
 
 typedef struct
 {

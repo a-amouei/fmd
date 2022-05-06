@@ -17,10 +17,11 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// this module owes some ideas to the doubly-linked list of GLib
+/* this module owes some ideas to the doubly-linked list of GLib */
 
-#include "list.h"
 #include <stdlib.h>
+#include "list.h"
+#include "general.h"
 
 list_t *fmd_list_prepend(list_t *list, void *data)
 {

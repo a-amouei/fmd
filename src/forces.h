@@ -23,22 +23,25 @@
 #include "config.h"
 
 #define COMPUTE_rv_AND_r2                                                    \
-    for (d=0; d<3; d++)                                                      \
+    do                                                                       \
     {                                                                        \
-        if (md->ns[d] == 1)                                                  \
+        for (int d=0; d<DIM; d++)                                            \
         {                                                                    \
-            if (kc[d]==-1)                                                   \
-                rv[d] = p1->core.x[d] - p2->core.x[d] + md->l[d];            \
-            else                                                             \
-                if (kc[d] == md->nc[d])                                      \
-                    rv[d] = p1->core.x[d] - p2->core.x[d] - md->l[d];        \
+            if (md->ns[d] == 1)                                              \
+            {                                                                \
+                if (kc[d]==-1)                                               \
+                    rv[d] = x1[d] - x2[d] + md->l[d];                        \
                 else                                                         \
-                    rv[d] = p1->core.x[d] - p2->core.x[d];                   \
+                    if (kc[d] == md->nc[d])                                  \
+                        rv[d] = x1[d] - x2[d] - md->l[d];                    \
+                    else                                                     \
+                        rv[d] = x1[d] - x2[d];                               \
+            }                                                                \
+            else                                                             \
+                rv[d] = x1[d] - x2[d];                                       \
         }                                                                    \
-        else                                                                 \
-            rv[d] = p1->core.x[d] - p2->core.x[d];                           \
-    }                                                                        \
-    r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);
+        r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);                            \
+    } while (0)
 
 typedef struct _fmd fmd_t;
 

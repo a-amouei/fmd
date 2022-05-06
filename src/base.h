@@ -38,76 +38,9 @@
 #include "subdomain.h"
 #include "events.h"
 #include "h5.h"
+#include "cell.h"
 
 /* Global macroes and symbolic constants */
-
-#define SET_jc_IN_DIRECTION(dd)                                        \
-    if (md->ns[dd] == 1)                                               \
-    {                                                                  \
-        if ((kc[dd] == -1) || (kc[dd] == md->nc[dd]))                  \
-            if (md->PBC[dd])                                           \
-                jc[dd] = (kc[dd] + md->nc[dd]) % md->nc[dd];           \
-            else                                                       \
-                continue;                                              \
-        else                                                           \
-            jc[dd] = kc[dd];                                           \
-    }                                                                  \
-    else                                                               \
-        jc[dd] = kc[dd];
-
-#define CELL_INCREMENT  10
-
-#define RESIZE_CELL(c)                                                          \
-    do                                                                          \
-    {                                                                           \
-        (c).capacity = (c).parts_num + CELL_INCREMENT;                          \
-        (c).parts = realloc((c).parts, (c).capacity * sizeof(*(c).parts));      \
-        assert((c).parts != NULL);                                              \
-        /* TO-DO: handle memory error */                                        \
-    } while (0)
-
-#define INSERT_PART_CORE_IN_CELL(pc, cell)                                      \
-    do                                                                          \
-    {                                                                           \
-        if ((cell).parts_num == (cell).capacity)                                \
-            RESIZE_CELL(cell);                                                  \
-        (cell).parts[(cell).parts_num++].core = pc;                             \
-    } while (0)
-
-#define INSERT_PARTICLE_IN_CELL(p, cell)                                        \
-    do                                                                          \
-    {                                                                           \
-        if ((cell).parts_num == (cell).capacity)                                \
-            RESIZE_CELL(cell);                                                  \
-        (cell).parts[(cell).parts_num++] = p;                                   \
-    } while (0)
-
-#define MINIMIZE_CELL(c)                                                        \
-    do                                                                          \
-    {                                                                           \
-        (c).parts_num = 0;                                                      \
-        (c).capacity = CELL_INCREMENT;                                          \
-        (c).parts = realloc((c).parts, (c).capacity * sizeof(*(c).parts));      \
-        assert((c).parts != NULL);                                              \
-        /* TO-DO: handle memory error */                                        \
-    } while (0)
-
-#define FREE_CELL(c)             \
-    do                           \
-    {                            \
-        (c).parts_num = 0;       \
-        (c).capacity = 0;        \
-        free((c).parts);         \
-        (c).parts = NULL;        \
-    } while (0)
-
-#define REMOVE_PARTICLE_FROM_CELL(c, i)                      \
-    do                                                       \
-    {                                                        \
-        (c).parts[i] = (c).parts[--(c).parts_num];           \
-        if ((c).parts_num + CELL_INCREMENT < (c).capacity)   \
-            RESIZE_CELL(c);                                  \
-    } while (0)
 
 #define K_BOLTZMANN                 8.6173303e-5       // (eV / Kelvin)
 #define LIGHT_SPEED                 2.9979245800e+06   // (ang / ps)
@@ -127,25 +60,18 @@
 #define NEWTON_PER_METER            6.2415091259e-02   // x (eV / ang^2)
 #define MAX_PATH_LENGTH             256
 
-/* error codes */
-#define ERROR_NC_TOO_SMALL                      1
-#define ERROR_UNEXPECTED_PARTICLE_POSITION      2
-#define ERROR_UNABLE_OPEN_FILE                  3
-#define ERROR_UNSUITABLE_FILE                   4
+#define ACTIVE_GROUP_ALL                        -1
 
 /* typedefs & structs */
 
-typedef struct
+/*typedef struct
 {
-    fmd_rtuple_t x;
-    fmd_rtuple_t v;
     //fmd_rtuple_t x_bak;
     //fmd_rtuple_t v_bak;
     float LocOrdParam;
     float x_avgd[3];
     unsigned AtomID;
     unsigned atomkind;
-    int GroupID;
     unsigned molkind;
     unsigned MolID;
     unsigned AtomID_local;
@@ -154,26 +80,10 @@ typedef struct
 typedef struct _particle
 {
     particle_core_t core;
-    fmd_rtuple_t F;
     fmd_real_t FembPrime;
     float LocOrdParamAvg;
-    list_t *neighbors;       /* each data pointer in this list points to a mol_atom_neighbor_t */
-} particle_t;
-
-typedef struct
-{
-    cell_t *cell;            /* points to the cell in which this neighbor atom is placed */
-    unsigned index;          /* the neighbor atom is placed at cell->parts[index] */
-    unsigned LocalID;
-    bondkind_t *bond;
-} mol_atom_neighbor_t;
-
-typedef struct
-{
-    float x[3];
-    float var;
-    unsigned atomkind;
-} XYZ_struct_t;
+    list_t *neighbors;       *//* each data pointer in this list points to a mol_atom_neighbor_t */
+/*} particle_t;*/
 
 typedef enum
 {
@@ -183,13 +93,14 @@ typedef enum
     FMD_SCM_VTF
 } fmd_SaveConfigMode_t;
 
-typedef struct _fmd fmd_t;
 typedef struct _fmd_timer fmd_timer_t;
 
 typedef struct
 {
     MPI_Datatype mpi_ituple;
     MPI_Datatype mpi_rtuple;
+    MPI_Datatype mpi_configa;
+    MPI_Datatype mpi_statea;
 } mpi_types_t;
 
 typedef struct _turi turi_t;
@@ -199,6 +110,7 @@ struct _fmd
     SubDomain_t SubDomain;
     potsys_t potsys;
     cell_t ***global_grid;
+    cellinfo_t cellinfo;
     fmd_EventHandler_t EventHandler;
     mpi_types_t mpi_types;
     unsigned timers_num;
@@ -214,7 +126,7 @@ struct _fmd
     fmd_real_t delta_t;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
-    fmd_real_t GlobalTemperature;
+    fmd_real_t GlobalTemperature;         /* for the "active group" only */
     fmd_bool_t Is_MD_process;
     fmd_bool_t Is_MD_comm_root;
     int LOP_iteration;                    // must be initialized with zero
@@ -240,16 +152,19 @@ struct _fmd
     FILE *ConfigFilep;
     fmd_real_t WallTimeOrigin;
     int ActiveGroup;
-    int ActiveGroupParticlesNum;
+    unsigned ActiveGroupParticlesNum;
     fmd_rtuple_t TotalMomentum;
     fmd_bool_t ParticlesDistributed;
     fmd_bool_t MPI_initialized_by_me;
     h5_dataspaces_t h5_dataspaces;
+    int cell_increment;
     int _OldNumberOfParticles;
     int _FileIndex;
     fmd_real_t _OldTotalMDEnergy;
     fmd_real_t _PrevFailedMDEnergy;
 };
+
+typedef struct _fmd fmd_t;
 
 /* Functions */
 
@@ -258,18 +173,9 @@ void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
 void identifyProcess(fmd_t *md);
-void handleFileOpenError(FILE *fp, char *filename);
 void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
-//void restoreBackups(fmd_t *md);
-void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to);
-void _fmd_initialize_grid(cell_t ***grid, unsigned dim1, unsigned dim2, unsigned dim3);
+void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);
 void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t timeStep);
-
-inline unsigned new_particle(cell_t *c)
-{
-    if (c->parts_num == c->capacity) RESIZE_CELL(*c);
-    return c->parts_num++;
-}
 
 #endif /* BASE_H */

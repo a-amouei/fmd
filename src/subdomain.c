@@ -46,11 +46,19 @@ void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s)
         s[d] = _fmd_convert_pos_to_subd_coord_1D(md, pos[d], d);
 }
 
+static void clean_grid_cells(cell_t ***grid, fmd_utuple_t ex)
+{
+    fmd_ituple_t ic;
+
+    LOOP3D(ic, _fmd_ThreeZeros_int, ex)
+        _fmd_cell_free(&grid[ic[0]][ic[1]][ic[2]]);
+}
+
 void fmd_subd_free(fmd_t *md)
 {
     if (md->SubDomain.grid != NULL)
     {
-        _fmd_cleanGridSegment(md->SubDomain.grid, _fmd_ThreeZeros_int, md->SubDomain.cell_num);
+        clean_grid_cells(md->SubDomain.grid, md->SubDomain.cell_num);
         _fmd_array_3d_free(&md->SubDomain.grid_array);
         md->SubDomain.grid = NULL;
     }
@@ -58,24 +66,38 @@ void fmd_subd_free(fmd_t *md)
 
 void fmd_subd_init(fmd_t *md)
 {
-    int d;
-
-    // initialize is
+    /* initialize is */
     INDEX_3D(md->SubDomain.myrank, md->ns, md->SubDomain.is);
-    // initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes)
+
+    /* initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes) */
     fmd_ituple_t istemp;
-    for (d=0; d<3; d++)
+
+    for (int d=0; d<DIM; d++)
         istemp[d] = md->SubDomain.is[d];
-    for (d=0; d<3; d++)
+
+    for (int d=0; d<DIM; d++)
     {
-        istemp[d] = (md->SubDomain.is[d] - 1 + md->ns[d]) % md->ns[d];
-        md->SubDomain.rank_of_lower_subd[d] = INDEX_FLAT(istemp, md->ns);
-        istemp[d] = (md->SubDomain.is[d] + 1) % md->ns[d];
-        md->SubDomain.rank_of_upper_subd[d] = INDEX_FLAT(istemp, md->ns);
+        if (!md->PBC[d] && (md->SubDomain.is[d] == 0))
+            md->SubDomain.rank_of_lower_subd[d] = MPI_PROC_NULL;
+        else
+        {
+            istemp[d] = (md->SubDomain.is[d] - 1 + md->ns[d]) % md->ns[d];
+            md->SubDomain.rank_of_lower_subd[d] = INDEX_FLAT(istemp, md->ns);
+        }
+
+        if (!md->PBC[d] && (md->SubDomain.is[d] == md->ns[d]-1))
+            md->SubDomain.rank_of_upper_subd[d] = MPI_PROC_NULL;
+        else
+        {
+            istemp[d] = (md->SubDomain.is[d] + 1) % md->ns[d];
+            md->SubDomain.rank_of_upper_subd[d] = INDEX_FLAT(istemp, md->ns);
+        }
+
         istemp[d] = md->SubDomain.is[d];
     }
-    //
-    for (d=0; d<3; d++)
+
+    /*  */
+    for (int d=0; d<DIM; d++)
     {
         int r, w;
 
@@ -104,5 +126,14 @@ void fmd_subd_init(fmd_t *md)
     assert(md->SubDomain.grid != NULL);
     /* TO-DO: handle memory error */
 
-    _fmd_initialize_grid(md->SubDomain.grid, md->SubDomain.cell_num[0], md->SubDomain.cell_num[1], md->SubDomain.cell_num[2]);
+    _fmd_initialize_grid(md->SubDomain.grid, &md->cellinfo, md->SubDomain.cell_num[0],
+                         md->SubDomain.cell_num[1], md->SubDomain.cell_num[2]);
+
+    md->SubDomain.NumberOfParticles = 0;
+}
+
+void _fmd_conv_ic_loc_to_glob(fmd_t *md, fmd_ituple_t ic, fmd_ituple_t icglob)
+{
+    for (int d=0; d<3; d++)
+        icglob[d] = ic[d] - md->SubDomain.ic_start[d] + md->SubDomain.ic_global_firstcell[d];
 }

@@ -17,8 +17,22 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <mpi.h>
 #include "general.h"
 
 const fmd_itriple_t _fmd_ThreeZeros_int = {0, 0, 0};
 
 const fmd_ftriple_t _fmd_ThreeZeros_float = {0.0, 0.0, 0.0};
+
+FILE *f_open(char *filename, char *modes)
+{
+    FILE *fp = fopen(filename, modes);
+
+    if (fp == NULL)
+    {
+        fprintf(stderr, "ERROR: Unable to open %s!\n", filename);
+        MPI_Abort(MPI_COMM_WORLD, ERROR_UNABLE_OPEN_FILE);
+    }
+
+    return fp;
+}

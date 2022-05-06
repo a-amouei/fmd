@@ -38,7 +38,7 @@
         F_DD = el->F_DD;                                                     \
         a = irho_h - rho_host/h;                                             \
         b = 1-a;                                                             \
-        p1->FembPrime = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);              \
+        c1->FembPrime[i1] = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);          \
         Femb_sum += SPLINE_VAL(a,b,F,irho,irho_h,F_DD,h);                    \
     }
 #else
@@ -51,7 +51,7 @@
         assert(irho < eam->Nrho - 1);                                        \
         irho_h = irho + 1;                                                   \
         F = el->F;                                                           \
-        p1->FembPrime = (F[irho_h] - F[irho]) / h;                           \
+        c1->FembPrime[i1] = (F[irho_h] - F[irho]) / h;                       \
         Femb_sum += F[irho] + (rho_host - irho * h) * p1->FembPrime;         \
     }
 #endif
@@ -88,12 +88,12 @@
                 rho_jp = SPLINE_DERIV(a,b,rho_j,ir2,ir2_h,rho_jDD,h);           \
             }                                                                   \
                                                                                 \
-            mag = 2 * (p1->FembPrime * rho_jp +                                 \
-                  p2->FembPrime * rho_ip + phi_deriv);                          \
-            potEnergy += SPLINE_VAL(a,b,phi,ir2,ir2_h,phiDD,h);                 \
+            mag = 2 * (c1->FembPrime[i1] * rho_jp +                             \
+                  c2->FembPrime[i2] * rho_ip + phi_deriv);                      \
+            PotEnergy += SPLINE_VAL(a,b,phi,ir2,ir2_h,phiDD,h);                 \
                                                                                 \
-            for (d=0; d<3; d++)                                                 \
-                p1->F[d] -= mag * rv[d];                                        \
+            for (int d=0; d<3; d++)                                             \
+                FRC(c1, i1, d) -= mag * rv[d];                                  \
         }                                                                       \
     }
 #else
@@ -168,9 +168,9 @@
     }
 #endif
 
-typedef struct eam_t eam_t;
+typedef struct _eam eam_t;
 
-typedef struct eam_element_t
+typedef struct _eam_element
 {
     fmd_real_t mass;
     fmd_real_t latticeParameter;
@@ -184,11 +184,11 @@ typedef struct eam_element_t
     eam_t *eam;
 } eam_element_t;
 
-struct eam_t
+struct _eam
 {
     eam_element_t *elements;
     fmd_real_t drho, dr, dr2, cutoff_sqr;
-    int elementsNo;
+    int ElementsNo;
     int Nrho, Nr, Nr2;
 };
 

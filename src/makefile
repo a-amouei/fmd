@@ -19,7 +19,7 @@
 PREFIX = /usr
 CC = h5pcc
 SHAREDLIB = libfmd.so
-CFLAGS = -fPIC -Wall -Wno-unused-result -O3 -fopenmp
+CFLAGS = -fPIC -std=c11 -Wno-format-overflow -O3 -fopenmp
 LFLAGS = -fopenmp -lgsl -lgslcblas -shlib
 
 OBJS ::= $(patsubst %.c,%.o,$(wildcard *.c))

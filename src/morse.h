@@ -35,13 +35,14 @@
             fmd_real_t r = sqrt(r2);                                                        \
             fmd_real_t inv_r = 1.0/r;                                                       \
             fmd_real_t exp1 = exp( -morse->alpha * (r - morse->r0) );                       \
-            fmd_real_t exp2 = sqrr(exp1);                                                    \
+            fmd_real_t exp2 = sqrr(exp1);                                                   \
             fmd_real_t factor = 2.0 * morse->alpha * morse->D0 * inv_r * (exp2 - exp1);     \
-            for (d=0; d<3; d++)                                                             \
-                p1->F[d] += factor * rv[d];                                                 \
+                                                                                            \
+            for (int d=0; d<3; d++)                                                         \
+                FRC(c1, i1, d) += factor * rv[d];                                           \
                                                                                             \
             /* potential energy, U = D0 * ( exp(-2*alpha*(r-r0)) - 2*exp(-alpha*(r-r0)) ) */\
-            potEnergy += morse->D0 * (exp2 - 2.0 * exp1);                                   \
+            PotEnergy += morse->D0 * (exp2 - 2.0 * exp1);                                   \
         }                                                                                   \
     }
 

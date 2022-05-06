@@ -81,14 +81,19 @@ typedef struct _turi
 {
     int turi_index;
     fmd_turi_t cat;
-    fmd_ituple_t tdims_global;  /* global dimenstions of the turi */
-    fmd_ituple_t tdims_local;   /* dimenstions of the turi in current subdomain.
+    fmd_utuple_t tdims_global;  /* global dimenstions of the turi */
+    fmd_utuple_t tdims_local;   /* dimenstions of the turi in current subdomain.
                                    turi-margin is included. */
     fmd_ituple_t tdims_local_nonmarg;  /* turi-margin is NOT included */
+
+
     fmd_ituple_t rank_of_lower_owner;  /* only if the current subdomain "owns" one or more turi-cells
-                                          and cat == FMD_TURI_TTM, these two variables are initialized
+                                          and cat == FMD_TURI_TTM, these three variables are initialized
                                           in a correct way. */
     fmd_ituple_t rank_of_upper_owner;
+    fmd_btuple_t has_upper_lower_owner_procs;
+
+
     unsigned tcells_global_num;
     fmd_ituple_t itc_start;            /* width of turi-margin, refers to the first
                                           turi-cell in the interior of the local turi */

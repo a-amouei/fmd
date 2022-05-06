@@ -28,14 +28,14 @@ fmd_handle_t fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[])
 {
     int i = md->potsys.bondkinds_num;
 
-    md->potsys.bondkinds = (bondkindp_t *)realloc(md->potsys.bondkinds,
+    md->potsys.bondkinds = (bondkindp_t *)re_alloc(md->potsys.bondkinds,
       (i+1) * sizeof(bondkindp_t));
 
     switch (cat)
     {
         case FMD_BOND_HARMONIC:
             ;   // null statement
-            bondkind_harmonic_t *bkh = (bondkind_harmonic_t *)malloc(sizeof(bondkind_harmonic_t));
+            bondkind_harmonic_t *bkh = (bondkind_harmonic_t *)m_alloc(sizeof(bondkind_harmonic_t));
             bkh->cat = cat;
             bkh->k = coeffs[0];
             bkh->r0 = coeffs[1];
@@ -96,13 +96,13 @@ void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
         molkind_atom_neighbor_t *data1, *data2;
 
         // for neighbor list 1
-        data1 = (molkind_atom_neighbor_t *)malloc(sizeof(molkind_atom_neighbor_t));
+        data1 = (molkind_atom_neighbor_t *)m_alloc(sizeof(molkind_atom_neighbor_t));
         data1->atom = &mk->atoms[atom2];
         data1->bond = md->potsys.bondkinds[bondkind];
         mk->atoms[atom1].neighbors = fmd_list_prepend(ln1, data1);
 
         // for neighbor list 2
-        data2 = (molkind_atom_neighbor_t *)malloc(sizeof(molkind_atom_neighbor_t));
+        data2 = (molkind_atom_neighbor_t *)m_alloc(sizeof(molkind_atom_neighbor_t));
         data2->atom = &mk->atoms[atom1];
         data2->bond = md->potsys.bondkinds[bondkind];
         mk->atoms[atom2].neighbors = fmd_list_prepend(ln2, data2);
@@ -122,16 +122,16 @@ fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNu
 
     // molkinds data start from index 1 because molkind=0 has special meaning
     molkind_t *genuine_pointer = (md->potsys.molkinds == NULL ? NULL : md->potsys.molkinds+1);
-    md->potsys.molkinds = (molkind_t *)realloc(genuine_pointer, (i+1) * sizeof(molkind_t)) - 1;
+    md->potsys.molkinds = (molkind_t *)re_alloc(genuine_pointer, (i+1) * sizeof(molkind_t)) - 1;
 
     molkind_t *mk = &md->potsys.molkinds[i+1];
     mk->atoms_num = AtomsNum;
     size_t len = strlen(name);
-    mk->name = (char *)malloc(len + 1);
+    mk->name = (char *)m_alloc(len + 1);
     strcpy(mk->name, name);
     mk->distances = (unsigned **)_fmd_array_neat2d_create(AtomsNum, AtomsNum, sizeof(unsigned));
 
-    mk->atoms = (molkind_atom_t *)malloc(AtomsNum * sizeof(molkind_atom_t));
+    mk->atoms = (molkind_atom_t *)m_alloc(AtomsNum * sizeof(molkind_atom_t));
     for (unsigned j=0; j<AtomsNum; j++)
     {
         mk->atoms[j].LocalID = j;
@@ -148,7 +148,7 @@ fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNu
 inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
 {
     for (int i=0; i < c->parts_num; i++)
-        if (c->parts[i].core.MolID == MolID && c->parts[i].core.AtomID_local == neighborID)
+        if (c->MolID[i] == MolID && c->AtomIDlocal[i] == neighborID)
             return i;
 
     return -1;
@@ -160,25 +160,25 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
             (jc)[(d)] = (kc)[(d)] + md->nc[(d)];                            \
-            map_done=1;                                                     \
+            map_done = FMD_TRUE;                                            \
         }                                                                   \
         else                                                                \
-            map_done=0;                                                     \
+            map_done = FMD_FALSE;                                           \
     }                                                                       \
     else if ((kc)[(d)] >= md->SubDomain.ic_stop[(d)])                       \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
             (jc)[(d)] = (kc)[(d)] - md->nc[(d)];                            \
-            map_done=1;                                                     \
+            map_done = FMD_TRUE;                                            \
         }                                                                   \
         else                                                                \
-            map_done=0;                                                     \
+            map_done = FMD_FALSE;                                           \
     }                                                                       \
     else                                                                    \
     {                                                                       \
         (jc)[(d)] = (kc)[(d)];                                              \
-        map_done=1;                                                         \
+        map_done = FMD_TRUE;                                                \
     }
 
 #define MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, d)                                 \
@@ -350,31 +350,29 @@ static int compare_LocalID_in_ln(const void *a, const void *b)
 void _fmd_matt_updateAtomNeighbors(fmd_t *md)
 {
     fmd_ituple_t ic;
-    cell_t *cell;
+    cell_t *c;
     int i;
 
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
         {
-            particle_t *p = &cell->parts[i];
-
-            if (p->core.molkind == 0) continue;
+            if (c->molkind[i] == 0) continue;
 
             /* iterate over all neighbor atoms in the template for the molecule */
-            list_t *mkln = md->potsys.molkinds[p->core.molkind].atoms[p->core.AtomID_local].neighbors;
+            list_t *mkln = md->potsys.molkinds[c->molkind[i]].atoms[c->AtomIDlocal[i]].neighbors;
 
             while (mkln != NULL)
             {
                 unsigned nblocal = ((molkind_atom_neighbor_t *)mkln->data)->atom->LocalID;
 
-                /* does "neighbors" list of atom p contain an entry for a neighbor atom with local ID nblocal? */
-                list_t *res = fmd_list_find_custom(p->neighbors, &nblocal, compare_LocalID_in_ln);
+                /* does "neighbors" list of atom i contain an entry for a neighbor atom with local ID nblocal? */
+                list_t *res = fmd_list_find_custom(c->neighbors[i], &nblocal, compare_LocalID_in_ln);
 
                 if (res == NULL) /* NO */
                 {
                     /* create that entry */
-                    mol_atom_neighbor_t *man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
+                    mol_atom_neighbor_t *man = (mol_atom_neighbor_t *)m_alloc(sizeof(mol_atom_neighbor_t));
                     man->LocalID = nblocal;
                     man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
 
@@ -382,21 +380,21 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                     cell_t *cnb;
                     int index;
 
-                    find_neighbor(md, ic, p->core.MolID, nblocal, &cnb, &index);
+                    find_neighbor(md, ic, c->MolID[i], nblocal, &cnb, &index);
                     man->cell = cnb;
                     man->index = index;
-                    p->neighbors = fmd_list_prepend(p->neighbors, man);
+                    c->neighbors[i] = fmd_list_prepend(c->neighbors[i], man);
 
                     /* does a neighbor atom with local ID nblocal actually exist in current subdomain? */
                     if (index != -1)  /* neighbor atom was found indeed */
                     {
                         /* also add an entry in the neighbor list of that neighbor atom and update it */
-                        man = (mol_atom_neighbor_t *)malloc(sizeof(mol_atom_neighbor_t));
-                        man->LocalID = p->core.AtomID_local;
+                        man = (mol_atom_neighbor_t *)m_alloc(sizeof(mol_atom_neighbor_t));
+                        man->LocalID = c->AtomIDlocal[i];
                         man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
                         man->index = i;
-                        man->cell = cell;
-                        cnb->parts[index].neighbors = fmd_list_prepend(cnb->parts[index].neighbors, man);
+                        man->cell = c;
+                        cnb->neighbors[index] = fmd_list_prepend(cnb->neighbors[index], man);
                     }
                 }
                 else /* YES. It contains such entry. */
@@ -411,16 +409,16 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                         cell_t *cnb;
                         int index;
 
-                        find_neighbor(md, ic, p->core.MolID, nblocal, &cnb, &index);
+                        find_neighbor(md, ic, c->MolID[i], nblocal, &cnb, &index);
                         ((mol_atom_neighbor_t *)res->data)->cell = cnb;
                         ((mol_atom_neighbor_t *)res->data)->index = index;
 
                         if (index != -1)  /* neighbor atom was found */
                         {
                             /* also update the corresponding entry in the neighbors list of the neighbor atom */
-                            list_t *f = fmd_list_find_custom(cnb->parts[index].neighbors, &p->core.AtomID_local,
+                            list_t *f = fmd_list_find_custom(cnb->neighbors[index], &c->AtomIDlocal[i],
                                                              compare_LocalID_in_ln);
-                            ((mol_atom_neighbor_t *)f->data)->cell = cell;
+                            ((mol_atom_neighbor_t *)f->data)->cell = c;
                             ((mol_atom_neighbor_t *)f->data)->index = i;
                         }
                     }
@@ -431,10 +429,10 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
         }
 }
 
-#define _COMPUTE_rv_AND_r2(p1, p2, r0)                                       \
+#define _COMPUTE_rv_AND_r2(c1, i1, c2, i2, r0)                               \
     for (d=0; d<3; d++)                                                      \
     {                                                                        \
-        rv[d] = (p1)->core.x[d] - (p2)->core.x[d];                           \
+        rv[d] = POS(c1, i1, d) - POS(c2, i2, d);                             \
         if (md->ns[d] == 1)                                                  \
         {                                                                    \
             if (rv[d] > 2*(r0))                                              \
@@ -457,41 +455,40 @@ void fmd_dync_computeBondForce(fmd_t *md)
         for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
             for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
             {
-                cell_t *cell;
-                int i;
+                cell_t *ca;
+                int ia;
 
                 /* iterate over all atoms in cell ic */
-                for (cell = &md->SubDomain.grid[ic0][ic1][ic2], i=0; i < cell->parts_num; i++)
+                for (ca = &md->SubDomain.grid[ic0][ic1][ic2], ia=0; ia < ca->parts_num; ia++)
                 {
-                    particle_t *p1 = &cell->parts[i];
-
-                    if (p1->core.molkind != 0)
+                    if (ca->molkind[ia] != 0)
                     {
-                        int index = ((mol_atom_neighbor_t *)(p1->neighbors->data))->index;
-                        particle_t *p2 = &((mol_atom_neighbor_t *)(p1->neighbors->data))->cell->parts[index];;
+                        int ib = ((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->index;
+                        cell_t *cb = ((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->cell;
 
-                        if (p1->core.AtomID_local > p2->core.AtomID_local)
+                        if (ca->AtomIDlocal[ia] > cb->AtomIDlocal[ib])
                         {
                             fmd_real_t r2;
                             fmd_rtuple_t rv;
                             int d;
 
-                            bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(p1->neighbors->data))->bond;
+                            bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->bond;
                             fmd_real_t r0 = bond->r0;
-                            _COMPUTE_rv_AND_r2(p1, p2, r0);
+                            _COMPUTE_rv_AND_r2(ca, ia, cb, ib, r0);
                             fmd_real_t k = bond->k;
                             fmd_real_t r = sqrt(r2);
                             fmd_rtuple_t vek;
                             for (d=0; d<3; d++)
                             {
                                 vek[d] = -2*k*(r-r0)*rv[d]/r;
-                                p1->F[d] += vek[d];
-                                p2->F[d] -= vek[d];
+                                FRC(ca, ia, d) += vek[d];
+                                FRC(cb, ib, d) -= vek[d];
                             }
                             PotEnergy += k*(r-r0)*(r-r0);
                         }
                     }
                 }
             }
+
     md->TotalPotentialEnergy += PotEnergy;
 }

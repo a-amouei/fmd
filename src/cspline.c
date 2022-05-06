@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include "cspline.h"
+#include "general.h"
 
 void spline_prepare_adv(fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[])
 /*
@@ -31,7 +32,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     int i,k;
     fmd_real_t p,sig,*u;
 
-    u=malloc((n-1)*sizeof(fmd_real_t));
+    u=m_alloc((n-1)*sizeof(fmd_real_t));
     yDD[0]=u[0]=0.0;
     for (i=1;i<=n-2;i++) {
         sig=(x[i]-x[i-1])/(x[i+1]-x[i-1]);
@@ -57,7 +58,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     int i,k;
     fmd_real_t p,sig=0.5,*u;
 
-    u=malloc((n-1)*sizeof(fmd_real_t));
+    u=m_alloc((n-1)*sizeof(fmd_real_t));
     yDD[0]=u[0]=0.0;
     for (i=1;i<=n-2;i++)
     {

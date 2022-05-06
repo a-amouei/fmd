@@ -25,13 +25,15 @@
 
 typedef enum {ARRAY_NEAT3D, ARRAY_SEMINEAT3D, ARRAY_ORDINARY3D} array_kind_t;
 
-typedef struct _fmd_array3D
+typedef struct _fmd_array3D fmd_array3D_t;
+
+struct _fmd_array3D
 {
     void ***data;
     fmd_utriple_t dims;
     array_kind_t kind;
     datatype_t datatype;
-} fmd_array3D_t;
+};
 
 void **_fmd_array_neat2d_create(unsigned dim1, unsigned dim2, unsigned elsize);
 void _fmd_array_neat2d_free(void **array);

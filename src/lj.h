@@ -39,11 +39,12 @@
             inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;                                  \
             inv_rs12 = sqrr(inv_rs6);                                               \
             fmd_real_t factor = 48.0 * lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6); \
-            for (d=0; d<3; d++)                                                     \
-                p1->F[d] += rv[d] * factor;                                         \
+                                                                                    \
+            for (int d=0; d<3; d++)                                                 \
+                FRC(c1, i1, d) += rv[d] * factor;                                   \
                                                                                     \
             /* potential energy, U = 4*eps*( (sig/r)^12 - (sig/r)^6 ) */            \
-            potEnergy += 4.0 * lj->eps * (inv_rs12 - inv_rs6);                      \
+            PotEnergy += 4.0 * lj->eps * (inv_rs12 - inv_rs6);                      \
         }                                                                           \
     }
 

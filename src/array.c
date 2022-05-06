@@ -148,16 +148,10 @@ void ***_fmd_array_ordinary3d_create(fmd_utriple_t dims, unsigned elsize)
     if (arr != NULL)
         for (int i=0; i < dims[0]; i++)
         {
-            arr[i] = (void **)malloc(dims[1] * sizeof(void *));
-            assert(arr[i] != NULL);
-            /* TO-DO: handle memory error */
+            arr[i] = (void **)m_alloc(dims[1] * sizeof(void *));
 
             for (int j=0; j < dims[1]; j++)
-            {
-                arr[i][j] = (void *)malloc(dims[2] * elsize);
-                assert(arr[i][j] != NULL);
-                /* TO-DO: handle memory error */
-            }
+                arr[i][j] = (void *)m_alloc(dims[2] * elsize);
         }
 
     return arr;

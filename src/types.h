@@ -46,6 +46,9 @@ typedef fmd_utriple_t fmd_utuple_t;
 typedef fmd_real_t fmd_rtriple_t[3];
 typedef fmd_rtriple_t fmd_rtuple_t;
 
+typedef fmd_bool_t fmd_btriple_t[3];
+typedef fmd_btriple_t fmd_btuple_t;
+
 typedef float fmd_ftriple_t[3];
 
 typedef int fmd_handle_t;

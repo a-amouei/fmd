@@ -98,8 +98,7 @@ static void make_psets_array(fmd_t *md, turi_t *t, array_t *psets)
             {
                 /* add this pset to psets */
 
-                psets->elms = realloc(psets->elms, (psets->size+1) * sizeof(array_t));
-                assert(psets->elms != NULL); /* TO-DO: handle memory error */
+                psets->elms = re_alloc(psets->elms, (psets->size+1) * sizeof(array_t));
 
                 array_t *elms = psets->elms;
 
@@ -193,8 +192,7 @@ static fmd_bool_t is_table_row_available(array_t table[], int pset[], int sizeps
 
 static void extend_table_column(array_t *col, unsigned newsize)
 {
-    col->elms = realloc(col->elms, newsize * sizeof(int));
-    assert(col->elms != NULL); /* TO-DO: handle memory error */
+    col->elms = re_alloc(col->elms, newsize * sizeof(int));
 
     for (int i = col->size; i < newsize; i++)
         ((int *)(col->elms))[i] = -1;
@@ -227,8 +225,8 @@ static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
 
     array_t *table;
 
-    table = malloc(md->SubDomain.numprocs * sizeof(array_t));
-    assert(table != NULL);           /* TO-DO: handle memory error */
+    table = m_alloc(md->SubDomain.numprocs * sizeof(array_t));
+
     for (int i=0; i < md->SubDomain.numprocs; i++)
     {
         table[i].elms = NULL;
@@ -267,15 +265,13 @@ static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
         {
             /* copy pset from psets to lpsets */
 
-            lpsets->elms = realloc(lpsets->elms, (lpsets->size + 1) * sizeof(array_t));
-            assert(lpsets->elms != NULL); /* TO-DO: handle memory error */
+            lpsets->elms = re_alloc(lpsets->elms, (lpsets->size + 1) * sizeof(array_t));
 
             array_t *pset_src = (array_t *)(psets.elms) + psets_ind;
             array_t *pset_des = (array_t *)(lpsets->elms) + lpsets->size;
 
             pset_des->size = pset_src->size;
-            pset_des->elms = malloc(pset_des->size * sizeof(int));
-            assert(pset_des->elms != NULL); /* TO-DO: handle memory error */
+            pset_des->elms = m_alloc(pset_des->size * sizeof(int));
 
             memcpy(pset_des->elms, pset_src->elms, pset_des->size * sizeof(int));
 
@@ -301,7 +297,7 @@ static void call_field_update_event_handler(fmd_t *md, int field_index, int turi
     params.field = field_index;
     params.turi = turi_index;
 
-    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, &params);
+    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, (fmd_event_params_t *)&params);
 }
 
 /* If the argument x is extremely close to an integer,
@@ -327,9 +323,7 @@ static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D
 
     fmd_real_t ***lcd = (fmd_real_t ***)f->data.data;
 
-    fmd_real_t *sendbuf = (fmd_real_t *)malloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
-    assert(sendbuf != NULL);
-    /* TO-DO: handle memory error */
+    fmd_real_t *sendbuf = (fmd_real_t *)m_alloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
 
     for (int i=0; i < owcomm->owned_tcells_num; i++)
     {
@@ -340,11 +334,7 @@ static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D
     fmd_real_t *recvbuf;
 
     if (md->Is_MD_comm_root)
-    {
-        recvbuf = (fmd_real_t *)malloc(t->tcells_global_num * sizeof(*recvbuf));
-        assert(recvbuf != NULL);
-        /* TO-DO: handle memory error */
-    }
+        recvbuf = (fmd_real_t *)m_alloc(t->tcells_global_num * sizeof(*recvbuf));
 
     MPI_Gatherv(sendbuf, owcomm->owned_tcells_num, FMD_MPI_REAL,
                 recvbuf, owcomm->recvcounts, owcomm->displs,
@@ -378,9 +368,7 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
 
     unsigned ***lcd = (unsigned ***)f->data.data;
 
-    unsigned *sendbuf = (unsigned *)malloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
-    assert(sendbuf != NULL);
-    /* TO-DO: handle memory error */
+    unsigned *sendbuf = (unsigned *)m_alloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
 
     for (int i=0; i < owcomm->owned_tcells_num; i++)
     {
@@ -391,11 +379,7 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
     unsigned *recvbuf;
 
     if (md->Is_MD_comm_root)
-    {
-        recvbuf = (unsigned *)malloc(t->tcells_global_num * sizeof(*recvbuf));
-        assert(recvbuf != NULL);
-        /* TO-DO: handle memory error */
-    }
+        recvbuf = (unsigned *)m_alloc(t->tcells_global_num * sizeof(*recvbuf));
 
     MPI_Gatherv(sendbuf, owcomm->owned_tcells_num, MPI_UNSIGNED,
                 recvbuf, owcomm->recvcounts, owcomm->displs,
@@ -429,9 +413,7 @@ static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array
 
     fmd_rtuple_t ***lcd = (fmd_rtuple_t ***)f->data.data;
 
-    fmd_rtuple_t *sendbuf = (fmd_rtuple_t *)malloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
-    assert(sendbuf != NULL);
-    /* TO-DO: handle memory error */
+    fmd_rtuple_t *sendbuf = (fmd_rtuple_t *)m_alloc(owcomm->owned_tcells_num * sizeof(*sendbuf));
 
     for (int i=0; i < owcomm->owned_tcells_num; i++)
     {
@@ -443,11 +425,7 @@ static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array
     fmd_rtuple_t *recvbuf;
 
     if (md->Is_MD_comm_root)
-    {
-        recvbuf = (fmd_rtuple_t *)malloc(t->tcells_global_num * sizeof(*recvbuf));
-        assert(recvbuf != NULL);
-        /* TO-DO: handle memory error */
-    }
+        recvbuf = (fmd_rtuple_t *)m_alloc(t->tcells_global_num * sizeof(*recvbuf));
 
     MPI_Gatherv(sendbuf, owcomm->owned_tcells_num, md->mpi_types.mpi_rtuple,
                 recvbuf, owcomm->recvcounts, owcomm->displs,
@@ -501,9 +479,7 @@ static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
         np *= is_stop[d] - is_start[d];
     }
 
-    *pset = (int *)malloc(np * sizeof(int));
-    /* TO-DO: handle memory error */
-    assert(*pset != NULL);
+    *pset = (int *)m_alloc(np * sizeof(int));
 
     fmd_ituple_t is;
     int i=0;
@@ -548,32 +524,22 @@ static void prepare_ownerscomm(fmd_t *md, turi_t *t)
     MPI_Comm_size(owcomm->comm, &owcomm->commsize);
 
     if (md->Is_MD_comm_root)
-    {
-        owcomm->recvcounts = (int *)malloc(owcomm->commsize * sizeof(int));
-        assert(owcomm->recvcounts != NULL);
-        /* TO-DO: handle memory error */
-    }
+        owcomm->recvcounts = (int *)m_alloc(owcomm->commsize * sizeof(int));
 
     MPI_Gather(&owcomm->owned_tcells_num, 1, MPI_INT, owcomm->recvcounts, 1, MPI_INT, 0, owcomm->comm);
 
     if (md->Is_MD_comm_root)
     {
-        owcomm->global_indexes = (fmd_ituple_t *)malloc(t->tcells_global_num * sizeof(fmd_ituple_t));
-        assert(owcomm->global_indexes != NULL);
-        /* TO-DO: handle memory error */
+        owcomm->global_indexes = (fmd_ituple_t *)m_alloc(t->tcells_global_num * sizeof(fmd_ituple_t));
 
-        owcomm->displs = (int *)malloc(owcomm->commsize * sizeof(int));
-        assert(owcomm->displs != NULL);
-        /* TO-DO: handle memory error */
+        owcomm->displs = (int *)m_alloc(owcomm->commsize * sizeof(int));
 
         owcomm->displs[0] = 0;
         for (int i=1; i < owcomm->commsize; i++)
             owcomm->displs[i] = owcomm->displs[i-1] + owcomm->recvcounts[i-1];
     }
 
-    fmd_ituple_t *lg = (fmd_ituple_t *)malloc(owcomm->owned_tcells_num * sizeof(fmd_ituple_t));
-    assert(lg != NULL);
-    /* TO-DO: handle memory error */
+    fmd_ituple_t *lg = (fmd_ituple_t *)m_alloc(owcomm->owned_tcells_num * sizeof(fmd_ituple_t));
 
     for (int i=0; i < owcomm->owned_tcells_num; i++)
         for (int d=0; d<3; d++)
@@ -594,11 +560,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
     obtain_local_psets(md, t, &lpsets);
 
     if (lpsets.size > 0)
-    {
-        t->comms = (turi_comm_t *)malloc(lpsets.size * sizeof(turi_comm_t));
-        /* TO-DO: handle memory error */
-        assert(t->comms != NULL);
-    }
+        t->comms = (turi_comm_t *)m_alloc(lpsets.size * sizeof(turi_comm_t));
     else
         t->comms = NULL;
 
@@ -647,10 +609,8 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
         if (pset[0] == md->SubDomain.myrank)
         {
-            t->ownerscomm.owned_tcells = (fmd_ituple_t *)realloc(t->ownerscomm.owned_tcells,
+            t->ownerscomm.owned_tcells = (fmd_ituple_t *)re_alloc(t->ownerscomm.owned_tcells,
                                           (t->ownerscomm.owned_tcells_num+1) * sizeof(*t->ownerscomm.owned_tcells));
-            /* TO-DO: handle memory error */
-            assert(t->ownerscomm.owned_tcells != NULL);
 
             for (int d=0; d<3; d++)
                 t->ownerscomm.owned_tcells[t->ownerscomm.owned_tcells_num][d] = itc[d] + t->itc_glob_to_loc[d];
@@ -670,9 +630,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
             /* now, add the local index of the current turi-cell to "itcs" array */
 
-            tcomm->itcs = (fmd_ituple_t *)realloc(tcomm->itcs, (tcomm->num_tcells+1) * sizeof(fmd_ituple_t));
-            /* TO-DO: handle memory error */
-            assert(tcomm->itcs != NULL);
+            tcomm->itcs = (fmd_ituple_t *)re_alloc(tcomm->itcs, (tcomm->num_tcells+1) * sizeof(fmd_ituple_t));
 
             for (int d=0; d<3; d++)
                 tcomm->itcs[tcomm->num_tcells][d] = itc[d] + t->itc_glob_to_loc[d];
@@ -696,7 +654,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 }
 
 /* find in each direction the ranks of the upper and lower subdomains which are "owners" of
-   turi-cells, and intialize rank_of_lower_owner and rank_of_upper_owner accordingly. */
+   turi-cells, and initialize rank_of_lower_owner and rank_of_upper_owner accordingly. */
 static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
 {
     fmd_ituple_t is_tempo;
@@ -709,17 +667,33 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
         fmd_real_t pos;
 
         /* initialize rank_of_upper_owner[d] */
+
         pos = (t->itc_stop_global[d] % t->tdims_global[d]) * t->tcellh[d];
         is_tempo[d] = (int)impreal( _fmd_convert_pos_to_subd_coord_1D(md, pos, d) );
         t->rank_of_upper_owner[d] = INDEX_FLAT(is_tempo, md->ns);
 
+        if ( (t->rank_of_upper_owner[d] < md->SubDomain.myrank && !md->PBC[d]) ||
+             (t->rank_of_upper_owner[d] == md->SubDomain.myrank) )
+            t->rank_of_upper_owner[d] = MPI_PROC_NULL;
+
         /* initialize rank_of_lower_owner[d] */
+
         int ifst = t->itc_start_owned[d] - t->itc_glob_to_loc[d]; /* convert to global index */
         pos = ((ifst - 1 + t->tdims_global[d]) % t->tdims_global[d]) * t->tcellh[d];
         is_tempo[d] = (int)impreal( _fmd_convert_pos_to_subd_coord_1D(md, pos, d) );
         t->rank_of_lower_owner[d] = INDEX_FLAT(is_tempo, md->ns);
 
-        /* set is_tempo[] back again to current subdomain */
+        if ( (t->rank_of_lower_owner[d] > md->SubDomain.myrank && !md->PBC[d]) ||
+             (t->rank_of_lower_owner[d] == md->SubDomain.myrank) )
+            t->rank_of_lower_owner[d] = MPI_PROC_NULL;
+
+        /* initialize has_upper_lower_procs[d] */
+
+        t->has_upper_lower_owner_procs[d] = (t->rank_of_upper_owner[d] != MPI_PROC_NULL) ||
+                                            (t->rank_of_lower_owner[d] != MPI_PROC_NULL);
+
+        /* set is_tempo[] back again to current subdomain so as to prepare for the next iteration */
+
         is_tempo[d] = md->SubDomain.is[d];
     }
 }
@@ -730,9 +704,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     int ti = md->turies_num;
 
-    md->turies = (turi_t *)realloc(md->turies, (ti+1) * sizeof(turi_t));
-    /* TO-DO: handle memory error */
-    assert(md->turies != NULL);
+    md->turies = (turi_t *)re_alloc(md->turies, (ti+1) * sizeof(turi_t));
 
     turi_t *t = &md->turies[ti];
 
@@ -855,11 +827,8 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
 static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     /* allocate memory for buf1 and buf2 */
-    fmd_rtuple_t *buf1 = malloc(t->num_tcells_max * sizeof(*buf1));
-    assert(buf1 != NULL);
-    fmd_rtuple_t *buf2 = malloc(t->num_tcells_max * sizeof(*buf2));
-    assert(buf2 != NULL);
-    /* TO-DO: handle memory error */
+    fmd_rtuple_t *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
+    fmd_rtuple_t *buf2 = m_alloc(t->num_tcells_max * sizeof(*buf2));
 
     /* perform communication for every communicator */
 
@@ -899,11 +868,8 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
 static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     /* allocate memory for buf1 and buf2 */
-    fmd_real_t *buf1 = malloc(t->num_tcells_max * sizeof(*buf1));
-    assert(buf1 != NULL);
-    fmd_real_t *buf2 = malloc(t->num_tcells_max * sizeof(*buf2));
-    assert(buf2 != NULL);
-    /* TO-DO: handle memory error */
+    fmd_real_t *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
+    fmd_real_t *buf2 = m_alloc(t->num_tcells_max * sizeof(*buf2));
 
     /* perform communication for every communicator */
 
@@ -942,11 +908,8 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
 static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     /* allocate memory for buf1 and buf2 */
-    unsigned *buf1 = malloc(t->num_tcells_max * sizeof(*buf1));
-    assert(buf1 != NULL);
-    unsigned *buf2 = malloc(t->num_tcells_max * sizeof(*buf2));
-    assert(buf2 != NULL);
-    /* TO-DO: handle memory error */
+    unsigned *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
+    unsigned *buf2 = m_alloc(t->num_tcells_max * sizeof(*buf2));
 
     /* perform communication for every communicator */
 
@@ -999,7 +962,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
         {
             /* find local index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
+                itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* count atoms */
             num[itc[0]][itc[1]][itc[2]]++;
@@ -1059,10 +1022,10 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
         {
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
+                itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* update mass for turi-cell with index of itc */
-            mass[itc[0]][itc[1]][itc[2]] += md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
+            mass[itc[0]][itc[1]][itc[2]] += md->potsys.atomkinds[cell->atomkind[i]].mass;
         }
 
     /* do communications */
@@ -1092,14 +1055,14 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
+                itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* calculate vcm and mass (first phase) */
 
-            fmd_real_t m = md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
+            fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
 
             for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] += m * cell->parts[i].core.v[d];
+                vcm[itc[0]][itc[1]][itc[2]][d] += m * VEL(cell, i, d);
         }
 
     /* do communications */
@@ -1154,15 +1117,15 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
 
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
-                itc[d] = (int)(cell->parts[i].core.x[d] / t->tcellh[d]) + t->itc_glob_to_loc[d];
+                itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* calculate vcm and mass (first phase) */
 
-            fmd_real_t m = md->potsys.atomkinds[cell->parts[i].core.atomkind].mass;
+            fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
 
             mass[itc[0]][itc[1]][itc[2]] += m;
             for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] += m * cell->parts[i].core.v[d];
+                vcm[itc[0]][itc[1]][itc[2]][d] += m * VEL(cell, i, d);
         }
 
     /* do communications */
@@ -1208,8 +1171,7 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allred
 #define ADD_interval_TO_ARRAY(array, num, interval)                            \
     do                                                                         \
     {                                                                          \
-        (array) = (fmd_real_t *)realloc(array, ((num)+1)*sizeof(fmd_real_t));  \
-        assert((array) != NULL);      /* TO-DO */                              \
+        (array) = (fmd_real_t *)re_alloc(array, ((num)+1)*sizeof(fmd_real_t)); \
         (array)[(num)++] = (interval);                                         \
     } while(0)
 
@@ -1283,9 +1245,7 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
     {
         /* add the field */
 
-        t->fields = (field_t *)realloc(t->fields, (t->fields_num+1) * sizeof(field_t));
-        /* TO-DO: handle memory error */
-        assert(t->fields != NULL);
+        t->fields = (field_t *)re_alloc(t->fields, (t->fields_num+1) * sizeof(field_t));
 
         f = &t->fields[t->fields_num];
         f->field_index = t->fields_num;
@@ -1300,7 +1260,7 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
         if (cat == FMD_FIELD_TEMPERATURE || cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY)
         {
             f->dependcs_num = 1;
-            f->dependcs = (unsigned *)malloc(sizeof(unsigned));
+            f->dependcs = (unsigned *)m_alloc(sizeof(unsigned));
             f->dependcs[0] = dep1;
         }
         else

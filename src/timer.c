@@ -20,6 +20,7 @@
 #include "timer.h"
 #include "base.h"
 #include "events.h"
+#include "general.h"
 
 void fmd_timer_free(fmd_t *md)
 {
@@ -35,9 +36,8 @@ fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interv
 {
     int i = md->timers_num;
 
-    md->timers = (fmd_timer_t *)realloc(md->timers, (i+1) * sizeof(fmd_timer_t));
-    // TO-DO: handle memory error
-    assert(md->timers != NULL);
+    md->timers = (fmd_timer_t *)re_alloc(md->timers, (i+1) * sizeof(fmd_timer_t));
+
     md->timers[i].enabled = FMD_TRUE;
     md->timers[i].cat = TIMER_SIMPLE;
     md->timers[i].start = start;
@@ -62,7 +62,7 @@ void _fmd_timer_sendTimerTickEvents(fmd_t *md)
                     fmd_event_params_timer_tick_t params;
 
                     params.timer = i;
-                    md->EventHandler(md, FMD_EVENT_TIMER_TICK, &params);
+                    md->EventHandler(md, FMD_EVENT_TIMER_TICK, (fmd_event_params_t *)&params);
                 }
             }
         }

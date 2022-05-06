@@ -20,10 +20,19 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
+#include <stdlib.h>
+#include <assert.h>
+#include <stdio.h>
 #include "config.h"
 #include "types.h"
 
 #define RANK0 0
+
+/* error codes */
+#define ERROR_NCELL_TOO_SMALL                   1
+#define ERROR_UNEXPECTED_PARTICLE_POSITION      2
+#define ERROR_UNABLE_OPEN_FILE                  3
+#define ERROR_UNSUITABLE_FILE                   4
 
 #define LOOP3D(i3, min3, up3)                                         \
     for ( (i3)[0]=(min3)[0]; (i3)[0]<(up3)[0]; (i3)[0]++ )            \
@@ -39,12 +48,44 @@
      (i3)[1]=((i)/(n3)[2])%(n3)[1],                                    \
      (i3)[0]=((i)/(n3)[2])/(n3)[1])
 
-inline fmd_real_t sqrr(fmd_real_t x)
+extern const fmd_itriple_t _fmd_ThreeZeros_int;
+extern const fmd_ftriple_t _fmd_ThreeZeros_float;
+
+FILE *f_open(char *filename, char *modes);
+
+static inline fmd_real_t sqrr(fmd_real_t x)
 {
     return x*x;
 }
 
-extern const fmd_itriple_t _fmd_ThreeZeros_int;
-extern const fmd_ftriple_t _fmd_ThreeZeros_float;
+static inline void *re_alloc(void *ptr, size_t size)
+{
+    void *res;
+
+    res = realloc(ptr, size);
+    assert(res != NULL);   /* TO-DO: handle memory error */
+
+    return res;
+}
+
+static inline void *m_alloc(size_t size)
+{
+    void *res;
+
+    res = malloc(size);
+    assert(res != NULL);   /* TO-DO: handle memory error */
+
+    return res;
+}
+
+static inline void *c_alloc(size_t nmemb, size_t size)
+{
+    void *res;
+
+    res = calloc(nmemb, size);
+    assert(res != NULL);   /* TO-DO: handle memory error */
+
+    return res;
+}
 
 #endif /* GENERAL_H */

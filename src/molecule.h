@@ -66,6 +66,16 @@ typedef struct _molkind
     molkind_atom_t *atoms;
 } molkind_t;
 
+typedef struct _cell cell_t;
+
+typedef struct
+{
+    cell_t *cell;            /* points to the cell in which this neighbor atom is placed */
+    unsigned index;          /* the neighbor atom is placed at cell->parts[index] */
+    unsigned LocalID;
+    bondkind_t *bond;
+} mol_atom_neighbor_t;
+
 typedef struct _fmd fmd_t;
 
 void fmd_bond_freeKinds(fmd_t *md);

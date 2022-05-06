@@ -18,6 +18,7 @@
 */
 
 #include <stdarg.h>
+#include <stddef.h>
 #include "base.h"
 #include "md_ghost.h"
 #include "forces.h"
@@ -29,27 +30,33 @@
 #include "array.h"
 #include "turi.h"
 #include "general.h"
+#include "cell.h"
 
-static void refreshGrid(fmd_t *md, int reverse);
-
-void _fmd_initialize_grid(cell_t ***grid, unsigned dim1, unsigned dim2, unsigned dim3)
+typedef struct
 {
-     for (int i=0; i < dim1; i++)
-        for (int j=0; j < dim2; j++)
-            for (int k=0; k < dim3; k++)
-            {
-                grid[i][j][k].capacity = 0;
-                grid[i][j][k].parts = NULL;
-                grid[i][j][k].parts_num = 0;
-            }
-}
+    float x[DIM];
+    float var;
+    unsigned atomkind;
+} config_atom_t;
 
-void _fmd_cleanGridSegment(cell_t ***grid, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
+typedef struct
 {
-    fmd_ituple_t ic;
+    fmd_rtuple_t x;
+    fmd_rtuple_t v;
+    int GroupID;
+    unsigned atomkind;
+} state_atom_t;
 
-    LOOP3D(ic, ic_from, ic_to)
-        FREE_CELL(grid[ic[0]][ic[1]][ic[2]]);
+static char formatstr_3xpoint16e[] = "%.16e\t%.16e\t%.16e\n";
+
+static void refreshGrid(fmd_t *md);
+
+void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3)
+{
+    for (unsigned i=0; i < dim1; i++)
+        for (unsigned j=0; j < dim2; j++)
+            for (unsigned k=0; k < dim3; k++)
+                _fmd_cell_init(cinfo, &grid[i][j][k]);
 }
 
 void compLocOrdParam(fmd_t *md)
@@ -199,10 +206,10 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 {
     fmd_ituple_t ic;
     int d;
-    fmd_real_t velocityScale, mass;
+    fmd_real_t VelocityScale, mass;
     fmd_real_t x;
 
-    if (UseThermostat) velocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
+    if (UseThermostat) VelocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
                        (md->DesiredTemperature / md->GlobalTemperature - 1));
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -210,39 +217,31 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
         /* iterate over all particles in cell ic */
 
         int i=0;
-        cell_t *cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
 
-        while (i < cell->parts_num)
+        while (i < c->parts_num)
         {
-            particle_t *p = &cell->parts[i];
-
-            if (!(md->ActiveGroup == -1 || p->core.GroupID == md->ActiveGroup))
+            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
             {
                 i++;
                 continue;
             }
 
-            mass = md->potsys.atomkinds[p->core.atomkind].mass;
+            mass = md->potsys.atomkinds[c->atomkind[i]].mass;
 
             for (d=0; d<3; d++)
             {
-                /*if (md->UseAutoStep)
-                {
-                    p->core.v_bak[d] = p->core.v[d];
-                    p->core.x_bak[d] = p->core.x[d];
-                }*/
+                if (UseThermostat) VEL(c, i, d) *= VelocityScale;
 
-                if (UseThermostat) p->core.v[d] *= velocityScale;
-
-                p->core.v[d] += md->delta_t * 0.5 / mass * p->F[d];
-                x = p->core.x[d] + md->delta_t * p->core.v[d];
+                VEL(c, i, d) += md->delta_t * 0.5 / mass * FRC(c, i, d);
+                x = POS(c, i, d) + md->delta_t * VEL(c, i, d);
 
                 if ( (md->ns[d] == 1) && ((x < 0.0) || (x >= md->l[d])) )
                 {
                     if (!md->PBC[d])
                     {
-                        REMOVE_PARTICLE_FROM_CELL(*cell, i);
-                        (md->SubDomain.NumberOfParticles)--;
+                        _fmd_cell_remove_atom(md, c, i);
+                        md->SubDomain.NumberOfParticles--;
                         i--;
                         break;
                     }
@@ -250,89 +249,60 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
                         if (x < 0.0) x += md->l[d]; else x -= md->l[d];
                 }
 
-                p->core.x[d] = x;
+                POS(c, i, d) = x;
             }
 
             i++;
         }
     }
 
-    refreshGrid(md, 0);
+    refreshGrid(md);
 }
 
-int fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
+void fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
 {
     fmd_ituple_t ic;
     int d;
     fmd_real_t m_vSqd_Sum = 0, m_vSqd_SumSum;
     fmd_real_t mass;
-    int returnVal = 0;
-    int particlesNum = 0;
-    fmd_rtuple_t momentumSum = {0., 0., 0.};
-    cell_t *cell;
-    int i;
+    int ParticlesNum = 0;
+    fmd_rtuple_t MomentumSum = {0., 0., 0.};
+    cell_t *c;
+    unsigned i;
 
     for (ic[0] = md->SubDomain.ic_start[0]; ic[0] < md->SubDomain.ic_stop[0]; ic[0]++)
     {
         for (ic[1] = md->SubDomain.ic_start[1]; ic[1] < md->SubDomain.ic_stop[1]; ic[1]++)
             for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
-                for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+                for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
                 {
-                    particle_t *p = &cell->parts[i];
-
-                    if (!(md->ActiveGroup == -1 || p->core.GroupID == md->ActiveGroup))
+                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                         continue;
-                    particlesNum++;
-                    mass = md->potsys.atomkinds[p->core.atomkind].mass;
+
+                    ParticlesNum++;
+
+                    mass = md->potsys.atomkinds[c->atomkind[i]].mass;
                     for (d=0; d<3; d++)
                     {
-                        p->core.v[d] += md->delta_t * 0.5 / mass * p->F[d];
-                        momentumSum[d] += mass * p->core.v[d];
+                        VEL(c, i, d) += md->delta_t * 0.5 / mass * FRC(c, i, d);
+                        MomentumSum[d] += mass * VEL(c, i, d);
                     }
-                    m_vSqd_Sum += mass * ( sqrr(p->core.v[0]) +
-                                           sqrr(p->core.v[1]) +
-                                           sqrr(p->core.v[2]) );
+
+                    m_vSqd_Sum += mass * ( sqrr(VEL(c, i, 0)) +
+                                           sqrr(VEL(c, i, 1)) +
+                                           sqrr(VEL(c, i, 2)) );
                 }
     }
-    MPI_Reduce(momentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
 
-    MPI_Allreduce(&particlesNum, &(md->ActiveGroupParticlesNum), 1, MPI_INT, MPI_SUM, md->MD_comm);
+    MPI_Reduce(MomentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
 
-    if (md->ActiveGroup == -1)
-        md->TotalNoOfParticles = md->ActiveGroupParticlesNum;
+    MPI_Allreduce(&ParticlesNum, &md->ActiveGroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
 
     MPI_Allreduce(&m_vSqd_Sum, &m_vSqd_SumSum, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
     md->TotalKineticEnergy = 0.5 * m_vSqd_SumSum;
     md->TotalMDEnergy = md->TotalKineticEnergy + md->TotalPotentialEnergy;
 
-    /*if (md->UseAutoStep)
-    {
-        if (md->_OldTotalMDEnergy!=0. && fabs((md->TotalMDEnergy-md->_OldTotalMDEnergy)/md->_OldTotalMDEnergy) > md->AutoStepSensitivity)
-        {
-            if (md->_PrevFailedMDEnergy!=0. && fabs((md->TotalMDEnergy-md->_PrevFailedMDEnergy)/md->_PrevFailedMDEnergy) < md->AutoStepSensitivity)
-            {  // was jump in energy due to escape of some energetic particle(s) from simulation box?
-                if (md->Is_MD_comm_root)
-                    printf("Maybe the jump was caused by departure of some energetic particle(s). Increasing time step...\n");
-                returnVal = 2;
-            }
-            else
-            {
-                if (md->Is_MD_comm_root)
-                {
-                    printf("current delta_t = %e\n", md->delta_t);
-                    printf("Jump in total MD energy (old=%e new=%e)! Decreasing time step...\n", md->_OldTotalMDEnergy, md->TotalMDEnergy);
-                }
-                md->_PrevFailedMDEnergy = md->TotalMDEnergy;
-                return 1;
-            }
-        }
-        md->_PrevFailedMDEnergy = 0.;
-        md->_OldTotalMDEnergy = md->TotalMDEnergy;
-    }*/
-
     md->GlobalTemperature = m_vSqd_SumSum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
-
-    return returnVal;
 }
 
 /* not correct under periodic boundary conditions
@@ -342,18 +312,14 @@ static fmd_real_t compVirial_internal(fmd_t *md)
     fmd_ituple_t ic;
     fmd_real_t virial = 0.0;
     fmd_real_t virial_global;
-    int i;
-    cell_t *cell;
+    unsigned i;
+    cell_t *c;
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
-        {
-            particle_t *p = &cell->parts[i];
-
-            virial += p->core.x[0] * p->F[0] +
-                      p->core.x[1] * p->F[1] +
-                      p->core.x[2] * p->F[2];
-        }
+        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+            virial += POS(c, i, 0) * FRC(c, i, 0) +
+                      POS(c, i, 1) * FRC(c, i, 1) +
+                      POS(c, i, 2) * FRC(c, i, 2);
 
     MPI_Reduce(&virial, &virial_global, 1, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
 
@@ -367,15 +333,20 @@ void createCommunicators(fmd_t *md)
     int *ranks;
 
     /* create MD_comm */
+
     mdnum = md->ns[0] * md->ns[1] * md->ns[2];
-    ranks = (int *)malloc(mdnum * sizeof(int));
+
+    ranks = (int *)m_alloc(mdnum * sizeof(int));
+
     for (i=0; i<mdnum; i++)
         ranks[i] = i;
+
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Group_incl(world_group, mdnum, ranks, &MD_group);
     MPI_Comm_create(MPI_COMM_WORLD, MD_group, &md->MD_comm);
     MPI_Group_free(&world_group);
     MPI_Group_free(&MD_group);
+
     free(ranks);
 }
 
@@ -389,30 +360,20 @@ void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
     LocalUpper[0] = LocalUpper[1] = LocalUpper[2] = DBL_MIN;
 
     int i;
-    cell_t *cell;
+    cell_t *c;
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
             for (d=0; d<3; d++)
             {
-                particle_core_t *pc = &cell->parts[i].core;
-
-                if (pc->x[d] < LocalLower[d])
-                    LocalLower[d] = pc->x[d];
-                if (pc->x[d] > LocalUpper[d])
-                    LocalUpper[d] = pc->x[d];
+                if (POS(c, i, d) < LocalLower[d])
+                    LocalLower[d] = POS(c, i, d);
+                if (POS(c, i, d) > LocalUpper[d])
+                    LocalUpper[d] = POS(c, i, d);
             }
+
     MPI_Allreduce(LocalLower, LowerLimit, 3, FMD_MPI_REAL, MPI_MIN, md->MD_comm);
     MPI_Allreduce(LocalUpper, UpperLimit, 3, FMD_MPI_REAL, MPI_MAX, md->MD_comm);
-}
-
-void handleFileOpenError(FILE *fp, char *filename)
-{
-    if (fp == NULL)
-    {
-        fprintf(stderr, "ERROR: Unable to open %s!\n", filename);
-        MPI_Abort(MPI_COMM_WORLD, ERROR_UNABLE_OPEN_FILE);
-    }
 }
 
 void identifyProcess(fmd_t *md)
@@ -440,7 +401,7 @@ void fmd_matt_setActiveGroup(fmd_t *md, int GroupID)
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
 {
     cell_t ***grid;
-    int *start, *stop;
+    const int *start, *stop;
     fmd_ituple_t ic;
 
     if (md->ParticlesDistributed)
@@ -462,163 +423,315 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
     }
 
     int i;
-    cell_t *cell;
-    particle_core_t *pc;
+    cell_t *c;
 
     LOOP3D(ic, start, stop)
-        for (cell = &grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
-            if (pc = &cell->parts[i].core, GroupID == -1 || GroupID == pc->GroupID)
+        for (c = &grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+            if (GroupID == -1 || GroupID == c->GroupID[i])
             {
-                pc->v[0] += vx;
-                pc->v[1] += vy;
-                pc->v[2] += vz;
+                VEL(c, i, 0) += vx;
+                VEL(c, i, 1) += vy;
+                VEL(c, i, 2) += vz;
             }
+}
+
+/* calculate GlobalTemperature, ActiveGroupParticlesNum and TotalKineticEnergy from "global grid" */
+static void calculate_GlobalTemperature_etc(fmd_t *md)
+{
+    if (md->Is_MD_comm_root)
+    {
+        fmd_ituple_t ic;
+        fmd_real_t m_vSqd_Sum = 0.0;
+        cell_t *c;
+        int i;
+
+        md->ActiveGroupParticlesNum = 0;
+
+        LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
+            for (c=&md->global_grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+            {
+                if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                    continue;
+
+                md->ActiveGroupParticlesNum++;
+
+                fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+                for (int d=0; d<3; d++)
+                    m_vSqd_Sum += mass * sqrr(VEL(c, i, d));
+            }
+
+        md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
+    }
+
+    MPI_Bcast(&md->ActiveGroupParticlesNum, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+    MPI_Bcast(&md->GlobalTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
+
+    md->TotalKineticEnergy = 3.0/2.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN * md->GlobalTemperature;
+}
+
+static void find_global_start_stop_ic_of_a_subd(fmd_t *md, int rank,
+ fmd_ituple_t global_icstart, fmd_ituple_t global_icstop)
+{
+    fmd_ituple_t is;
+    int r, w;
+
+    INDEX_3D(rank, md->ns, is);
+
+    for (int d=0; d<3; d++)
+    {
+        r = md->nc[d] % md->ns[d];
+        w = md->nc[d] / md->ns[d];
+
+        if (is[d] < r)
+        {
+            global_icstart[d] = is[d] * (w + 1);
+            global_icstop[d] = global_icstart[d] + w + 1;
+        }
+        else
+        {
+            global_icstart[d] = is[d] * w + r;
+            global_icstop[d] = global_icstart[d] + w;
+        }
+    }
+}
+
+/* creates an empty buffer */
+static void *create_packbuffer_for_matt_distribute(fmd_t *md, fmd_ituple_t global_icstart, fmd_ituple_t global_icstop)
+{
+    fmd_ituple_t ic;
+    cell_t *c;
+    int c_rtuple = 0, c_int = 0, c_unsigned = 0;
+    int s, size = 0;
+
+    if (md->cellinfo.x_active) c_rtuple++;
+    if (md->cellinfo.v_active) c_rtuple++;
+    if (md->cellinfo.GroupID_active) c_int++;
+    if (md->cellinfo.AtomID_active) c_unsigned++;
+    if (md->cellinfo.atomkind_active) c_unsigned++;
+    if (md->cellinfo.molkind_active) c_unsigned += 3; /* for molkind, MolID and AtomIDlocal arrays */
+
+    MPI_Pack_size(1, MPI_UNSIGNED, md->MD_comm, &s);
+
+    size += s * (global_icstop[0] - global_icstart[0]) *
+                (global_icstop[1] - global_icstart[1]) *
+                (global_icstop[2] - global_icstart[2]);
+
+    LOOP3D(ic, global_icstart, global_icstop)
+    {
+        c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+
+        if (c->parts_num > 0)
+        {
+            if (c_rtuple > 0)
+            {
+                MPI_Pack_size(c->parts_num, md->mpi_types.mpi_rtuple, md->MD_comm, &s);
+
+                size += c_rtuple * s;
+            }
+
+            if (c_int > 0)
+            {
+                MPI_Pack_size(c->parts_num, MPI_INT, md->MD_comm, &s);
+
+                size += c_int * s;
+            }
+
+            if (c_unsigned > 0)
+            {
+                MPI_Pack_size(c->parts_num, MPI_UNSIGNED, md->MD_comm, &s);
+
+                size += c_unsigned * s;
+            }
+        }
+    }
+
+    return (size > 0 ? m_alloc(size) : NULL);
+}
+
+static void pack_for_matt_distribute(fmd_t *md, void *buff, int *bytecount,
+                                     fmd_ituple_t global_icstart, fmd_ituple_t global_icstop)
+{
+    *bytecount = 0;
+
+    fmd_ituple_t ic;
+    cell_t *c;
+
+    LOOP3D(ic, global_icstart, global_icstop)
+    {
+        c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+
+        MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
+
+        if (c->parts_num > 0)
+        {
+            if (c->x != NULL)
+                MPI_Pack(c->x, c->parts_num, md->mpi_types.mpi_rtuple, buff, INT_MAX, bytecount, md->MD_comm);
+
+            if (c->v != NULL)
+                MPI_Pack(c->v, c->parts_num, md->mpi_types.mpi_rtuple, buff, INT_MAX, bytecount, md->MD_comm);
+
+            if (c->GroupID != NULL)
+                MPI_Pack(c->GroupID, c->parts_num, MPI_INT, buff, INT_MAX, bytecount, md->MD_comm);
+
+            if (c->AtomID != NULL)
+                MPI_Pack(c->AtomID, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
+
+            if (c->atomkind != NULL)
+                MPI_Pack(c->atomkind, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
+
+            if (c->molkind != NULL)
+            {
+                MPI_Pack(c->molkind, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
+                MPI_Pack(c->MolID, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
+                MPI_Pack(c->AtomIDlocal, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
+            }
+        }
+
+        _fmd_cell_free(c);
+    }
+}
+
+static void transfer_from_globalgrid_to_rank0_grid(fmd_t *md)
+{
+    fmd_ituple_t icl, icg;
+    cell_t *cl, *cg;
+
+    LOOP3D(icl, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    {
+        _fmd_conv_ic_loc_to_glob(md, icl, icg);
+
+        cl = &md->SubDomain.grid[icl[0]][icl[1]][icl[2]];
+        cg = &md->global_grid[icg[0]][icg[1]][icg[2]];
+
+        cl->parts_num = cg->parts_num;
+        md->SubDomain.NumberOfParticles += cl->parts_num;
+
+        _fmd_cell_resize(md, cl);
+
+        if (cg->x != NULL)
+            memcpy(cl->x, cg->x, cg->parts_num * sizeof(fmd_rtuple_t));
+
+        if (cg->v != NULL)
+            memcpy(cl->v, cg->v, cg->parts_num * sizeof(fmd_rtuple_t));
+
+        if (cg->GroupID != NULL)
+            memcpy(cl->GroupID, cg->GroupID, cg->parts_num * sizeof(int));
+
+        if (cg->AtomID != NULL)
+            memcpy(cl->AtomID, cg->AtomID, cg->parts_num * sizeof(unsigned));
+
+        if (cg->atomkind != NULL)
+            memcpy(cl->atomkind, cg->atomkind, cg->parts_num * sizeof(unsigned));
+
+        if (cg->molkind != NULL)
+        {
+            memcpy(cl->molkind, cg->molkind, cg->parts_num * sizeof(unsigned));
+            memcpy(cl->MolID, cg->MolID, cg->parts_num * sizeof(unsigned));
+            memcpy(cl->AtomIDlocal, cg->AtomIDlocal, cg->parts_num * sizeof(unsigned));
+        }
+
+        _fmd_cell_free(cg);
+    }
+}
+
+void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
+{
+    fmd_ituple_t ic;
+    cell_t *c;
+    int pos = 0;
+
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+    {
+        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+
+        MPI_Unpack(packbuf, bufsize, &pos, &c->parts_num, 1, MPI_UNSIGNED, md->MD_comm);
+
+        if (c->parts_num > 0)
+        {
+            md->SubDomain.NumberOfParticles += c->parts_num;
+
+            _fmd_cell_resize(md, c);
+
+            if (c->x != NULL)
+                MPI_Unpack(packbuf, bufsize, &pos, c->x, c->parts_num, md->mpi_types.mpi_rtuple, md->MD_comm);
+
+            if (c->v != NULL)
+                MPI_Unpack(packbuf, bufsize, &pos, c->v, c->parts_num, md->mpi_types.mpi_rtuple, md->MD_comm);
+
+            if (c->GroupID != NULL)
+                MPI_Unpack(packbuf, bufsize, &pos, c->GroupID, c->parts_num, MPI_INT, md->MD_comm);
+
+            if (c->AtomID != NULL)
+                MPI_Unpack(packbuf, bufsize, &pos, c->AtomID, c->parts_num, MPI_UNSIGNED, md->MD_comm);
+
+            if (c->atomkind != NULL)
+                MPI_Unpack(packbuf, bufsize, &pos, c->atomkind, c->parts_num, MPI_UNSIGNED, md->MD_comm);
+
+            if (c->molkind != NULL)
+            {
+                MPI_Unpack(packbuf, bufsize, &pos, c->molkind, c->parts_num, MPI_UNSIGNED, md->MD_comm);
+                MPI_Unpack(packbuf, bufsize, &pos, c->MolID, c->parts_num, MPI_UNSIGNED, md->MD_comm);
+                MPI_Unpack(packbuf, bufsize, &pos, c->AtomIDlocal, c->parts_num, MPI_UNSIGNED, md->MD_comm);
+            }
+        }
+    }
 }
 
 void fmd_matt_distribute(fmd_t *md)
 {
-    int i, k, d, nct, sum_length;
-    fmd_ituple_t ic;
-    int *ic_length;
-    particle_core_t *is_partcores;
-    cell_t *cell;
-    int pind;
-
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
+
+    calculate_GlobalTemperature_etc(md);
+
+#ifdef USE_TTM
+        ttm_comp_min_atomsNo(global_grid, s_p); /* global_grid is NULL on non-root processes */
+#endif
 
     if (md->Is_MD_comm_root)
     {
-        int r, w;
-        fmd_ituple_t is, global_icstart, global_icstop;
-        fmd_real_t m_vSqd_Sum = 0.0;
-        fmd_real_t mass;
-
-#ifdef USE_TTM
-        ttm_comp_min_atomsNo(global_grid, s_p);
-#endif
-
-        LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-            for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
-            {
-                particle_core_t *pc = &cell->parts[pind].core;
-
-                mass = md->potsys.atomkinds[pc->atomkind].mass;
-                for (d=0; d<3; d++)
-                    m_vSqd_Sum += mass * sqrr(pc->v[d]);
-            }
-
-        md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->TotalNoOfParticles * K_BOLTZMANN);
-
-        for (i=1; i < md->SubDomain.numprocs; i++)
+        for (int i=1; i < md->SubDomain.numprocs; i++)  /* for all processes execpt the root */
         {
-            INDEX_3D(i, md->ns, is);
-            nct = 1;
-            for (d=0; d<3; d++)
-            {
-                r = md->nc[d] % md->ns[d];
-                w = md->nc[d] / md->ns[d];
-                if (is[d] < r)
-                {
-                    global_icstart[d] = is[d] * (w + 1);
-                    global_icstop[d] = global_icstart[d] + w + 1;
-                    nct *= w + 1;
-                }
-                else
-                {
-                    global_icstart[d] = is[d] * w + r;
-                    global_icstop[d] = global_icstart[d] + w;
-                    nct *= w;
-                }
-            }
-            ic_length = (int *)malloc((nct+1) * sizeof(int));
-            k = sum_length = 0;
-            LOOP3D(ic, global_icstart, global_icstop)
-            {
-                ic_length[k] = md->global_grid[ic[0]][ic[1]][ic[2]].parts_num;
-                sum_length += ic_length[k++];
-            }
-            ic_length[nct] = sum_length;
+            fmd_ituple_t global_icstart, global_icstop;
+            int bytecount;
 
-            MPI_Send(ic_length, nct+1, MPI_INT, i, 50, md->MD_comm);
+            find_global_start_stop_ic_of_a_subd(md, i, global_icstart, global_icstop);
 
-            free(ic_length);
+            void *buff = create_packbuffer_for_matt_distribute(md, global_icstart, global_icstop);
 
-            sum_length *= sizeof(particle_core_t);
-            is_partcores = (particle_core_t *)malloc(sum_length);
+            pack_for_matt_distribute(md, buff, &bytecount, global_icstart, global_icstop);
 
-            k = 0;
-            LOOP3D(ic, global_icstart, global_icstop)
-                for (cell=&md->global_grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
-                    is_partcores[k++] = cell->parts[pind].core;
+            MPI_Send(buff, bytecount, MPI_PACKED, i, 51, md->MD_comm);
 
-            MPI_Send(is_partcores, sum_length, MPI_BYTE, i, 51, md->MD_comm);
-
-            free(is_partcores);
+            free(buff);
         }
 
-        md->SubDomain.NumberOfParticles = 0;
-        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        {
-            cell = &md->global_grid[ ic[0] - md->SubDomain.ic_start[0] + md->SubDomain.ic_global_firstcell[0] ]
-                                   [ ic[1] - md->SubDomain.ic_start[1] + md->SubDomain.ic_global_firstcell[1] ]
-                                   [ ic[2] - md->SubDomain.ic_start[2] + md->SubDomain.ic_global_firstcell[2] ];
-            for (pind = 0; pind < cell->parts_num; pind++)
-            {
-
-                cell->parts[pind].neighbors = NULL;
-                INSERT_PARTICLE_IN_CELL(cell->parts[pind], md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
-                ++(md->SubDomain.NumberOfParticles);
-            }
-
-            FREE_CELL(*cell);
-        }
+        transfer_from_globalgrid_to_rank0_grid(md); /* for the root process */
 
         _fmd_array_ordinary3d_free((void ***)md->global_grid, md->nc[0], md->nc[1]);
     }
     else
     {
         MPI_Status status;
-        int kreceive;
+        int bufsize;
 
-#ifdef USE_TTM
-        ttm_comp_min_atomsNo(NULL, s_p);
-#endif
-        nct = 1;
-        for (d=0; d<3; d++)
-            nct *= md->SubDomain.cell_num_nonmarg[d];
-        ic_length = (int *)malloc((nct+1) * sizeof(int));
-        MPI_Recv(ic_length, nct+1, MPI_INT, RANK0, 50, md->MD_comm, &status);
-        md->SubDomain.NumberOfParticles = sum_length = ic_length[nct];
-        sum_length *= sizeof(particle_core_t);
-        is_partcores = (particle_core_t *)malloc(sum_length);
+        MPI_Probe(RANK0, 51, md->MD_comm, &status);
 
-        MPI_Recv(is_partcores, sum_length, MPI_BYTE, RANK0, 51, md->MD_comm, &status);
+        MPI_Get_count(&status, MPI_PACKED, &bufsize);
 
-        kreceive = k = 0;
-        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        {
-            cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        void *buff = m_alloc(bufsize);
 
-            for (i=0; i < ic_length[kreceive]; i++)
-            {
-                unsigned pind = new_particle(cell);
-                cell->parts[pind].core = is_partcores[k++];
-                cell->parts[pind].neighbors = NULL;
-            }
-            kreceive++;
-        }
+        MPI_Recv(buff, bufsize, MPI_PACKED, RANK0, 51, md->MD_comm, &status);
 
-        free(ic_length);
-        free(is_partcores);
+        unpack_for_matt_distribute(md, buff, bufsize);
+
+        free(buff);
     }
 
     MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
     MPI_Bcast(&md->TotalNoOfMolecules, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
-    MPI_Bcast(&md->GlobalTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
 
     if (md->TotalNoOfMolecules > 0) _fmd_matt_updateAtomNeighbors(md);
 
-    md->TotalKineticEnergy = 3.0/2.0 * md->TotalNoOfParticles * K_BOLTZMANN * md->GlobalTemperature;
     md->GlobalGridExists = FMD_FALSE;
     md->ParticlesDistributed = FMD_TRUE;
 }
@@ -627,24 +740,23 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
 {
     FILE *fp;
     char name[3];
-    int i, j, d;
     fmd_ituple_t ic;
     fmd_real_t StateFileTime;
-    int ParticlesNum;
+    unsigned ParticlesNum;
     fmd_real_t l0, l1, l2;
     int PBC0, PBC1, PBC2;
 
     if (md->Is_MD_comm_root)
     {
-        fp = fopen(file, "r");
-        handleFileOpenError(fp, file);
-        fscanf(fp, "%lf", &StateFileTime);
-        if (UseTime)
-            md->MD_time = StateFileTime;
-        fscanf(fp, "%d\n", &ParticlesNum);
-        md->TotalNoOfParticles += ParticlesNum;
-        fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2);
-        fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2);
+        fp = f_open(file, "r");
+
+        assert( fscanf(fp, "%lf", &StateFileTime) == 1 ); /* TO-DO: handle error */
+
+        if (UseTime) md->MD_time = StateFileTime;
+
+        assert( fscanf(fp, "%u\n", &ParticlesNum) == 1 ); /* TO-DO: handle error */
+        assert( fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2) == 3 ); /* TO-DO: handle error */
+        assert( fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2) == 3 ); /* TO-DO: handle error */
     }
 
     if (!md->BoxSizeDetermined)
@@ -657,8 +769,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
         }
 
         MPI_Bcast(&md->l, 3, FMD_MPI_REAL, RANK0, md->MD_comm);
-
-        md->BoxSizeDetermined = 1;
+        md->BoxSizeDetermined = FMD_TRUE;
     }
 
     if (!md->PBCdetermined)
@@ -669,8 +780,9 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
             md->PBC[1] = PBC1;
             md->PBC[2] = PBC2;
         }
+
         MPI_Bcast(&md->PBC, 3, MPI_INT, RANK0, md->MD_comm);
-        md->PBCdetermined = 1;
+        md->PBCdetermined = FMD_TRUE;
     }
 
     if (!md->GlobalGridExists)
@@ -681,92 +793,91 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
 
     if (md->Is_MD_comm_root)
     {
-        for (i=0; i < ParticlesNum; i++)
+        for (unsigned i=0; i < ParticlesNum; i++)
         {
-            particle_core_t pc;
+            int GroupID;
+            unsigned atomkind;
 
-            fscanf(fp, "%s%d", name, &pc.GroupID);
+            assert( fscanf(fp, "%s%d", name, &GroupID) == 2 ); /* TO-DO: handle error */
+            assert(GroupID >= 0);  /* TO-DO: handle error */
+
+            unsigned j;
 
             for (j=0; j < md->potsys.atomkinds_num; j++)
                 if (strcmp(name, md->potsys.atomkinds[j].name) == 0)
                 {
-                    pc.atomkind = j;
+                    atomkind = j;
                     break;
                 }
 
             /* TO-DO: what if the name doesn't exist in potsys? */
-            fscanf(fp, "%lf%lf%lf", &pc.x[0], &pc.x[1], &pc.x[2]);
-            fscanf(fp, "%lf%lf%lf", &pc.v[0], &pc.v[1], &pc.v[2]);
+            assert(j < md->potsys.atomkinds_num);
 
-            for (d=0; d<3; d++)
-                ic[d] = (int)floor(pc.x[d] / md->cellh[d]);
+            fmd_rtuple_t x, v;
 
-            INSERT_PART_CORE_IN_CELL(pc, md->global_grid[ic[0]][ic[1]][ic[2]]);
+            assert( fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]) == 3 ); /* TO-DO: handle error */
+            assert( fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]) == 3 ); /* TO-DO: handle error */
+
+            for (int d=0; d<3; d++)
+                ic[d] = (int)floor(x[d] / md->cellh[d]);
+
+            cell_t *c;
+
+            c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+
+            j = _fmd_cell_new_particle(md, c);
+
+            c->GroupID[j] = GroupID;
+            c->atomkind[j] = atomkind;
+            c->AtomID[j] = md->TotalNoOfParticles++;
+
+            for (int d=0; d<3; d++)
+            {
+                POS(c, j, d) = x[d];
+                VEL(c, j, d) = v[d];
+            }
         }
+
         fclose(fp);
     }
 }
 
-static void refreshGrid(fmd_t *md, int reverse)
+static void refreshGrid(fmd_t *md)
 {
     fmd_ituple_t ic, jc;
-    int d;
 
     /* iterate over all cells */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
-
         /* iterate over all particles in cell ic */
 
-        cell_t *cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
-        int pind = 0;  /* particle index */
+        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        int i = 0;  /* particle index */
 
-        while (pind < cell->parts_num)
+        while (i < c->parts_num)
         {
-            particle_t *p = &cell->parts[pind];
-
-            for (d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
             {
-                jc[d] = (int)floor(p->core.x[d] / md->cellh[d]) - md->SubDomain.ic_global_firstcell[d] + md->SubDomain.ic_start[d];
+                jc[d] = (int)floor(POS(c, i, d) / md->cellh[d]) - md->SubDomain.ic_global_firstcell[d]
+                        + md->SubDomain.ic_start[d];
 
-                if (jc[d] < 0)
+                if (jc[d] < 0 || jc[d] >= md->SubDomain.cell_num[d])
                 {
-                    if (reverse && md->PBC[d] && md->ns[d] > 1 &&
-                        md->SubDomain.is[d]==md->ns[d]-1 && ic[d] >= md->SubDomain.ic_stop[d]-md->SubDomain.ic_start[d])
-                    {
-                        p->core.x[d] += md->l[d];
-                        jc[d] = ic[d] + md->SubDomain.ic_start[d];
-                    }
-                    else
-                    {
-                        fprintf(stderr,"ERROR: Unexpected particle position!\n");
-                        MPI_Abort(MPI_COMM_WORLD, ERROR_UNEXPECTED_PARTICLE_POSITION);
-                    }
+                    fprintf(stderr, "ERROR: Unexpected particle position!\n");
+                    MPI_Abort(MPI_COMM_WORLD, ERROR_UNEXPECTED_PARTICLE_POSITION);
                 }
-                else
-                    if (jc[d] >= md->SubDomain.cell_num[d])
-                    {
-                        if (reverse && md->PBC[d] && md->ns[d] > 1 &&
-                            md->SubDomain.is[d]==0 && ic[d] < 2*md->SubDomain.ic_start[d])
-                        {
-                            p->core.x[d] -= md->l[d];
-                            jc[d] = ic[d] - md->SubDomain.ic_start[d];
-                        }
-                        else
-                        {
-                            fprintf(stderr, "ERROR: Unexpected particle position!\n");
-                            MPI_Abort(MPI_COMM_WORLD, ERROR_UNEXPECTED_PARTICLE_POSITION);
-                        }
-                    }
             }
 
             if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
             {
-                INSERT_PARTICLE_IN_CELL(*p, md->SubDomain.grid[jc[0]][jc[1]][jc[2]]);
-                REMOVE_PARTICLE_FROM_CELL(*cell, pind);
+                cell_t *c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]];
+                unsigned j = _fmd_cell_new_particle(md, c2);
+
+                _fmd_cell_copy_atom_from_cell_to_cell(c, i, c2, j);
+                _fmd_cell_remove_atom(md, c, i);
             }
             else
-                pind++;
+                i++;
         }
     }
 
@@ -777,270 +888,262 @@ static void refreshGrid(fmd_t *md, int reverse)
 void rescaleVelocities(fmd_t *md)
 {
     fmd_ituple_t ic;
-    int d;
-    fmd_real_t scale;
 
-    scale = sqrt(md->DesiredTemperature / md->GlobalTemperature);
+    fmd_real_t scale = sqrt(md->DesiredTemperature / md->GlobalTemperature);
 
     cell_t *cell;
     int i;
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
         for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
-            for (d=0; d<3; d++)
-                cell->parts[i].core.v[d] *= scale;
+            for (int d=0; d<3; d++)
+                VEL(cell, i, d) *= scale;
 
     md->GlobalTemperature = md->DesiredTemperature;
 }
 
-/*void restoreBackups(fmd_t *md)
+static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)
 {
+    config_atom_t *localdata;
     fmd_ituple_t ic;
-    int d;
-    cell_t *cell;
+    cell_t *c;
     int pind;
+    int k = 0;
+
+    localdata = (config_atom_t *)m_alloc(md->SubDomain.NumberOfParticles * sizeof(config_atom_t));
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
+        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < c->parts_num; pind++)
         {
-            particle_core_t *pc = &cell->parts[pind].core;
-
-            for (d=0; d<3; d++)
-            {
-                pc->x[d] = pc->x_bak[d];
-                pc->v[d] = pc->v_bak[d];
-            }
-        }
-
-    refreshGrid(md, 1);
-
-#ifdef USE_TTM
-    ttm_restoreBackups();
-#endif
-}*/
-
-void fmd_matt_saveConfiguration(fmd_t *md)
-{
-    fmd_ituple_t ic;
-    XYZ_struct_t *localData, *globalData;
-    int *nums, *recvcounts, *displs;
-    int k;
-    cell_t *cell;
-    int pind;
-
-    localData = (XYZ_struct_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t));
-    k=0;
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
-        {
-            particle_core_t *pc = &cell->parts[pind].core;
-
             if (md->CompLocOrdParam)
             {
-                localData[k].x[0] = (float)pc->x_avgd[0];
-                localData[k].x[1] = (float)pc->x_avgd[1];
-                localData[k].x[2] = (float)pc->x_avgd[2];
+//                 localdata[k].x[0] = (float)pc->x_avgd[0];
+//                 localdata[k].x[1] = (float)pc->x_avgd[1];
+//                 localdata[k].x[2] = (float)pc->x_avgd[2];
             }
             else
             {
-                localData[k].x[0] = (float)pc->x[0];
-                localData[k].x[1] = (float)pc->x[1];
-                localData[k].x[2] = (float)pc->x[2];
+                localdata[k].x[0] = (float)POS(c, pind, 0);
+                localdata[k].x[1] = (float)POS(c, pind, 1);
+                localdata[k].x[2] = (float)POS(c, pind, 2);
             }
-            localData[k].var = pc->GroupID;
-            localData[k].atomkind = pc->atomkind;
+            localdata[k].var = c->GroupID[pind];
+            localdata[k].atomkind = c->atomkind[pind];
+
             k++;
         }
 
-    nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
-    MPI_Allgather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT,
-        md->MD_comm);
+    return localdata;
+}
 
-    md->TotalNoOfParticles = 0;
-    for (k=0; k < md->SubDomain.numprocs; k++)
-        md->TotalNoOfParticles += nums[k];
+static config_atom_t *gather_localdata_on_root_for_saveconfig(fmd_t *md, config_atom_t *localdata)
+{
+    int *displs;
+    unsigned *nums;
+    config_atom_t *globaldata;
+
+    if (md->Is_MD_comm_root) nums = (unsigned *)m_alloc(md->SubDomain.numprocs * sizeof(unsigned));
+    MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
+        md->TotalNoOfParticles = 0;
+
+        for (int i=0; i < md->SubDomain.numprocs; i++)
+            md->TotalNoOfParticles += nums[i];
+
         int displ = 0;
 
-        globalData = (XYZ_struct_t *)malloc(md->TotalNoOfParticles * sizeof(XYZ_struct_t));
-        recvcounts = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
-        displs     = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
-        for (k=0; k < md->SubDomain.numprocs; k++)
+        globaldata = (config_atom_t *)m_alloc(md->TotalNoOfParticles * sizeof(config_atom_t));
+        displs     = (int *)m_alloc(md->SubDomain.numprocs * sizeof(int));
+
+        for (int k=0; k < md->SubDomain.numprocs; k++)
         {
-            recvcounts[k] = nums[k] * sizeof(XYZ_struct_t);
             displs[k] = displ;
-            displ += recvcounts[k];
+            displ += nums[k];
         }
     }
 
-    free(nums);
-
-    MPI_Gatherv(localData, md->SubDomain.NumberOfParticles * sizeof(XYZ_struct_t), MPI_BYTE,
-        globalData, recvcounts, displs, MPI_BYTE, RANK0, md->MD_comm);
-
-    free(localData);
+    MPI_Gatherv(localdata, md->SubDomain.NumberOfParticles, md->mpi_types.mpi_configa,
+        globaldata, nums, displs, md->mpi_types.mpi_configa, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
-        char configPath[MAX_PATH_LENGTH];
-        char *elementName;
-        int i;
-
-        free(recvcounts);
+        free(nums);
         free(displs);
-
-        switch (md->SaveConfigMode)
-        {
-            case FMD_SCM_XYZ_PARTICLESNUM:
-                if (md->TotalNoOfParticles != md->_OldNumberOfParticles)
-                {
-                    if (md->_OldNumberOfParticles != -1) fclose(md->ConfigFilep);
-                    sprintf(configPath, "%s%d.xyz", md->SaveDirectory, md->TotalNoOfParticles);
-                    md->ConfigFilep = fopen(configPath, "w");
-                    handleFileOpenError(md->ConfigFilep, configPath);
-                    md->_OldNumberOfParticles = md->TotalNoOfParticles;
-                }
-                break;
-
-            case FMD_SCM_XYZ_SEPARATE:
-                sprintf(configPath, "%s%05d.xyz", md->SaveDirectory, md->_FileIndex++);
-                md->ConfigFilep = fopen(configPath, "w");
-                handleFileOpenError(md->ConfigFilep, configPath);
-                break;
-
-            case FMD_SCM_CSV:
-                sprintf(configPath, "%s%05d.csv", md->SaveDirectory, md->_FileIndex++);
-                md->ConfigFilep = fopen(configPath, "w");
-                handleFileOpenError(md->ConfigFilep, configPath);
-                for (i=0; i < md->potsys.atomkinds_num; i++)
-                {
-                    for (k=0; k < md->TotalNoOfParticles; k++)
-                        if (globalData[k].atomkind == i)
-                            fprintf(md->ConfigFilep, "%.2f, %.2f, %.2f, %d, %.4f\n",
-                                globalData[k].x[0], globalData[k].x[1],
-                                globalData[k].x[2], i, globalData[k].var);
-                }
-                break;
-
-            case FMD_SCM_VTF:
-            {
-                int atomID = 0;
-                sprintf(configPath, "%s%05d.vtf", md->SaveDirectory, md->_FileIndex++);
-                md->ConfigFilep = fopen(configPath, "w");
-                handleFileOpenError(md->ConfigFilep, configPath);
-                for (i=0; i < md->potsys.atomkinds_num; i++)
-                {
-                    int count = 0;
-                    for (k=0; k < md->TotalNoOfParticles; k++)
-                        if (globalData[k].atomkind == i)
-                            count++;
-                    fprintf(md->ConfigFilep, "atom %d:%d\tname %s\n", atomID,
-                            atomID+count-1, md->potsys.atomkinds[i].name);
-                    atomID += count;
-                }
-                atomID = 0;
-                for (i=0; i < md->potsys.atomkinds_num; i++)
-                {
-                    for (k=0; k < md->TotalNoOfParticles; k++)
-                        if (globalData[k].atomkind == i)
-                        {
-                            fprintf(md->ConfigFilep, "%d\tbeta %.4f\n", atomID,
-                             globalData[k].var);
-                            atomID++;
-                        }
-                }
-                fprintf(md->ConfigFilep, "timestep\n");
-                for (i=0; i < md->potsys.atomkinds_num; i++)
-                {
-                    for (k=0; k < md->TotalNoOfParticles; k++)
-                        if (globalData[k].atomkind == i)
-                            fprintf(md->ConfigFilep, "%.2f\t%.2f\t%.2f\n",
-                                globalData[k].x[0], globalData[k].x[1],
-                                globalData[k].x[2]);
-                }
-                break;
-            }
-        }
-
-        if (md->SaveConfigMode == FMD_SCM_XYZ_SEPARATE || md->SaveConfigMode == FMD_SCM_XYZ_PARTICLESNUM)
-        {
-            fprintf(md->ConfigFilep, "%d\n\n", md->TotalNoOfParticles);
-            for (i=0; i < md->potsys.atomkinds_num; i++)
-            {
-                elementName = md->potsys.atomkinds[i].name;
-                for (k=0; k < md->TotalNoOfParticles; k++)
-                    if (globalData[k].atomkind == i)
-                        fprintf(md->ConfigFilep, "%s\t%.2f\t%.2f\t%.2f\n",
-                            elementName, globalData[k].x[0], globalData[k].x[1],
-                            globalData[k].x[2]);
-            }
-        }
-        free(globalData);
-
-        if (md->SaveConfigMode == FMD_SCM_XYZ_SEPARATE || md->SaveConfigMode == FMD_SCM_CSV ||
-         md->SaveConfigMode == FMD_SCM_VTF)
-            fclose(md->ConfigFilep);
     }
+
+    return globaldata;
+}
+
+static void save_XYZ_data(fmd_t *md, config_atom_t *globaldata)
+{
+    char *ElementName;
+
+    fprintf(md->ConfigFilep, "%d\n\n", md->TotalNoOfParticles);
+
+    for (int i=0; i < md->potsys.atomkinds_num; i++)
+    {
+        ElementName = md->potsys.atomkinds[i].name;
+
+        for (int k=0; k < md->TotalNoOfParticles; k++)
+            if (globaldata[k].atomkind == i)
+                fprintf(md->ConfigFilep, "%s\t%.2f\t%.2f\t%.2f\n", ElementName,
+                        globaldata[k].x[0], globaldata[k].x[1], globaldata[k].x[2]);
+    }
+}
+
+static void save_VTF_file(fmd_t *md, config_atom_t *globaldata)
+{
+    char ConfigPath[MAX_PATH_LENGTH];
+    int AtomID = 0;
+
+    sprintf(ConfigPath, "%s%05d.vtf", md->SaveDirectory, md->_FileIndex++);
+    md->ConfigFilep = f_open(ConfigPath, "w");
+
+    for (int i=0; i < md->potsys.atomkinds_num; i++)
+    {
+        int count = 0;
+        for (int k=0; k < md->TotalNoOfParticles; k++)
+            if (globaldata[k].atomkind == i)
+                count++;
+        fprintf(md->ConfigFilep, "atom %d:%d\tname %s\n", AtomID,
+                AtomID+count-1, md->potsys.atomkinds[i].name);
+        AtomID += count;
+    }
+
+    AtomID = 0;
+    for (int i=0; i < md->potsys.atomkinds_num; i++)
+    {
+        for (int k=0; k < md->TotalNoOfParticles; k++)
+            if (globaldata[k].atomkind == i)
+            {
+                fprintf(md->ConfigFilep, "%d\tbeta %.4f\n", AtomID, globaldata[k].var);
+                AtomID++;
+            }
+    }
+
+    fprintf(md->ConfigFilep, "timestep\n");
+
+    for (int i=0; i < md->potsys.atomkinds_num; i++)
+    {
+        for (int k=0; k < md->TotalNoOfParticles; k++)
+            if (globaldata[k].atomkind == i)
+                fprintf(md->ConfigFilep, "%.2f\t%.2f\t%.2f\n",
+                    globaldata[k].x[0], globaldata[k].x[1], globaldata[k].x[2]);
+    }
+
+    fclose(md->ConfigFilep);
+}
+
+void fmd_matt_saveConfiguration(fmd_t *md)
+{
+    config_atom_t *localdata, *globaldata;
+
+    localdata = prepare_localdata_for_saveconfig(md);
+    globaldata = gather_localdata_on_root_for_saveconfig(md, localdata);
+
+    free(localdata);
+
+    if (!md->Is_MD_comm_root) return;
+
+    char ConfigPath[MAX_PATH_LENGTH];
+
+    switch (md->SaveConfigMode)
+    {
+        case FMD_SCM_XYZ_PARTICLESNUM:
+            if (md->TotalNoOfParticles != md->_OldNumberOfParticles)
+            {
+                if (md->_OldNumberOfParticles != -1) fclose(md->ConfigFilep);
+                sprintf(ConfigPath, "%s%d.xyz", md->SaveDirectory, md->TotalNoOfParticles);
+                md->ConfigFilep = f_open(ConfigPath, "w");
+                md->_OldNumberOfParticles = md->TotalNoOfParticles;
+            }
+            save_XYZ_data(md, globaldata);
+            break;
+
+        case FMD_SCM_XYZ_SEPARATE:
+            sprintf(ConfigPath, "%s%05d.xyz", md->SaveDirectory, md->_FileIndex++);
+            md->ConfigFilep = f_open(ConfigPath, "w");
+            save_XYZ_data(md, globaldata);
+            fclose(md->ConfigFilep);
+            break;
+
+        case FMD_SCM_CSV:
+            sprintf(ConfigPath, "%s%05d.csv", md->SaveDirectory, md->_FileIndex++);
+            md->ConfigFilep = f_open(ConfigPath, "w");
+            for (int i=0; i < md->potsys.atomkinds_num; i++)
+            {
+                for (int k=0; k < md->TotalNoOfParticles; k++)
+                    if (globaldata[k].atomkind == i)
+                        fprintf(md->ConfigFilep, "%.2f, %.2f, %.2f, %d, %.4f\n",
+                            globaldata[k].x[0], globaldata[k].x[1],
+                            globaldata[k].x[2], i, globaldata[k].var);
+            }
+            fclose(md->ConfigFilep);
+            break;
+
+        case FMD_SCM_VTF:
+            save_VTF_file(md, globaldata);
+            break;
+    }
+
+    free(globaldata);
 }
 
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 {
-    particle_core_t *is_partcores;
-    int *nums;
-    int i, k;
+    unsigned *nums;
     fmd_ituple_t ic;
-    char stateFilePath[MAX_PATH_LENGTH];
+    char StateFilePath[MAX_PATH_LENGTH];
     FILE *fp;
     MPI_Status status;
-    cell_t *cell;
-    int pind;
+    cell_t *c;
+    unsigned pi;
 
     if (md->Is_MD_comm_root)
     {
-        nums = (int *)malloc(md->SubDomain.numprocs * sizeof(int));
+        nums = (unsigned *)m_alloc(md->SubDomain.numprocs * sizeof(unsigned));
 
-        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT, RANK0, md->MD_comm);
+        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
         md->TotalNoOfParticles = 0;
-        for (k=0; k < md->SubDomain.numprocs; k++)
+
+        for (int k=0; k < md->SubDomain.numprocs; k++)
             md->TotalNoOfParticles += nums[k];
 
-        sprintf(stateFilePath, "%s%s", md->SaveDirectory, filename);
-        fp = fopen(stateFilePath, "w");
-        handleFileOpenError(fp, stateFilePath);
+        sprintf(StateFilePath, "%s%s", md->SaveDirectory, filename);
+        fp = f_open(StateFilePath, "w");
+
         fprintf(fp, "%.16e\n", md->MD_time);
-        fprintf(fp, "%d\n", md->TotalNoOfParticles);
-        fprintf(fp, "%.16e\t%.16e\t%.16e\n", md->l[0], md->l[1], md->l[2]);
+        fprintf(fp, "%u\n", md->TotalNoOfParticles);
+        fprintf(fp, formatstr_3xpoint16e, md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
 
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
+            for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pi=0; pi < c->parts_num; pi++)
             {
-                particle_core_t *pc = &cell->parts[pind].core;
-
-                fprintf(fp, "%s %d\n", md->potsys.atomkinds[pc->atomkind].name, pc->GroupID);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->x[0], pc->x[1], pc->x[2]);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->v[0], pc->v[1], pc->v[2]);
+                fprintf(fp, "%s %d\n", md->potsys.atomkinds[c->atomkind[pi]].name, c->GroupID[pi]);
+                fprintf(fp, formatstr_3xpoint16e, POS(c, pi, 0), POS(c, pi, 1), POS(c, pi, 2));
+                fprintf(fp, formatstr_3xpoint16e, VEL(c, pi, 0), VEL(c, pi, 1), VEL(c, pi, 2));
             }
 
-        for (i=1; i < md->SubDomain.numprocs; i++)
+        for (int i=1; i < md->SubDomain.numprocs; i++)
         {
-            is_partcores = (particle_core_t *)malloc(nums[i] * sizeof(particle_core_t));
-            MPI_Recv(is_partcores, nums[i] * sizeof(particle_core_t), MPI_BYTE, i, 150,
-                     md->MD_comm, &status);
+            state_atom_t *states = (state_atom_t *)m_alloc(nums[i] * sizeof(state_atom_t));
 
-            for (k=0; k < nums[i]; k++)
+            MPI_Recv(states, nums[i], md->mpi_types.mpi_statea, i, 150, md->MD_comm, &status);
+
+            for (unsigned k=0; k < nums[i]; k++)
             {
-                particle_core_t *pc = is_partcores + k;
+                state_atom_t *s = states + k;
 
-                fprintf(fp, "%s %d\n", md->potsys.atomkinds[pc->atomkind].name, pc->GroupID);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->x[0], pc->x[1], pc->x[2]);
-                fprintf(fp, "%.16e\t%.16e\t%.16e\n", pc->v[0], pc->v[1], pc->v[2]);
+                fprintf(fp, "%s %d\n", md->potsys.atomkinds[s->atomkind].name, s->GroupID);
+                fprintf(fp, formatstr_3xpoint16e, s->x[0], s->x[1], s->x[2]);
+                fprintf(fp, formatstr_3xpoint16e, s->v[0], s->v[1], s->v[2]);
             }
 
-            free(is_partcores);
+            free(states);
         }
 
         free(nums);
@@ -1048,16 +1151,30 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     }
     else
     {
-        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_INT, nums, 1, MPI_INT, RANK0, md->MD_comm);
-        is_partcores = (particle_core_t *)malloc(md->SubDomain.NumberOfParticles * sizeof(particle_core_t));
+        MPI_Gather(&md->SubDomain.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
-        k = 0;
+        state_atom_t *states = (state_atom_t *)m_alloc(md->SubDomain.NumberOfParticles * sizeof(state_atom_t));
+
+        unsigned k = 0;
+
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < cell->parts_num; pind++)
-                is_partcores[k++] = cell->parts[pind].core;
+            for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pi=0; pi < c->parts_num; pi++)
+            {
+                for (int d=0; d<DIM; d++)
+                    states[k].x[d] = POS(c, pi, d);
 
-        MPI_Send(is_partcores, md->SubDomain.NumberOfParticles * sizeof(particle_core_t), MPI_BYTE, RANK0, 150, md->MD_comm);
-        free(is_partcores);
+                for (int d=0; d<DIM; d++)
+                    states[k].v[d] = VEL(c, pi, d);
+
+                states[k].GroupID = c->GroupID[pi];
+                states[k].atomkind = c->atomkind[pi];
+
+                k++;
+            }
+
+        MPI_Send(states, md->SubDomain.NumberOfParticles, md->mpi_types.mpi_statea, RANK0, 150, md->MD_comm);
+
+        free(states);
     }
 }
 
@@ -1092,25 +1209,61 @@ void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz)
 
 static void create_mpi_types(fmd_t *md)
 {
-    MPI_Type_vector(1, 3, 0, MPI_INT, &md->mpi_types.mpi_ituple);
+    MPI_Datatype temptype;
+
+    /* create and commit mpi_ituple */
+    MPI_Type_contiguous(DIM, MPI_INT, &md->mpi_types.mpi_ituple);
     MPI_Type_commit(&md->mpi_types.mpi_ituple);
-    MPI_Type_vector(1, 3, 0, FMD_MPI_REAL, &md->mpi_types.mpi_rtuple);
+
+    /* create and commit mpi_rtuple */
+    MPI_Type_contiguous(DIM, FMD_MPI_REAL, &md->mpi_types.mpi_rtuple);
     MPI_Type_commit(&md->mpi_types.mpi_rtuple);
+
+    /* create and commit mpi_configa */
+    int configblocklen[3] = {DIM, 1, 1};
+    MPI_Aint configdisplc[3] = {offsetof(config_atom_t, x),
+                                offsetof(config_atom_t, var),
+                                offsetof(config_atom_t, atomkind)};
+    MPI_Datatype configtype[3] = {MPI_FLOAT, MPI_FLOAT, MPI_UNSIGNED};
+    MPI_Type_create_struct(3, configblocklen, configdisplc, configtype, &temptype);
+    MPI_Type_create_resized(temptype, 0, sizeof(config_atom_t), &md->mpi_types.mpi_configa);
+    MPI_Type_free(&temptype);
+    MPI_Type_commit(&md->mpi_types.mpi_configa);
+
+    /* create and commit mpi_statea */
+    int stateblocklen[4] = {1, 1, 1, 1};
+    MPI_Aint statedisplc[4] = {offsetof(state_atom_t, x),
+                               offsetof(state_atom_t, v),
+                               offsetof(state_atom_t, GroupID),
+                               offsetof(state_atom_t, atomkind)};
+    MPI_Datatype statetype[4] = {md->mpi_types.mpi_rtuple,
+                                 md->mpi_types.mpi_rtuple,
+                                 MPI_INT,
+                                 MPI_UNSIGNED};
+    MPI_Type_create_struct(4, stateblocklen, statedisplc, statetype, &temptype);
+    MPI_Type_create_resized(temptype, 0, sizeof(state_atom_t), &md->mpi_types.mpi_statea);
+    MPI_Type_free(&temptype);
+    MPI_Type_commit(&md->mpi_types.mpi_statea);
 }
 
 static void free_mpi_types(fmd_t *md)
 {
     MPI_Type_free(&md->mpi_types.mpi_ituple);
     MPI_Type_free(&md->mpi_types.mpi_rtuple);
+    MPI_Type_free(&md->mpi_types.mpi_configa);
+    MPI_Type_free(&md->mpi_types.mpi_statea);
 }
 
 fmd_t *fmd_create()
 {
-    fmd_t *md = (fmd_t *)malloc(sizeof(fmd_t));
+    fmd_t *md = (fmd_t *)m_alloc(sizeof(fmd_t));
 
     md->MPI_initialized_by_me = FMD_FALSE;
+
     int isMPIInitialized;
+
     MPI_Initialized(&isMPIInitialized);
+
     if (!isMPIInitialized)
     {
         MPI_Init(NULL, NULL);
@@ -1130,9 +1283,10 @@ fmd_t *fmd_create()
     md->SubDomain.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
-    md->ActiveGroup = -1;             // all groups are active by default
+    md->ActiveGroup = ACTIVE_GROUP_ALL;             /* all groups are active by default */
     md->ParticlesDistributed = FMD_FALSE;
     md->GlobalGridExists = FMD_FALSE;
+    md->global_grid = NULL;
     md->BoxSizeDetermined = FMD_FALSE;
     md->PBCdetermined = FMD_FALSE;
     md->Is_MD_comm_root = FMD_FALSE;
@@ -1143,6 +1297,7 @@ fmd_t *fmd_create()
     md->turies_num = 0;
     md->DesiredTemperature = 300.0;
     md->SaveConfigMode = FMD_SCM_XYZ_PARTICLESNUM;
+    md->cell_increment = 10;
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
     md->_OldTotalMDEnergy = 0.0;
@@ -1185,18 +1340,18 @@ fmd_bool_t fmd_proc_isRoot(fmd_t *md)
 
 void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
 {
-    int d;
-
-    for (d=0; d<3; d++)
+    for (int d=0; d<3; d++)
     {
         md->nc[d] = (int)(md->l[d] / cutoff);
         if ((md->nc[d] < 3) && md->PBC[d])
         {
             fprintf(stderr, "ERROR: nc[%d] = %d. Under PBC, this must be greater than 2!\n", d, md->nc[d]);
-            MPI_Abort(MPI_COMM_WORLD, ERROR_NC_TOO_SMALL);
+            MPI_Abort(MPI_COMM_WORLD, ERROR_NCELL_TOO_SMALL);
         }
         md->cellh[d] = md->l[d] / md->nc[d];
     }
+
+    _fmd_cellinfo_init(&md->cellinfo);
 
     if (md->Is_MD_comm_root)
     {
@@ -1204,8 +1359,9 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
         assert(md->global_grid != NULL);
         /* TO-DO: handle memory error */
 
-        _fmd_initialize_grid(md->global_grid, md->nc[0], md->nc[1], md->nc[2]);
+        _fmd_initialize_grid(md->global_grid, &md->cellinfo, md->nc[0], md->nc[1], md->nc[2]);
     }
+
     md->GlobalGridExists = FMD_TRUE;
     md->CutoffRadius = cutoff;
 }
@@ -1248,14 +1404,16 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
 {
     fmd_real_t bak_mdTime, bak_DesiredTemperature;
     fmd_real_t bak_delta_t, bak_BerendsenThermostatParam;
-    int bak_activeGroup;
+    fmd_real_t bak_GlobalTemperature;
+    int bak_ActiveGroup;
 
     // make backups
     bak_mdTime = md->MD_time;
     bak_delta_t = md->delta_t;
     bak_BerendsenThermostatParam = md->BerendsenThermostatParam;
     bak_DesiredTemperature = md->DesiredTemperature;
-    bak_activeGroup = md->ActiveGroup;
+    bak_ActiveGroup = md->ActiveGroup;
+    bak_GlobalTemperature = md->GlobalTemperature;
 
     // initialize
     md->MD_time = 0.0;
@@ -1284,11 +1442,14 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     // end of the time loop
 
     // restore backups
+    if (bak_ActiveGroup != md->ActiveGroup && md->ActiveGroup != ACTIVE_GROUP_ALL)
+        md->GlobalTemperature = bak_GlobalTemperature;
+
     md->MD_time = bak_mdTime;
     fmd_dync_setTimeStep(md, bak_delta_t);
     md->DesiredTemperature = bak_DesiredTemperature;
     md->BerendsenThermostatParam = bak_BerendsenThermostatParam;
-    md->ActiveGroup = bak_activeGroup;
+    md->ActiveGroup = bak_ActiveGroup;
 }
 
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
@@ -1311,7 +1472,7 @@ fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
 {
     cell_t ***grid;
-    int *start, *stop;
+    const int *start, *stop;
     fmd_ituple_t ic;
 
     if (md->ParticlesDistributed)
@@ -1335,25 +1496,20 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     gsl_rng *rng;
     rng = gsl_rng_alloc(gsl_rng_mt19937);
     gsl_rng_set(rng, time(NULL));
-    int d;
 
-    cell_t *cell;
-    int pind;
+    cell_t *c;
+    int pi;
 
     LOOP3D(ic, start, stop)
-        for (cell = &grid[ic[0]][ic[1]][ic[2]], pind = 0; pind < cell->parts_num; pind++)
-        {
-            particle_core_t *pc = &cell->parts[pind].core;
-
-            if (GroupID == -1 || GroupID == pc->GroupID)
+        for (c = &grid[ic[0]][ic[1]][ic[2]], pi = 0; pi < c->parts_num; pi++)
+            if (GroupID == -1 || GroupID == c->GroupID[pi])
             {
-                fmd_real_t mass = md->potsys.atomkinds[pc->atomkind].mass;
+                fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
                 fmd_real_t stdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
 
-                for (d=0; d<3; d++)
-                    pc->v[d] = gsl_ran_gaussian_ziggurat(rng, stdDevVelocity);
+                for (int d=0; d<3; d++)
+                    VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, stdDevVelocity);
             }
-        }
 
     gsl_rng_free(rng);
 }

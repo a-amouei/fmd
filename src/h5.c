@@ -50,7 +50,7 @@ void _fmd_h5_ds_free(h5_dataspaces_t *ds)
     assert(status >= 0);
 }
 
-static void set_attr_ftuple(h5_dataspaces_t *ds, hid_t obj, const char *name, float *f)
+static void set_attr_ftuple(h5_dataspaces_t *ds, hid_t obj, const char *name, const float *f)
 {
     hid_t attr;
     herr_t status;
@@ -64,7 +64,7 @@ static void set_attr_ftuple(h5_dataspaces_t *ds, hid_t obj, const char *name, fl
     assert(status >= 0);
 }
 
-static void set_attr_ituple(h5_dataspaces_t *ds, hid_t obj, const char *name, fmd_ituple_t i)
+static void set_attr_ituple(h5_dataspaces_t *ds, hid_t obj, const char *name, const fmd_ituple_t i)
 {
     hid_t attr;
     herr_t status;
@@ -72,6 +72,20 @@ static void set_attr_ituple(h5_dataspaces_t *ds, hid_t obj, const char *name, fm
     attr = H5Acreate(obj, name, H5T_STD_I32LE, ds->ds_simple_1_3, H5P_DEFAULT, H5P_DEFAULT);
     assert(attr >= 0);
     status = H5Awrite(attr, H5T_NATIVE_INT, i);
+    assert(status >= 0);
+
+    status = H5Aclose(attr);
+    assert(status >= 0);
+}
+
+static void set_attr_utuple(h5_dataspaces_t *ds, hid_t obj, const char *name, const fmd_utuple_t u)
+{
+    hid_t attr;
+    herr_t status;
+
+    attr = H5Acreate(obj, name, H5T_STD_I32LE, ds->ds_simple_1_3, H5P_DEFAULT, H5P_DEFAULT);
+    assert(attr >= 0);
+    status = H5Awrite(attr, H5T_NATIVE_UINT, u);
     assert(status >= 0);
 
     status = H5Aclose(attr);
@@ -108,7 +122,7 @@ static void set_attr_string(h5_dataspaces_t *ds, hid_t obj, const char *name, co
     assert(status >= 0);
 }
 
-static void create_mesh(h5_dataspaces_t *ds, hid_t parent, fmd_ituple_t dims, fmd_ftriple_t UpperBounds)
+static void create_mesh(h5_dataspaces_t *ds, hid_t parent, fmd_utuple_t dims, fmd_ftriple_t UpperBounds)
 {
     hid_t group_id;
     herr_t status;
@@ -118,7 +132,7 @@ static void create_mesh(h5_dataspaces_t *ds, hid_t parent, fmd_ituple_t dims, fm
     set_attr_string(ds, group_id, "vsType", "mesh");
     set_attr_string(ds, group_id, "vsKind", "uniform");
     set_attr_ituple(ds, group_id, "vsStartCell", _fmd_ThreeZeros_int);
-    set_attr_ituple(ds, group_id, "vsNumCells", dims);
+    set_attr_utuple(ds, group_id, "vsNumCells", dims);
     set_attr_ftuple(ds, group_id, "vsLowerBounds", _fmd_ThreeZeros_float);
     set_attr_ftuple(ds, group_id, "vsUpperBounds", UpperBounds);
 
