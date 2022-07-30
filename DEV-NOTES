@@ -22,4 +22,4 @@ Questions:
 
 Remarks:
 
-  #1    Since MPI_BYTE is used to transmit structs, currently the code may not be portable to heterogeneous machines.
+  #1[CLOSED]  Since MPI_BYTE is used to transmit structs, currently the code may not be portable to heterogeneous machines.
