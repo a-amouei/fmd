@@ -117,65 +117,6 @@ static void make_psets_array(fmd_t *md, turi_t *t, array_t *psets)
     qsort(psets->elms, psets->size, sizeof(array_t), arrtcmp);
 }
 
-/*static void report_psets(fmd_t *md, turi_t *t)
-{
-    if (!md->Is_MD_comm_root) return;
-
-    array_t psets;
-
-    make_psets_array(md, t, &psets);
-
-    printf("psets.size = %d\n", psets.size);
-
-    for (int i=0; i < psets.size; i++)
-    {
-        array_t *arrt = (array_t *)(psets.elms) + i;
-
-        for (int j=0; j < arrt->size; j++)
-            printf("%d ", ((int *)(arrt->elms))[j]);
-
-        printf("\n");
-    }
-}*/
-
-/*static void report_table(array_t table[], unsigned ncols)
-{
-    int maxval;
-    int irow = 0;
-
-    FILE *fp = fopen("table.txt", "w");
-    assert(fp!=NULL);
-
-    do
-    {
-        maxval = -1;
-
-        for (int icol=0; icol<ncols; icol++)
-        {
-            int val;
-
-            if (table[icol].size < irow+1)
-                val = -1;
-            else
-                val = ((int *)(table[icol].elms))[irow];
-
-            if (val == -1)
-                fprintf(fp, "    ");
-            else
-                fprintf(fp, "%3d ", val);
-
-            if (val > maxval) maxval = val;
-        }
-
-        fprintf(fp, "\n");
-
-        irow++;
-
-    } while (maxval > -1);
-
-    fclose(fp);
-}*/
-
 static fmd_bool_t is_table_row_available(array_t table[], int pset[], int sizepset, int irow)
 {
     for (int i=0; i < sizepset; i++)
@@ -659,10 +600,10 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
 {
     fmd_ituple_t is_tempo;
 
-    for (int d=0; d<3; d++)                 /* set is_tempo[] to current subdomain */
+    for (int d=0; d<DIM; d++)                 /* set is_tempo[] to current subdomain */
         is_tempo[d] = md->SubDomain.is[d];
 
-    for (int d=0; d<3; d++)
+    for (int d=0; d<DIM; d++)
     {
         fmd_real_t pos;
 
@@ -719,7 +660,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     t->tcells_global_num = dimx * dimy * dimz;
 
-    for (int d=0; d<3; d++)
+    for (int d=0; d<DIM; d++)
     {
         t->itc_start[d] = (cat == FMD_TURI_TTM) ? 1 : 0;
 
