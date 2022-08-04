@@ -44,8 +44,8 @@ static void communicate_in_direction_d(
 
     data_receive = m_alloc(packsize);
 
-    MPI_Sendrecv(data_send, packsize, MPI_BYTE, t->rank_of_lower_owner[d], 85101,
-                 data_receive, packsize, MPI_BYTE, t->rank_of_upper_owner[d], 85101,
+    MPI_Sendrecv(data_send, packsize, MPI_PACKED, t->rank_of_lower_owner[d], 85101,
+                 data_receive, packsize, MPI_PACKED, t->rank_of_upper_owner[d], 85101,
                  md->MD_comm, &status);
 
     if (t->rank_of_lower_owner[d] != MPI_PROC_NULL) free(data_send);
@@ -58,8 +58,8 @@ static void communicate_in_direction_d(
     if (t->rank_of_upper_owner[d] != MPI_PROC_NULL)
         pack(md, t, vitc_start_send_upper, vitc_stop_send_upper, &packsize, &data_send);
 
-    MPI_Sendrecv(data_send, packsize, MPI_BYTE, t->rank_of_upper_owner[d], 85103,
-                 data_receive, packsize, MPI_BYTE, t->rank_of_lower_owner[d], 85103,
+    MPI_Sendrecv(data_send, packsize, MPI_PACKED, t->rank_of_upper_owner[d], 85103,
+                 data_receive, packsize, MPI_PACKED, t->rank_of_lower_owner[d], 85103,
                  md->MD_comm, &status);
 
     if (t->rank_of_upper_owner[d] != MPI_PROC_NULL) free(data_send);
@@ -69,93 +69,6 @@ static void communicate_in_direction_d(
 
     free(data_receive);
 }
-
-// static void communicate_in_direction_d(
-//     fmd_t *md, turi_t *t, int d, fmd_ituple_t vitc_start_send_lower,
-//     fmd_ituple_t vitc_stop_send_lower, fmd_ituple_t vitc_start_receive_lower,
-//     fmd_ituple_t vitc_stop_receive_lower, fmd_ituple_t vitc_start_send_upper,
-//     fmd_ituple_t vitc_stop_send_upper, fmd_ituple_t vitc_start_receive_upper,
-//     fmd_ituple_t vitc_stop_receive_upper, fields_packer_t pack,
-//     fields_unpacker_t unpack)
-// {
-//     MPI_Status status;
-//     MPI_Request request;
-//     size_t packsize;
-//     void *data_receive, *data_send;
-//
-//     if (t->rank_of_lower_owner[d] >= md->SubDomain.myrank && !md->PBC[d])
-//     {
-//         /* we need pack() for sending data; it's called here because we need packsize for receiving data */
-//         pack(md, t, vitc_start_send_upper, vitc_stop_send_upper, &packsize, &data_send);
-//
-//         /* receiving from upper process */
-//
-//         data_receive = m_alloc(packsize);
-//
-//         MPI_Recv(data_receive, packsize, MPI_BYTE, t->rank_of_upper_owner[d], 85101, md->MD_comm, &status);
-//
-//         unpack(md, t, vitc_start_receive_upper, vitc_stop_receive_upper, data_receive);
-//
-//         free(data_receive);
-//
-//         /* sending to upper process */
-//
-//         MPI_Send(data_send, packsize, MPI_BYTE, t->rank_of_upper_owner[d], 85103, md->MD_comm);
-//
-//         free(data_send);
-//     }
-//     else
-//         if (t->rank_of_upper_owner[d] <= md->SubDomain.myrank && !md->PBC[d])
-//         {
-//             /* sending to lower process */
-//
-//             pack(md, t, vitc_start_send_lower, vitc_stop_send_lower, &packsize, &data_send);
-//
-//             MPI_Send(data_send, packsize, MPI_BYTE, t->rank_of_lower_owner[d], 85101, md->MD_comm);
-//
-//             free(data_send);
-//
-//             /* receiving from lower process */
-//
-//             data_receive = m_alloc(packsize);
-//
-//             MPI_Recv(data_receive, packsize, MPI_BYTE, t->rank_of_lower_owner[d], 85103, md->MD_comm, &status);
-//
-//             unpack(md, t, vitc_start_receive_lower, vitc_stop_receive_lower, data_receive);
-//
-//             free(data_receive);
-//         }
-//         else
-//         {
-//             /* sending to lower process, receiving from upper process */
-//
-//             pack(md, t, vitc_start_send_lower, vitc_stop_send_lower, &packsize, &data_send);
-//
-//             data_receive = m_alloc(packsize);
-//
-//             MPI_Isend(data_send, packsize, MPI_BYTE, t->rank_of_lower_owner[d], 85101, md->MD_comm, &request);
-//             MPI_Recv(data_receive, packsize, MPI_BYTE, t->rank_of_upper_owner[d], 85101, md->MD_comm, &status);
-//             MPI_Wait(&request, &status);
-//
-//             free(data_send);
-//
-//             unpack(md, t, vitc_start_receive_upper, vitc_stop_receive_upper, data_receive);
-//
-//             /* sending to upper process, receiving from lower process */
-//
-//             pack(md, t, vitc_start_send_upper, vitc_stop_send_upper, &packsize, &data_send);
-//
-//             MPI_Isend(data_send, packsize, MPI_BYTE, t->rank_of_upper_owner[d], 85103, md->MD_comm, &request);
-//             MPI_Recv(data_receive, packsize, MPI_BYTE, t->rank_of_lower_owner[d], 85103, md->MD_comm, &status);
-//             MPI_Wait(&request, &status);
-//
-//             free(data_send);
-//
-//             unpack(md, t, vitc_start_receive_lower, vitc_stop_receive_lower, data_receive);
-//
-//             free(data_receive);
-//         }
-// }
 
 /* vitc stands for "virtual index of turi-cell" */
 static void prepare_communication_in_direction_d(
