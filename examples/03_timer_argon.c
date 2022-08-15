@@ -26,7 +26,7 @@
 
 fmd_handle_t timer1, timer2;
 
-void handleEvents(fmd_t *md, fmd_event_t event, fmd_event_params_t *params)
+void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
 {
     switch (event)
     {
@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
     timer2 = fmd_timer_makeSimple(md, 0.0, 0.04, -1.0);
 
     // set size of the simulation box (in Angstrom)
-    double latticeParameter = 5.26;
-    fmd_box_setSize(md, 10*latticeParameter, 10*latticeParameter, 10*latticeParameter);
+    double LatticeParameter = 5.26;
+    fmd_box_setSize(md, 10*LatticeParameter, 10*LatticeParameter, 10*LatticeParameter);
 
     // set periodic boundary conditions in three dimensions
     fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     fmd_box_createGrid(md, cutoff);
 
     // make an fcc cuboid at a given position and with a given size
-    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, latticeParameter, 0, 0);
+    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, LatticeParameter, 0, 0);
 
     // distribute the matter among subdomains
     fmd_matt_distribute(md);

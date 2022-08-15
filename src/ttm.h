@@ -1,7 +1,7 @@
 /*
-  events.h: This file is part of Free Molecular Dynamics
+  ttm.h: This file is part of Free Molecular Dynamics
 
-  Copyright (C) 2020 Arham Amouye Foumani
+  Copyright (C) 2022 Arham Amouye Foumani
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,29 +17,22 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef EVENTS_H
-#define EVENTS_H
+#ifndef TTM_H
+#define TTM_H
 
 #include "config.h"
 #include "types.h"
 
-typedef enum
+typedef struct _ttm
 {
-    FMD_EVENT_TIMER_TICK,
-    FMD_EVENT_FIELD_UPDATE
-} fmd_event_t;
+    fmd_real_t C_gamma;     /* used when electron heat capacity is linear function of temperature */
+    fmd_real_t K;           /* used when electron heat conductivity is constant */
+    fmd_real_t G;           /* used when electron-ion coupling factor is constant */
+} ttm_t;
 
-typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_params_t *params);
+typedef struct _turi turi_t;
 
-typedef struct
-{
-    fmd_handle_t timer;
-} fmd_event_params_timer_tick_t;
+ttm_t *_fmd_ttm_constructor(turi_t *t);
+void _fmd_ttm_destructor(ttm_t **ttm);
 
-typedef struct
-{
-    fmd_handle_t turi;
-    fmd_handle_t field;
-} fmd_event_params_field_update_t;
-
-#endif /* EVENTS_H */
+#endif /* TTM_H */

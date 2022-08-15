@@ -24,6 +24,7 @@
 #include "events.h"
 #include "general.h"
 #include "h5.h"
+#include "ttm.h"
 
 typedef struct
 {
@@ -238,7 +239,7 @@ static void call_field_update_event_handler(fmd_t *md, int field_index, int turi
     params.field = field_index;
     params.turi = turi_index;
 
-    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, (fmd_event_params_t *)&params);
+    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, (fmd_params_t *)&params);
 }
 
 /* If the argument x is extremely close to an integer,
@@ -662,7 +663,13 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     for (int d=0; d<DIM; d++)
     {
-        t->itc_start[d] = (cat == FMD_TURI_TTM) ? 1 : 0;
+        switch (cat)
+        {
+            case FMD_TURI_TTM_TYPE1:
+                t->itc_start[d] = (md->ns[d] == 1 || t->tdims_global[d] == 1) ? 0 : 1;
+            default:
+                t->itc_start[d] = 0;
+        }
 
         t->tcellh[d] = md->l[d] / t->tdims_global[d];
 
@@ -689,6 +696,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
     t->cat = cat;
 
+    t->ttm = NULL;
     t->fields = NULL;
     t->fields_num = 0;
 
@@ -697,7 +705,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         case FMD_TURI_CUSTOM:
             break;
 
-        case FMD_TURI_TTM:
+        case FMD_TURI_TTM_TYPE1:
+            t->ttm = _fmd_ttm_constructor(t);
             break;
 
         default:
@@ -1396,6 +1405,8 @@ static void turi_free(fmd_t *md, turi_t *t)
     for (unsigned u=0; u < t->comms_num; u++)
         turi_comm_free(&t->comms[u]);
     free(t->comms);
+
+    _fmd_ttm_destructor(&t->ttm);
 
     turi_ownerscomm_free(md, &t->ownerscomm);
 }

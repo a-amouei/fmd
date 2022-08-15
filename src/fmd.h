@@ -51,7 +51,7 @@ typedef enum
 typedef enum
 {
     FMD_TURI_CUSTOM,
-    FMD_TURI_TTM
+    FMD_TURI_TTM_TYPE1
 } fmd_turi_t;
 
 typedef enum
@@ -73,9 +73,9 @@ typedef enum
     FMD_EVENT_FIELD_UPDATE
 } fmd_event_t;
 
-typedef struct _fmd_event_params fmd_event_params_t;
+typedef struct _fmd_params fmd_params_t;
 
-typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_event_params_t *params);
+typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_params_t *params);
 
 typedef struct
 {
@@ -87,6 +87,21 @@ typedef struct
     fmd_handle_t turi;
     fmd_handle_t field;
 } fmd_event_params_field_update_t;
+
+typedef struct
+{
+    fmd_real_t gamma;
+} fmd_ttm_params_heat_capacity_linear_t;
+
+typedef struct
+{
+    fmd_real_t value;
+} fmd_ttm_params_heat_conductivity_constant_t;
+
+typedef struct
+{
+    fmd_real_t value;
+} fmd_ttm_params_coupling_factor_constant_t;
 
 /* functions */
 
@@ -171,5 +186,9 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
 void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path);
+
+void fmd_ttm_setHeatCapacity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
+void fmd_ttm_setHeatConductivity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
+void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 
 #endif /* FMD_H */

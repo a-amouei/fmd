@@ -54,7 +54,7 @@ typedef struct
 typedef enum
 {
     FMD_TURI_CUSTOM,
-    FMD_TURI_TTM
+    FMD_TURI_TTM_TYPE1
 } fmd_turi_t; /* category of the turi */
 
 typedef struct
@@ -76,6 +76,8 @@ typedef struct
     int *recvcounts;              /* used when gattering data of all tcells (for root process) */
     int *displs;                  /* used when gattering data of all tcells (for root process) */
 } turi_ownerscomm_t;
+
+typedef struct _ttm ttm_t;
 
 typedef struct _turi
 {
@@ -112,6 +114,7 @@ typedef struct _turi
     turi_ownerscomm_t ownerscomm;
     fmd_real_t starttime;       /* do not update fields when time < starttime */
     fmd_real_t stoptime;        /* do not update fields when time > stoptime (unsless stoptime < starttime) */
+    ttm_t *ttm;
 } turi_t;
 
 typedef struct _fmd fmd_t;
