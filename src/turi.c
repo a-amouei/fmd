@@ -1151,7 +1151,8 @@ static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allr
             if (allreduce)
             {
                 /* remove it from "intervals" */
-                f->intervals[j] = --f->intervals_num;
+                f->intervals[j] = f->intervals[--f->intervals_num];
+                f->intervals = re_alloc(f->intervals, f->intervals_num * sizeof(fmd_real_t));
 
                 /* add it to "intervals_allreduce" */
                 ADD_interval_TO_ARRAY(f->intervals_allreduce, f->intervals_allreduce_num, interval);
