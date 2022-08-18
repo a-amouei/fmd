@@ -75,7 +75,7 @@ void compLocOrdParam(fmd_t *md)
 
     if (md->LOP_iteration == 0)
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
+            for (item1_p = ARRAY_ELEMENT(md->SubDomain.grid, ic); item1_p != NULL; item1_p = item1_p->next_p)
             {
                 item1_p->P.LocOrdParam = 0.;
                 for (d=0; d<3; d++)
@@ -89,7 +89,7 @@ void compLocOrdParam(fmd_t *md)
             q[i][d] *= 4.0 * M_PI / latticeParameter * q[i][d];
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
+        for (item1_p = ARRAY_ELEMENT(md->SubDomain.grid, ic); item1_p != NULL; item1_p = item1_p->next_p)
         {
             fmd_real_t = img = 0.;
             Z = 0;
@@ -104,7 +104,7 @@ void compLocOrdParam(fmd_t *md)
                     {
                         SET_jc_IN_DIRECTION(2)
                         // iterate over all items in cell jc
-                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                        for (item2_p = ARRAY_ELEMENT(md->SubDomain.grid, jc); item2_p != NULL; item2_p = item2_p->next_p)
                             if (item1_p != item2_p)
                             {
                                 for (d=0; d<3; d++)
@@ -149,7 +149,7 @@ void compLocOrdParam(fmd_t *md)
     _fmd_ghostparticles_update_LocOrdParam(md);
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (item1_p = md->SubDomain.grid[ic[0]][ic[1]][ic[2]]; item1_p != NULL; item1_p = item1_p->next_p)
+        for (item1_p = ARRAY_ELEMENT(md->SubDomain.grid, ic); item1_p != NULL; item1_p = item1_p->next_p)
         {
             fmd_real_t = item1_p->P.LocOrdParam;
             Z = 0;
@@ -164,7 +164,7 @@ void compLocOrdParam(fmd_t *md)
                     {
                         SET_jc_IN_DIRECTION(2)
                         // iterate over all items in cell jc
-                        for (item2_p = md->SubDomain.grid[jc[0]][jc[1]][jc[2]]; item2_p != NULL; item2_p = item2_p->next_p)
+                        for (item2_p = ARRAY_ELEMENT(md->SubDomain.grid, jc); item2_p != NULL; item2_p = item2_p->next_p)
                             if (item1_p != item2_p)
                             {
                                 for (d=0; d<3; d++)
@@ -217,7 +217,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
         /* iterate over all particles in cell ic */
 
         int i=0;
-        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         while (i < c->parts_num)
         {
@@ -229,7 +229,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 
             mass = md->potsys.atomkinds[c->atomkind[i]].mass;
 
-            for (d=0; d<3; d++)
+            for (d=0; d<DIM; d++)
             {
                 if (UseThermostat) VEL(c, i, d) *= VelocityScale;
 
@@ -274,7 +274,7 @@ void fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
     {
         for (ic[1] = md->SubDomain.ic_start[1]; ic[1] < md->SubDomain.ic_stop[1]; ic[1]++)
             for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
-                for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+                for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
                 {
                     if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                         continue;
@@ -316,7 +316,7 @@ static fmd_real_t compVirial_internal(fmd_t *md)
     cell_t *c;
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
             virial += POS(c, i, 0) * FRC(c, i, 0) +
                       POS(c, i, 1) * FRC(c, i, 1) +
                       POS(c, i, 2) * FRC(c, i, 2);
@@ -363,7 +363,7 @@ void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
     cell_t *c;
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
             for (d=0; d<3; d++)
             {
                 if (POS(c, i, d) < LocalLower[d])
@@ -426,7 +426,7 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
     cell_t *c;
 
     LOOP3D(ic, start, stop)
-        for (c = &grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+        for (c = &ARRAY_ELEMENT(grid, ic), i=0; i < c->parts_num; i++)
             if (GroupID == -1 || GroupID == c->GroupID[i])
             {
                 VEL(c, i, 0) += vx;
@@ -448,7 +448,7 @@ static void calculate_GlobalTemperature_etc(fmd_t *md)
         md->ActiveGroupParticlesNum = 0;
 
         LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-            for (c=&md->global_grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+            for (c=&ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
             {
                 if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                     continue;
@@ -456,7 +456,7 @@ static void calculate_GlobalTemperature_etc(fmd_t *md)
                 md->ActiveGroupParticlesNum++;
 
                 fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
-                for (int d=0; d<3; d++)
+                for (int d=0; d<DIM; d++)
                     m_vSqd_Sum += mass * sqrr(VEL(c, i, d));
             }
 
@@ -518,7 +518,7 @@ static void *create_packbuffer_for_matt_distribute(fmd_t *md, fmd_ituple_t globa
 
     LOOP3D(ic, global_icstart, global_icstop)
     {
-        c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->global_grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -558,7 +558,7 @@ static void pack_for_matt_distribute(fmd_t *md, void *buff, int *bytecount,
 
     LOOP3D(ic, global_icstart, global_icstop)
     {
-        c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->global_grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
 
@@ -600,8 +600,8 @@ static void transfer_from_globalgrid_to_rank0_grid(fmd_t *md)
     {
         _fmd_conv_ic_loc_to_glob(md, icl, icg);
 
-        cl = &md->SubDomain.grid[icl[0]][icl[1]][icl[2]];
-        cg = &md->global_grid[icg[0]][icg[1]][icg[2]];
+        cl = &ARRAY_ELEMENT(md->SubDomain.grid, icl);
+        cg = &ARRAY_ELEMENT(md->global_grid, icg);
 
         cl->parts_num = cg->parts_num;
         md->SubDomain.NumberOfParticles += cl->parts_num;
@@ -642,7 +642,7 @@ void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Unpack(packbuf, bufsize, &pos, &c->parts_num, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -818,12 +818,12 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
             assert( fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]) == 3 ); /* TO-DO: handle error */
             assert( fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]) == 3 ); /* TO-DO: handle error */
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
 
             cell_t *c;
 
-            c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+            c = &ARRAY_ELEMENT(md->global_grid, ic);
 
             j = _fmd_cell_new_particle(md, c);
 
@@ -831,7 +831,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
             c->atomkind[j] = atomkind;
             c->AtomID[j] = md->TotalNoOfParticles++;
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
             {
                 POS(c, j, d) = x[d];
                 VEL(c, j, d) = v[d];
@@ -851,7 +851,7 @@ static void refreshGrid(fmd_t *md)
     {
         /* iterate over all particles in cell ic */
 
-        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
         int i = 0;  /* particle index */
 
         while (i < c->parts_num)
@@ -870,7 +870,7 @@ static void refreshGrid(fmd_t *md)
 
             if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
             {
-                cell_t *c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]];
+                cell_t *c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc);
                 unsigned j = _fmd_cell_new_particle(md, c2);
 
                 _fmd_cell_copy_atom_from_cell_to_cell(c, i, c2, j);
@@ -895,7 +895,7 @@ void rescaleVelocities(fmd_t *md)
     int i;
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
             for (int d=0; d<3; d++)
                 VEL(cell, i, d) *= scale;
 
@@ -913,7 +913,7 @@ static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)
     localdata = (config_atom_t *)m_alloc(md->SubDomain.NumberOfParticles * sizeof(config_atom_t));
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pind=0; pind < c->parts_num; pind++)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), pind=0; pind < c->parts_num; pind++)
         {
             if (md->CompLocOrdParam)
             {
@@ -1121,7 +1121,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
 
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pi=0; pi < c->parts_num; pi++)
+            for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), pi=0; pi < c->parts_num; pi++)
             {
                 fprintf(fp, "%s %d\n", md->potsys.atomkinds[c->atomkind[pi]].name, c->GroupID[pi]);
                 fprintf(fp, formatstr_3xpoint16e, POS(c, pi, 0), POS(c, pi, 1), POS(c, pi, 2));
@@ -1158,7 +1158,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         unsigned k = 0;
 
         LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-            for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], pi=0; pi < c->parts_num; pi++)
+            for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), pi=0; pi < c->parts_num; pi++)
             {
                 for (int d=0; d<DIM; d++)
                     states[k].x[d] = POS(c, pi, d);
@@ -1501,14 +1501,14 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     int pi;
 
     LOOP3D(ic, start, stop)
-        for (c = &grid[ic[0]][ic[1]][ic[2]], pi = 0; pi < c->parts_num; pi++)
+        for (c = &ARRAY_ELEMENT(grid, ic), pi = 0; pi < c->parts_num; pi++)
             if (GroupID == -1 || GroupID == c->GroupID[pi])
             {
                 fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
-                fmd_real_t stdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
+                fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
 
-                for (int d=0; d<3; d++)
-                    VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, stdDevVelocity);
+                for (int d=0; d<DIM; d++)
+                    VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
             }
 
     gsl_rng_free(rng);

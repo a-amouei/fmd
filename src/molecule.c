@@ -202,7 +202,7 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
 #define SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(xc)             \
     do                                                                      \
     {                                                                       \
-        cell_t *cell = &md->SubDomain.grid[(xc)[0]][(xc)[1]][(xc)[2]];      \
+        cell_t *cell = &ARRAY_ELEMENT(md->SubDomain.grid, xc);              \
         ind = find_neighbor_in_cell(cell, MolID, neighborID);               \
                                                                             \
         if (ind > -1) /* if the described neighbor was found */             \
@@ -355,7 +355,7 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
 
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < c->parts_num; i++)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
         {
             if (c->molkind[i] == 0) continue;
 

@@ -112,7 +112,7 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
                         cell_t *c2;
                         unsigned i2;
 
-                        for (c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]], i2=0; i2 < c2->parts_num; i2++)
+                        for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                         {
                             if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                 continue;
@@ -195,7 +195,7 @@ void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
                         cell_t *c2;
                         unsigned i2;
 
-                        for (c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]], i2=0; i2 < c2->parts_num; i2++)
+                        for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                         {
                             if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                 continue;

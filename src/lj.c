@@ -69,7 +69,7 @@ void fmd_computeLJ(fmd_t *md)
                                 SET_jc_IN_DIRECTION(2);
 
                                 /* iterate over all items in cell jc */
-                                for (c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]], i2=0; i2 < c2->parts_num; i2++)
+                                for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                                 {
                                     if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                         continue;

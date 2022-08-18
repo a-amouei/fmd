@@ -23,6 +23,8 @@
 #include "config.h"
 #include "types.h"
 
+#define ARRAY_ELEMENT(array, iv) ((array)[(iv)[0]][(iv)[1]][(iv)[2]])
+
 typedef enum {ARRAY_NEAT3D, ARRAY_SEMINEAT3D, ARRAY_ORDINARY3D} array_kind_t;
 
 typedef struct _fmd_array3D fmd_array3D_t;

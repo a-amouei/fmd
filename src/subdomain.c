@@ -42,7 +42,7 @@ fmd_real_t _fmd_convert_pos_to_subd_coord_1D(fmd_t *md, fmd_real_t pos, int d)
    index of is[] = {1, 0, 3}. */
 void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s)
 {
-    for (int d=0; d<3; d++)
+    for (int d=0; d<DIM; d++)
         s[d] = _fmd_convert_pos_to_subd_coord_1D(md, pos[d], d);
 }
 
@@ -51,7 +51,7 @@ static void clean_grid_cells(cell_t ***grid, fmd_utuple_t ex)
     fmd_ituple_t ic;
 
     LOOP3D(ic, _fmd_ThreeZeros_int, ex)
-        _fmd_cell_free(&grid[ic[0]][ic[1]][ic[2]]);
+        _fmd_cell_free(&ARRAY_ELEMENT(grid, ic));
 }
 
 void fmd_subd_free(fmd_t *md)

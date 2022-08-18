@@ -48,7 +48,7 @@ static void *create_packbuffer_for_Fembpack(fmd_t *md, fmd_ituple_t ic_start, fm
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -74,7 +74,7 @@ static void Femb_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
@@ -92,7 +92,7 @@ static void Femb_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
     LOOP3D(ic, ic_start, ic_stop)
     {
         unsigned num;
-        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -121,7 +121,7 @@ static void *create_packbuffer_for_ghostinit(fmd_t *md, fmd_ituple_t ic_start, f
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -164,7 +164,7 @@ static void ghostinit_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
@@ -215,7 +215,7 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
     LOOP3D(ic, ic_start, ic_stop)
     {
         unsigned num;
-        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -266,7 +266,7 @@ static void *create_packbuffer_for_migrate(fmd_t *md, fmd_ituple_t ic_start, fmd
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -306,7 +306,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
     {
         LOOP3D(ic, ic_start, ic_stop)
         {
-            c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+            c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
             if (c->parts_num > 0)
             {
@@ -323,7 +323,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
@@ -370,7 +370,7 @@ static void migrate_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
     LOOP3D(ic, ic_start, ic_stop)
     {
         unsigned incr;
-        cell_t *c = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]];
+        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
 
         MPI_Unpack(in, insize, &byte, &incr, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -607,7 +607,7 @@ static inline void cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_
     fmd_ituple_t ic;
 
     LOOP3D(ic, ic_from, ic_to)
-        _fmd_cell_minimize(md, &md->SubDomain.grid[ic[0]][ic[1]][ic[2]]);
+        _fmd_cell_minimize(md, &ARRAY_ELEMENT(md->SubDomain.grid, ic));
 }
 
 void _fmd_ghostparticles_delete(fmd_t *md)

@@ -34,7 +34,7 @@ static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *Momentum
     int i;
 
     LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-        for (cell = &md->global_grid[ic[0]][ic[1]][ic[2]], i = 0; i < cell->parts_num; i++)
+        for (cell = &ARRAY_ELEMENT(md->global_grid, ic), i = 0; i < cell->parts_num; i++)
             if (cell->GroupID[i] == RESERVED_GROUP)
             {
                 cell->GroupID[i] = GroupID;
@@ -99,7 +99,7 @@ static void fmd_matt_makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
             }
 
-            cell_t *c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+            cell_t *c = &ARRAY_ELEMENT(md->global_grid, ic);
 
             unsigned pi = _fmd_cell_new_particle(md, c);
 
@@ -284,7 +284,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
             }
 
-            cell_t *c = &md->global_grid[ic[0]][ic[1]][ic[2]];
+            cell_t *c = &ARRAY_ELEMENT(md->global_grid, ic);
             unsigned pi = _fmd_cell_new_particle(md, c);
 
             c->AtomIDlocal[pi] = j;

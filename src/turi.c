@@ -270,7 +270,7 @@ static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D
     for (int i=0; i < owcomm->owned_tcells_num; i++)
     {
         int *itc = owcomm->owned_tcells[i];
-        sendbuf[i] = lcd[itc[0]][itc[1]][itc[2]];
+        sendbuf[i] = ARRAY_ELEMENT(lcd, itc);
     }
 
     fmd_real_t *recvbuf;
@@ -293,7 +293,7 @@ static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D
         for (int i=0; i < t->tcells_global_num; i++)
         {
             int *itc = owcomm->global_indexes[i];
-            ((fmd_real_t ***)out->data)[itc[0]][itc[1]][itc[2]] = recvbuf[i];
+            ARRAY_ELEMENT((fmd_real_t ***)out->data, itc) = recvbuf[i];
         }
 
         free(recvbuf);
@@ -315,7 +315,7 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
     for (int i=0; i < owcomm->owned_tcells_num; i++)
     {
         int *itc = owcomm->owned_tcells[i];
-        sendbuf[i] = lcd[itc[0]][itc[1]][itc[2]];
+        sendbuf[i] = ARRAY_ELEMENT(lcd, itc);
     }
 
     unsigned *recvbuf;
@@ -338,7 +338,7 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
         for (int i=0; i < t->tcells_global_num; i++)
         {
             int *itc = owcomm->global_indexes[i];
-            ((unsigned ***)out->data)[itc[0]][itc[1]][itc[2]] = recvbuf[i];
+            ARRAY_ELEMENT((unsigned ***)out->data, itc) = recvbuf[i];
         }
 
         free(recvbuf);
@@ -360,8 +360,8 @@ static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array
     for (int i=0; i < owcomm->owned_tcells_num; i++)
     {
         int *itc = owcomm->owned_tcells[i];
-        for (int d=0; d<3; d++)
-            sendbuf[i][d] = lcd[itc[0]][itc[1]][itc[2]][d];
+        for (int d=0; d<DIM; d++)
+            sendbuf[i][d] = ARRAY_ELEMENT(lcd, itc)[d];
     }
 
     fmd_rtuple_t *recvbuf;
@@ -385,8 +385,8 @@ static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array
         {
             int *itc = owcomm->global_indexes[i];
 
-            for (int d=0; d<3; d++)
-                ((fmd_rtuple_t ***)out->data)[itc[0]][itc[1]][itc[2]][d] = recvbuf[i][d];
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT((fmd_rtuple_t ***)out->data, itc)[d] = recvbuf[i][d];
         }
 
         free(recvbuf);
@@ -749,7 +749,7 @@ inline static void prepare_buf1_real(fmd_real_t *buf1, turi_comm_t *tcm, field_t
     {
         int *itc = tcm->itcs[j];
 
-        buf1[j] = ((fmd_real_t ***)f->data.data)[itc[0]][itc[1]][itc[2]];
+        buf1[j] = ARRAY_ELEMENT((fmd_real_t ***)f->data.data, itc);
     }
 }
 
@@ -759,8 +759,8 @@ inline static void prepare_buf1_rtuple(fmd_rtuple_t *buf1, turi_comm_t *tcm, fie
     {
         int *itc = tcm->itcs[j];
 
-        for (int d=0; d<3; d++)
-            buf1[j][d] = ((fmd_rtuple_t ***)f->data.data)[itc[0]][itc[1]][itc[2]][d];
+        for (int d=0; d<DIM; d++)
+            buf1[j][d] = ARRAY_ELEMENT((fmd_rtuple_t ***)f->data.data, itc)[d];
     }
 }
 
@@ -770,7 +770,7 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
     {
         int *itc = tcm->itcs[j];
 
-        buf1[j] = ((unsigned ***)f->data.data)[itc[0]][itc[1]][itc[2]];
+        buf1[j] = ARRAY_ELEMENT((unsigned ***)f->data.data, itc);
     }
 }
 
@@ -793,9 +793,9 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
         /* do communication */
 
         if (allreduce)
-            MPI_Allreduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
+            MPI_Allreduce(buf1, buf2, DIM*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
         else
-            MPI_Reduce(buf1, buf2, 3*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
+            MPI_Reduce(buf1, buf2, DIM*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
 
         /* copy from buf2 to data array */
 
@@ -805,8 +805,8 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
             {
                 int *itc = tcm->itcs[j];
 
-                for (int d=0; d<3; d++)
-                    ((fmd_rtuple_t ***)f->data.data)[itc[0]][itc[1]][itc[2]][d] = ((fmd_rtuple_t *)buf2)[j][d];
+                for (int d=0; d<DIM; d++)
+                    ARRAY_ELEMENT((fmd_rtuple_t ***)f->data.data, itc)[d] = ((fmd_rtuple_t *)buf2)[j][d];
             }
         }
     }
@@ -846,7 +846,7 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
             {
                 int *itc = tcm->itcs[j];
 
-                ((fmd_real_t ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((fmd_real_t *)buf2)[j];
+                ARRAY_ELEMENT((fmd_real_t ***)f->data.data, itc) = ((fmd_real_t *)buf2)[j];
             }
         }
     }
@@ -886,7 +886,7 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
             {
                 int *itc = tcm->itcs[j];
 
-                ((unsigned ***)f->data.data)[itc[0]][itc[1]][itc[2]] = ((unsigned *)buf2)[j];
+                ARRAY_ELEMENT((unsigned ***)f->data.data, itc) = ((unsigned *)buf2)[j];
             }
         }
 
@@ -908,14 +908,14 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
     int i;
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
         {
             /* find local index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* count atoms */
-            num[itc[0]][itc[1]][itc[2]]++;
+            ARRAY_ELEMENT(num, itc)++;
         }
 
     /* do communications */
@@ -929,6 +929,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
 static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 {
     field_t *fdep = &t->fields[f->dependcs[0]];
+
     /* update the dependency field if not already updated */
     if (fdep->timestep != md->time_iteration) update_field_number(md, fdep, t, allreduce || fdep->allreduce_now);
 
@@ -940,14 +941,14 @@ static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bo
         fmd_ituple_t itc;
 
         LOOP3D(itc, t->itc_start, t->itc_stop)
-            nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
+            ARRAY_ELEMENT(nd, itc) = ARRAY_ELEMENT(num, itc) / t->tcell_volume;
     }
     else
     {
         for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
         {
             int *itc = t->ownerscomm.owned_tcells[i];
-            nd[itc[0]][itc[1]][itc[2]] = num[itc[0]][itc[1]][itc[2]] / t->tcell_volume;
+            ARRAY_ELEMENT(nd, itc) = ARRAY_ELEMENT(num, itc) / t->tcell_volume;
         }
     }
 
@@ -966,16 +967,17 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
     fmd_ituple_t ic, itc;
     cell_t *cell;
     int i;
+
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
         {
             /* find index of turi-cell from particle's position */
             for (int d=0; d<3; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* update mass for turi-cell with index of itc */
-            mass[itc[0]][itc[1]][itc[2]] += md->potsys.atomkinds[cell->atomkind[i]].mass;
+            ARRAY_ELEMENT(mass, itc) += md->potsys.atomkinds[cell->atomkind[i]].mass;
         }
 
     /* do communications */
@@ -1000,19 +1002,19 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
         {
 
             /* find index of turi-cell from particle's position */
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* calculate vcm and mass (first phase) */
 
             fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
 
-            for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] += m * VEL(cell, i, d);
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT(vcm, itc)[d] += m * VEL(cell, i, d);
         }
 
     /* do communications */
@@ -1025,16 +1027,16 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
     if (allreduce)
     {
         LOOP3D(itc, t->itc_start, t->itc_stop)
-            for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT(vcm, itc)[d] /= ARRAY_ELEMENT(mass, itc);
     }
     else
     {
         for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
         {
             int *itc = t->ownerscomm.owned_tcells[i];
-            for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT(vcm, itc)[d] /= ARRAY_ELEMENT(mass, itc);
         }
     }
 
@@ -1052,9 +1054,9 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     /* clean data of mass and vcm fields (initialize with zeros) */
     LOOP3D(itc, t->itc_start, t->itc_stop)
     {
-        mass[itc[0]][itc[1]][itc[2]] = 0.0;
-        for (int d=0; d<3; d++)
-            vcm[itc[0]][itc[1]][itc[2]][d] = 0.0;
+        ARRAY_ELEMENT(mass, itc) = 0.0;
+        for (int d=0; d<DIM; d++)
+            ARRAY_ELEMENT(vcm, itc)[d] = 0.0;
     }
 
     cell_t *cell;
@@ -1062,20 +1064,20 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
 
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (cell = &md->SubDomain.grid[ic[0]][ic[1]][ic[2]], i=0; i < cell->parts_num; i++)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
         {
 
             /* find index of turi-cell from particle's position */
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* calculate vcm and mass (first phase) */
 
             fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
 
-            mass[itc[0]][itc[1]][itc[2]] += m;
-            for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] += m * VEL(cell, i, d);
+            ARRAY_ELEMENT(mass, itc) += m;
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT(vcm, itc)[d] += m * VEL(cell, i, d);
         }
 
     /* do communications */
@@ -1089,16 +1091,16 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     if (allreduce)
     {
         LOOP3D(itc, t->itc_start, t->itc_stop)
-            for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT(vcm, itc)[d] /= ARRAY_ELEMENT(mass, itc);
     }
     else
     {
         for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
         {
             int *itc = t->ownerscomm.owned_tcells[i];
-            for (int d=0; d<3; d++)
-                vcm[itc[0]][itc[1]][itc[2]][d] /= mass[itc[0]][itc[1]][itc[2]];
+            for (int d=0; d<DIM; d++)
+                ARRAY_ELEMENT(vcm, itc)[d] /= ARRAY_ELEMENT(mass, itc);
         }
     }
 
@@ -1116,6 +1118,30 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allred
         update_field_vcm_and_mass(md, f, fmass, t, allreduce);
     else
         update_field_vcm_only(md, f, fmass, t, allreduce);
+}
+
+static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
+                                                turi_t *t, fmd_bool_t allreduce)
+{
+}
+
+static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
+                                          turi_t *t, fmd_bool_t allreduce)
+{
+}
+
+static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+{
+    field_t *fnum = &t->fields[f->dependcs[0]];
+    field_t *fvcm = &t->fields[f->dependcs[1]];
+
+    /* update the vcm field if not already updated */
+    if (fvcm->timestep != md->time_iteration) update_field_vcm(md, fvcm, t, FMD_TRUE);
+
+    if (fnum->timestep != md->time_iteration)  /* if fnum is not already updated */
+        update_field_temperature_and_number(md, f, fnum, fvcm, t, allreduce);
+    else
+        update_field_temperature_only(md, f, fnum, fvcm, t, allreduce);
 }
 
 #define ADD_interval_TO_ARRAY(array, num, interval)                            \
@@ -1161,18 +1187,21 @@ static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allr
     }
 }
 
+/* when a field is updated and allreduce is equal to FMD_FALSE, in the current subdomain
+   the field is only updated in those turi-cells which are "owned" by the current subdomain. */
 static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce)
 {
     int i;
     field_t *f;
-    unsigned dep1;
+    unsigned dep1, dep2;
     turi_t *t = &md->turies[turi];
 
     /* add dependency fields */
     switch (cat)
     {
         case FMD_FIELD_TEMPERATURE:
-            dep1 = field_add(md, turi, FMD_FIELD_VCM, interval, FMD_TRUE);
+            dep1 = field_add(md, turi, FMD_FIELD_NUMBER, interval, allreduce);
+            dep2 = field_add(md, turi, FMD_FIELD_VCM, interval, FMD_TRUE);
             break;
 
         case FMD_FIELD_VCM:
@@ -1208,7 +1237,14 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
         f->intervals_num = 0;
         t->fields_num++;
 
-        if (cat == FMD_FIELD_TEMPERATURE || cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY)
+        if (cat == FMD_FIELD_TEMPERATURE)
+        {
+            f->dependcs_num = 2;
+            f->dependcs = (unsigned *)m_alloc(f->dependcs_num * sizeof(unsigned));
+            f->dependcs[0] = dep1;
+            f->dependcs[1] = dep2;
+        }
+        else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY)
         {
             f->dependcs_num = 1;
             f->dependcs = (unsigned *)m_alloc(sizeof(unsigned));
@@ -1255,6 +1291,10 @@ static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
 
         case FMD_FIELD_VCM:
             update_field_vcm(md, f, t, allreduce);
+            break;
+
+        case FMD_FIELD_TEMPERATURE:
+            update_field_temperature(md, f, t, allreduce);
             break;
     }
 }
@@ -1318,7 +1358,7 @@ static void convert_inmass_to_outmass(fmd_array3D_t *ar)
     fmd_utriple_t iv;
 
     LOOP3D(iv, _fmd_ThreeZeros_int, ar->dims)
-        ((fmd_real_t ***)(ar->data))[iv[0]][iv[1]][iv[2]] *= MD_MASS_UNIT;
+        ARRAY_ELEMENT((fmd_real_t ***)(ar->data), iv) *= MD_MASS_UNIT;
 }
 
 void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path)

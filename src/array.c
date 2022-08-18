@@ -52,7 +52,7 @@ void _fmd_array_3d_pointer_clean(fmd_pointer_t ***array, fmd_utriple_t dims)
 
     LOOP3D(iv, _fmd_ThreeZeros_int, dims)
         for (int d=0; d<3; d++)
-            array[iv[0]][iv[1]][iv[2]] = NULL;
+            ARRAY_ELEMENT(array, iv) = NULL;
 }
 
 void _fmd_array_3d_rtuple_clean(fmd_rtuple_t ***array, fmd_utriple_t dims)
@@ -61,7 +61,7 @@ void _fmd_array_3d_rtuple_clean(fmd_rtuple_t ***array, fmd_utriple_t dims)
 
     LOOP3D(iv, _fmd_ThreeZeros_int, dims)
         for (int d=0; d<3; d++)
-            array[iv[0]][iv[1]][iv[2]][d] = 0.0;
+            ARRAY_ELEMENT(array, iv)[d] = 0.0;
 }
 
 void _fmd_array_3d_real_clean(fmd_real_t ***array, fmd_utriple_t dims)
@@ -69,7 +69,7 @@ void _fmd_array_3d_real_clean(fmd_real_t ***array, fmd_utriple_t dims)
     fmd_utriple_t iv;
 
     LOOP3D(iv, _fmd_ThreeZeros_int, dims)
-        array[iv[0]][iv[1]][iv[2]] = 0.0;
+        ARRAY_ELEMENT(array, iv) = 0.0;
 }
 
 void _fmd_array_3d_unsigned_clean(unsigned ***array, fmd_utriple_t dims)
@@ -77,7 +77,7 @@ void _fmd_array_3d_unsigned_clean(unsigned ***array, fmd_utriple_t dims)
     fmd_utriple_t iv;
 
     LOOP3D(iv, _fmd_ThreeZeros_int, dims)
-        array[iv[0]][iv[1]][iv[2]] = 0;
+        ARRAY_ELEMENT(array, iv) = 0;
 }
 
 
@@ -223,27 +223,27 @@ float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3D_t *array
     {
         case DATATYPE_REAL:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
-                f[cc++] = ((fmd_real_t ***)(array->data))[iv[0]][iv[1]][iv[2]];
+                f[cc++] = ARRAY_ELEMENT((fmd_real_t ***)(array->data), iv);
             break;
 
         case DATATYPE_FLOAT:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
-                f[cc++] = ((float ***)(array->data))[iv[0]][iv[1]][iv[2]];
+                f[cc++] = ARRAY_ELEMENT((float ***)(array->data), iv);
             break;
 
         case DATATYPE_DOUBLE:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
-                f[cc++] = ((double ***)(array->data))[iv[0]][iv[1]][iv[2]];
+                f[cc++] = ARRAY_ELEMENT((double ***)(array->data), iv);
             break;
 
         case DATATYPE_INT:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
-                f[cc++] = ((int ***)(array->data))[iv[0]][iv[1]][iv[2]];
+                f[cc++] = ARRAY_ELEMENT((int ***)(array->data), iv);
             break;
 
         case DATATYPE_UNSIGNED:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
-                f[cc++] = ((unsigned ***)(array->data))[iv[0]][iv[1]][iv[2]];
+                f[cc++] = ARRAY_ELEMENT((unsigned ***)(array->data), iv);
             break;
 
         default:
@@ -266,7 +266,7 @@ float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3D_t *array)
         case DATATYPE_RTUPLE:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
                 for (int d=0; d<3; d++)
-                    f[cc++] = ((fmd_rtuple_t ***)(array->data))[iv[0]][iv[1]][iv[2]][d];
+                    f[cc++] = ARRAY_ELEMENT((fmd_rtuple_t ***)(array->data), iv)[d];
             break;
 
         default:

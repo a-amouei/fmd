@@ -70,7 +70,7 @@ void fmd_computeMorse(fmd_t *md)
                             {
                                 SET_jc_IN_DIRECTION(2);
 
-                                cell_t *c2 = &md->SubDomain.grid[jc[0]][jc[1]][jc[2]];
+                                cell_t *c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc);
 
                                 /* iterate over all particles in cell c2 */
 

@@ -23,6 +23,6 @@
 // #define NDEBUG
 // #define FMD_FLOAT_CALCS
 #define USE_CSPLINE
-#define DIM 3
+#define DIM 3      /* don't change this */
 
 #endif /* CONFIG_H */
