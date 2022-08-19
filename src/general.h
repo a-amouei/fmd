@@ -39,6 +39,9 @@
 #define WATT_PER_METER_KELVIN       6.2415091259e-4    /* (eV / ps ang Kelvin) */
 #define WATT_PER_METER3_KELVIN      6.2415091259e-24   /* (eV / ps ang^3 Kelvin) */
 
+/* physical constants */
+#define K_BOLTZMANN                 8.6173303e-5       /* (eV / Kelvin) */
+
 #define LOOP3D(i3, min3, up3)                                         \
     for ( (i3)[0]=(min3)[0]; (i3)[0]<(up3)[0]; (i3)[0]++ )            \
         for ( (i3)[1]=(min3)[1]; (i3)[1]<(up3)[1]; (i3)[1]++ )        \
@@ -58,9 +61,25 @@ extern const fmd_ftriple_t _fmd_ThreeZeros_float;
 
 FILE *f_open(char *filename, char *modes);
 
+/* dest = A - B */
+static inline void diffrt(fmd_rtuple_t dest, fmd_rtuple_t A, fmd_rtuple_t B)
+{
+    for (int d=0; d<DIM; d++)
+        dest[d] = A[d] - B[d];
+}
+
 static inline fmd_real_t sqrr(fmd_real_t x)
 {
     return x*x;
+}
+
+static inline fmd_real_t sqrrt(fmd_rtuple_t x)
+{
+#if DIM==3
+    return x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
+#elif DIM==2
+    return x[0]*x[0] + x[1]*x[1];
+#endif
 }
 
 static inline void *re_alloc(void *ptr, size_t size)

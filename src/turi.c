@@ -973,7 +973,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
         for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
         {
             /* find index of turi-cell from particle's position */
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
             /* update mass for turi-cell with index of itc */
@@ -990,8 +990,6 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
 
 static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allreduce)
 {
-    fmd_ituple_t ic, itc;
-
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
 
     /* clean data of vcm field (initialize with zeros) */
@@ -999,6 +997,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
     cell_t *cell;
     int i;
+    fmd_ituple_t ic, itc;
 
     /* iterate over all particles in current subdomain */
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -1009,7 +1008,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
             for (int d=0; d<DIM; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
 
-            /* calculate vcm and mass (first phase) */
+            /* calculate vcm (first phase) */
 
             fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
 
@@ -1123,11 +1122,129 @@ static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allred
 static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
                                                 turi_t *t, fmd_bool_t allreduce)
 {
+    fmd_real_t ***temp = (fmd_real_t ***)ftemp->data.data;
+    unsigned ***num = (unsigned ***)fnum->data.data;
+    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
+
+    fmd_ituple_t itc;
+
+    /* clean data of temperature and number fields (initialize with zeros) */
+    LOOP3D(itc, t->itc_start, t->itc_stop)
+    {
+        ARRAY_ELEMENT(temp, itc) = 0.0;
+        ARRAY_ELEMENT(num, itc) = 0;
+    }
+
+    cell_t *cell;
+    int i;
+    fmd_ituple_t ic;
+
+    /* iterate over all particles in current subdomain */
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
+        {
+            /* find index of turi-cell from particle's position */
+            for (int d=0; d<DIM; d++)
+                itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
+
+            /* calculate temperature (first phase) */
+
+            fmd_rtuple_t vt;
+
+            diffrt(vt, &VEL(cell, i, 0), ARRAY_ELEMENT(vcm, itc));
+
+            fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
+
+            ARRAY_ELEMENT(temp, itc) += m * sqrrt(vt);
+
+            /* count the particle in number field */
+            ++ARRAY_ELEMENT(num, itc);
+        }
+
+    /* do communications */
+    if (t->comms_num > 0)
+    {
+        perform_field_comm_unsigned(md, fnum, t, allreduce || fnum->allreduce_now);
+        perform_field_comm_real(md, ftemp, t, allreduce);
+    }
+
+    /* calculate temperature (last phase) */
+
+    if (allreduce)
+    {
+        LOOP3D(itc, t->itc_start, t->itc_stop)
+            ARRAY_ELEMENT(temp, itc) /= (3.0 * K_BOLTZMANN * ARRAY_ELEMENT(num, itc));
+    }
+    else
+    {
+        for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
+        {
+            int *itc = t->ownerscomm.owned_tcells[i];
+            ARRAY_ELEMENT(temp, itc) /= (3.0 * K_BOLTZMANN * ARRAY_ELEMENT(num, itc));
+        }
+    }
+
+    fnum->timestep = md->time_iteration; /* mark as updated */
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, fnum->field_index, t->turi_index);
+    ftemp->timestep = md->time_iteration; /* mark as updated */
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, ftemp->field_index, t->turi_index);
 }
 
 static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
                                           turi_t *t, fmd_bool_t allreduce)
 {
+    fmd_real_t ***temp = (fmd_real_t ***)ftemp->data.data;
+    fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
+
+    /* clean data of temperature field (initialize with zeros) */
+    _fmd_array_3d_real_clean(temp, t->tdims_local);
+
+    cell_t *cell;
+    int i;
+    fmd_ituple_t ic, itc;
+
+    /* iterate over all particles in current subdomain */
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (cell = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < cell->parts_num; i++)
+        {
+            /* find index of turi-cell from particle's position */
+            for (int d=0; d<DIM; d++)
+                itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
+
+            /* calculate temperature (first phase) */
+
+            fmd_rtuple_t vt;
+
+            diffrt(vt, &VEL(cell, i, 0), ARRAY_ELEMENT(vcm, itc));
+
+            fmd_real_t m = md->potsys.atomkinds[cell->atomkind[i]].mass;
+
+            ARRAY_ELEMENT(temp, itc) += m * sqrrt(vt);
+        }
+
+    /* do communications */
+    if (t->comms_num > 0) perform_field_comm_real(md, ftemp, t, allreduce);
+
+    /* calculate temperature (last phase) */
+
+    unsigned ***num = (unsigned ***)fnum->data.data;
+
+    if (allreduce)
+    {
+        LOOP3D(itc, t->itc_start, t->itc_stop)
+            ARRAY_ELEMENT(temp, itc) /= (3.0 * K_BOLTZMANN * ARRAY_ELEMENT(num, itc));
+    }
+    else
+    {
+        for (int i=0; i < t->ownerscomm.owned_tcells_num; i++)
+        {
+            int *itc = t->ownerscomm.owned_tcells[i];
+            ARRAY_ELEMENT(temp, itc) /= (3.0 * K_BOLTZMANN * ARRAY_ELEMENT(num, itc));
+        }
+    }
+
+    ftemp->timestep = md->time_iteration; /* mark as updated */
+    if (md->EventHandler != NULL) call_field_update_event_handler(md, ftemp->field_index, t->turi_index);
 }
 
 static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
@@ -1394,6 +1511,15 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
             {
                 convert_inmass_to_outmass(&data);
                 _fmd_h5_save_scalar_field_float(md, "mass", t, path, &data);
+                _fmd_array_3d_free(&data);
+            }
+            break;
+
+        case FMD_FIELD_TEMPERATURE:
+            gather_field_data_real(md, t, f, &data);
+            if (md->Is_MD_comm_root)
+            {
+                _fmd_h5_save_scalar_field_float(md, "temperature", t, path, &data);
                 _fmd_array_3d_free(&data);
             }
             break;
