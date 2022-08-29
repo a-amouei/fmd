@@ -120,33 +120,16 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
     fmd_real_t a, b, h;
     int ic0, ic1, ic2;
     potpair_t **pottable = md->potsys.pottable;
-#ifdef USE_TTM
-    fmd_real_t mass;
-    int ttm_index;
-    fmd_real_t dx;
-    fmd_real_t pxx = 0.0;
-#endif
     fmd_real_t PotEnergy = 0.0;
 
     /* iterate over all cells */
-#ifdef USE_TTM
-    #pragma omp parallel for private(ic0,ic1,ic2,ttm_index,element_i,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
-      ir2_h,element_j,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag,mass,dx) \
-      shared(md,ttm_lattice_aux,ttm_useSuction,ttm_suctionWidth,ttm_suctionIntensity,ttm_pxx_compute, \
-      ttm_pxx_pos) default(none) collapse(3) reduction(+:PotEnergy,pxx) schedule(static,1)
-#else
-    #pragma omp parallel for private(ic0,ic1,ic2,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
-      ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
-      shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
-#endif
+#pragma omp parallel for private(ic0,ic1,ic2,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
+    ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
+    shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
     for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
     for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
     for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
     {
-#ifdef USE_TTM
-        ttm_index = ic0 - md->SubDomain.ic_start[0] + 1;
-#endif
-
         /* iterate over all particles in cell ic */
 
         cell_t *c1;
@@ -240,9 +223,9 @@ void fmd_dync_updateForces(fmd_t *md)
             case POT_EAM_ALLOY:
                 if (md->CompLocOrdParam) compLocOrdParam(md);
                 fmd_real_t FembSum;
-                fmd_computeEAM_pass1(md, &FembSum);
+                _fmd_computeEAM_pass1(md, &FembSum);
                 _fmd_ghostparticles_update_Femb(md);
-                fmd_computeEAM_pass0(md, FembSum);
+                _fmd_computeEAM_pass0(md, FembSum);
                 break;
         }
     }

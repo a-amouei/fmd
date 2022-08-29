@@ -144,8 +144,8 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
         // find the local indices
         unsigned loc1, loc2;
 
-        loc1 = fmd_pot_eam_find_iloc(md, pot->data, atomkind1);
-        loc2 = fmd_pot_eam_find_iloc(md, pot->data, atomkind2);
+        loc1 = _fmd_pot_eam_find_iloc(md, pot->data, atomkind1);
+        loc2 = _fmd_pot_eam_find_iloc(md, pot->data, atomkind2);
 
         if (loc1 == -1 || loc2 == -1)
         {

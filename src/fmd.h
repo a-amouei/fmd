@@ -25,16 +25,6 @@
 
 /* typedefs */
 
-typedef struct _fmd fmd_t;
-
-typedef struct _fmd_pot fmd_pot_t;
-
-typedef double fmd_real_t;
-
-typedef fmd_real_t fmd_rtuple_t[3];
-
-typedef int fmd_handle_t;
-
 typedef enum
 {
     FMD_SCM_XYZ_PARTICLESNUM,
@@ -42,6 +32,12 @@ typedef enum
     FMD_SCM_CSV,
     FMD_SCM_VTF
 } fmd_SaveConfigMode_t;
+
+typedef enum
+{
+    FMD_EVENT_TIMER_TICK,
+    FMD_EVENT_FIELD_UPDATE
+} fmd_event_t;
 
 typedef enum
 {
@@ -63,15 +59,29 @@ typedef enum
     FMD_FIELD_NUMBER_DENSITY
 } fmd_field_t;
 
-typedef char *fmd_string_t;
-
-typedef int fmd_bool_t;
+typedef enum
+{
+    FMD_TTM_TIMESTEP_RATIO_CONSTANT
+} fmd_ttm_timestep_ratio_t;
 
 typedef enum
 {
-    FMD_EVENT_TIMER_TICK,
-    FMD_EVENT_FIELD_UPDATE
-} fmd_event_t;
+    FMD_TTM_TE_CONSTANT
+} fmd_ttm_Te_t;
+
+typedef struct _fmd fmd_t;
+
+typedef struct _fmd_pot fmd_pot_t;
+
+typedef double fmd_real_t;
+
+typedef fmd_real_t fmd_rtuple_t[3];
+
+typedef int fmd_handle_t;
+
+typedef char *fmd_string_t;
+
+typedef int fmd_bool_t;
 
 typedef struct _fmd_params fmd_params_t;
 
@@ -90,6 +100,11 @@ typedef struct
 
 typedef struct
 {
+    fmd_real_t value;
+} fmd_ttm_params_Te_constant_t;
+
+typedef struct
+{
     fmd_real_t gamma;
 } fmd_ttm_params_heat_capacity_linear_t;
 
@@ -102,6 +117,11 @@ typedef struct
 {
     fmd_real_t value;
 } fmd_ttm_params_coupling_factor_constant_t;
+
+typedef struct
+{
+    unsigned value;
+} fmd_ttm_params_timestep_ratio_constant_t;
 
 /* functions */
 
@@ -190,5 +210,7 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
 void fmd_ttm_setHeatCapacity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 void fmd_ttm_setHeatConductivity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
+void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params);
+void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params);
 
 #endif /* FMD_H */

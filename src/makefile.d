@@ -31,7 +31,7 @@ subdomain.o: subdomain.c subdomain.h config.h types.h array.h base.h \
  potential.h events.h h5.h cell.h general.h
 timer.o: timer.c timer.h config.h types.h base.h potential.h subdomain.h \
  array.h events.h h5.h cell.h general.h
-ttm.o: ttm.c ttm.h config.h types.h general.h turi.h array.h turi_ghost.h \
+ttm.o: ttm.c ttm.h config.h types.h array.h general.h turi.h turi_ghost.h \
  base.h potential.h subdomain.h events.h h5.h cell.h
 turi.o: turi.c turi.h config.h types.h array.h base.h potential.h \
  subdomain.h events.h h5.h cell.h timer.h general.h ttm.h

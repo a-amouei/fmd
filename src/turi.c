@@ -667,6 +667,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         {
             case FMD_TURI_TTM_TYPE1:
                 t->itc_start[d] = (md->ns[d] == 1 || t->tdims_global[d] == 1) ? 0 : 1;
+                break;
+
             default:
                 t->itc_start[d] = 0;
         }
@@ -700,31 +702,33 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
     t->fields = NULL;
     t->fields_num = 0;
 
-    switch (cat)
-    {
-        case FMD_TURI_CUSTOM:
-            break;
-
-        case FMD_TURI_TTM_TYPE1:
-            t->ttm = _fmd_ttm_constructor(t);
-            break;
-
-        default:
-            assert(0);  /* TO-DO */
-    }
-
     init_rank_of_lower_upper_owner(md, t);
 
     md->turies_num++;
 
     prepare_turi_for_communication(md, t);
 
+    switch (cat)
+    {
+        case FMD_TURI_CUSTOM:
+            break;
+
+        case FMD_TURI_TTM_TYPE1:
+            t->ttm = _fmd_ttm_constructor(md, t);
+            md->active_ttm_turi = t;
+            break;
+
+        default:
+            assert(0);  /* TO-DO */
+    }
+
     return ti;
 }
 
 static void set_field_data_el_size_and_type(field_t *f)
 {
-    if (f->cat == FMD_FIELD_MASS || f->cat == FMD_FIELD_TEMPERATURE || f->cat == FMD_FIELD_NUMBER_DENSITY)
+    if (f->cat == FMD_FIELD_MASS || f->cat == FMD_FIELD_TEMPERATURE ||
+        f->cat == FMD_FIELD_NUMBER_DENSITY || f->cat == FMD_FIELD_TTM_TE)
     {
         f->data_el_size = sizeof(fmd_real_t);
         f->datatype = DATATYPE_REAL;
@@ -1306,27 +1310,30 @@ static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allr
 
 /* when a field is updated and allreduce is equal to FMD_FALSE, in the current subdomain
    the field is only updated in those turi-cells which are "owned" by the current subdomain. */
-static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce)
+int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce)
 {
     int i;
     field_t *f;
     unsigned dep1, dep2;
-    turi_t *t = &md->turies[turi];
 
     /* add dependency fields */
     switch (cat)
     {
         case FMD_FIELD_TEMPERATURE:
-            dep1 = field_add(md, turi, FMD_FIELD_NUMBER, interval, allreduce);
-            dep2 = field_add(md, turi, FMD_FIELD_VCM, interval, FMD_TRUE);
+            dep1 = _fmd_field_add(t, FMD_FIELD_NUMBER, interval, allreduce);
+            dep2 = _fmd_field_add(t, FMD_FIELD_VCM, interval, FMD_TRUE);
             break;
 
         case FMD_FIELD_VCM:
-            dep1 = field_add(md, turi, FMD_FIELD_MASS, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_MASS, interval, allreduce);
             break;
 
         case FMD_FIELD_NUMBER_DENSITY:
-            dep1 = field_add(md, turi, FMD_FIELD_NUMBER, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_NUMBER, interval, allreduce);
+            break;
+
+        case FMD_FIELD_TTM_TE:
+            dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, allreduce);
             break;
 
         default:
@@ -1361,7 +1368,7 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
             f->dependcs[0] = dep1;
             f->dependcs[1] = dep2;
         }
-        else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY)
+        else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY || cat == FMD_FIELD_TTM_TE)
         {
             f->dependcs_num = 1;
             f->dependcs = (unsigned *)m_alloc(sizeof(unsigned));
@@ -1387,7 +1394,7 @@ static fmd_handle_t field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd
 
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
 {
-    return field_add(md, turi, cat, interval, FMD_FALSE);
+    return _fmd_field_add(&md->turies[turi], cat, interval, FMD_FALSE);
 }
 
 static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
@@ -1426,7 +1433,7 @@ static inline void allreduce_now_update(fmd_t *md, turi_t *t)
         f->allreduce_now = FMD_FALSE;
 
         for (int j = 0; j < f->intervals_allreduce_num; j++)
-            if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals_allreduce[j]))
+            if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals_allreduce[j]))
             {
                 f->allreduce_now = FMD_TRUE;
                 break;
@@ -1440,7 +1447,7 @@ void _fmd_turies_update(fmd_t *md)
     {
         turi_t *t = &md->turies[ti];
 
-        if (md->MD_time >= t->starttime && !(md->MD_time > t->stoptime && t->stoptime >= t->starttime))
+        if (md->time >= t->starttime && !(md->time > t->stoptime && t->stoptime >= t->starttime))
         {
             allreduce_now_update(md, t);
 
@@ -1459,7 +1466,7 @@ void _fmd_turies_update(fmd_t *md)
                 else
                 {
                     for (int j=0; j < f->intervals_num; j++)
-                        if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, t->starttime, f->intervals[j]))
+                        if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals[j]))
                         {
                             update_field(md, f, t, FMD_FALSE);
                             break;
@@ -1586,4 +1593,5 @@ void fmd_turi_free(fmd_t *md)
 
     md->turies = NULL;
     md->turies_num = 0;
+    md->active_ttm_turi = NULL;
 }

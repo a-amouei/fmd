@@ -40,15 +40,75 @@ typedef struct
     fmd_real_t value;
 } fmd_ttm_params_coupling_factor_constant_t;
 
+typedef struct
+{
+    unsigned value;
+} fmd_ttm_params_timestep_ratio_constant_t;
+
+typedef enum
+{
+    FMD_TTM_TE_CONSTANT
+} fmd_ttm_Te_t;
+
+typedef enum
+{
+    FMD_TTM_TIMESTEP_RATIO_CONSTANT
+} fmd_ttm_timestep_ratio_t;
+
+typedef struct
+{
+    fmd_real_t value;
+} fmd_ttm_params_Te_constant_t;
+
 void _fmd_ttm_destructor(ttm_t **ttm)
 {
+    _fmd_array_3d_free(&(*ttm)->Te_aux);
     free(*ttm);
     *ttm = NULL;
 }
 
-ttm_t *_fmd_ttm_constructor(turi_t *t)
+ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
 {
     ttm_t *ttm = (ttm_t *)m_alloc(sizeof(ttm_t));
+
+    switch (t->cat)
+    {
+        case FMD_TURI_TTM_TYPE1:
+        {
+            int inum = _fmd_field_add(t, FMD_FIELD_NUMBER, md->timestep, FMD_FALSE);
+            int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, FMD_TRUE);
+            int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, FMD_FALSE);
+            int iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, FMD_FALSE);
+
+            _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
+            assert(ttm->Te_aux.data != NULL);
+
+            if (t->tdims_global[0] == 1 && t->tdims_global[1] == 1)
+            {
+                ttm->dim = 1;
+
+                ttm->num_1d = ((unsigned ***)t->fields[inum].data.data)[0][0];
+                ttm->vcm_1d = ((fmd_rtuple_t ***)t->fields[ivcm].data.data)[0][0];
+                ttm->Ti_1d = ((fmd_real_t ***)t->fields[iTi].data.data)[0][0];
+                ttm->Te_1d = ((fmd_real_t ***)t->fields[iTe].data.data)[0][0];
+                ttm->Te2_1d = ((fmd_real_t ***)ttm->Te_aux.data)[0][0];
+            }
+            else
+            {
+                ttm->dim = 3;
+
+                ttm->num = (unsigned ***)t->fields[inum].data.data;
+                ttm->vcm = (fmd_rtuple_t ***)t->fields[ivcm].data.data;
+                ttm->Ti = (fmd_real_t ***)t->fields[iTi].data.data;
+                ttm->Te = (fmd_real_t ***)t->fields[iTe].data.data;
+                ttm->Te2 = (fmd_real_t ***)ttm->Te_aux.data;
+            }
+        }
+            break;
+
+        default:
+            assert(0);
+    }
 
     return ttm;
 }
@@ -97,6 +157,50 @@ void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *param
     {
         case FMD_TURI_TTM_TYPE1:
             ttm->G = ((fmd_ttm_params_coupling_factor_constant_t *)params)->value * WATT_PER_METER3_KELVIN;
+            break;
+
+        default:
+            assert(0); /* TO-DO: handle error */
+    }
+}
+
+void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params)
+{
+    turi_t *t = &md->turies[turi];
+
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
+    ttm_t *ttm = t->ttm;
+
+    switch (cat)
+    {
+        case FMD_TTM_TE_CONSTANT:
+        {
+            fmd_ituple_t itc;
+
+            LOOP3D(itc, t->itc_start, t->itc_stop)
+                ARRAY_ELEMENT(ttm->Te, itc) = ((fmd_ttm_params_Te_constant_t *)params)->value;
+        }
+        break;
+
+        default:
+            assert(0); /* TO-DO: handle error */
+    }
+}
+
+void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params)
+{
+    turi_t *t = &md->turies[turi];
+
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
+    ttm_t *ttm = t->ttm;
+
+    switch (cat)
+    {
+        case FMD_TTM_TIMESTEP_RATIO_CONSTANT:
+            ttm->timestep_ratio = ((fmd_ttm_params_timestep_ratio_constant_t *)params)->value;
+            ttm->timestep = md->timestep / ttm->timestep_ratio;
             break;
 
         default:

@@ -31,7 +31,8 @@ typedef enum
     FMD_FIELD_VCM,
     FMD_FIELD_TEMPERATURE,
     FMD_FIELD_NUMBER,
-    FMD_FIELD_NUMBER_DENSITY
+    FMD_FIELD_NUMBER_DENSITY,
+    FMD_FIELD_TTM_TE
 } fmd_field_t; /* category of the field */
 
 typedef struct
@@ -119,8 +120,7 @@ typedef struct _turi
 
 typedef struct _fmd fmd_t;
 
-fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
-fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
+int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce);
 void _fmd_turies_update(fmd_t *md);
 void fmd_turi_free(fmd_t *md);
 

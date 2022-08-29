@@ -22,23 +22,7 @@
 #include "list.h"
 #include "general.h"
 
-#define EAM_TTM_UPDATE_FORCE                                                    \
-    {                                                                           \
-        mass = md->EAM.elements[element_i].mass;                                \
-        for (d=0; d<3; d++)                                                     \
-            p1->F[d] += ttm_lattice_aux[ttm_index].xi *                         \
-                mass * (p1->core.v[d] - ttm_lattice_aux[ttm_index].v_cm[d]);    \
-        if (ttm_useSuction)                                                     \
-            if (p1->core.x[0] < ttm_suctionWidth)                               \
-                p1->F[0] -= mass * ttm_suctionIntensity;                        \
-        if (ttm_pxx_compute)                                                    \
-        {                                                                       \
-            dx = p1->core.x[0] - ttm_pxx_pos;                                   \
-            pxx += p1->F[0] * ((dx > 0) - (dx < 0));                            \
-        }                                                                       \
-    }
-
-void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
+void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 {
     fmd_ituple_t jc, kc;
     int ir2, ir2_h;
@@ -52,33 +36,16 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
     fmd_real_t a, b, h;
     int ic0, ic1, ic2;
     potpair_t **pottable = md->potsys.pottable;
-#ifdef USE_TTM
-    fmd_real_t mass;
-    int ttm_index;
-    fmd_real_t dx;
-    fmd_real_t pxx = 0.0;
-#endif
     fmd_real_t PotEnergy = 0.0;
 
     /* iterate over all cells */
-#ifdef USE_TTM
-    #pragma omp parallel for private(ic0,ic1,ic2,ttm_index,element_i,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
-      ir2_h,element_j,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag,mass,dx) \
-      shared(md,ttm_lattice_aux,ttm_useSuction,ttm_suctionWidth,ttm_suctionIntensity,ttm_pxx_compute, \
-      ttm_pxx_pos) default(none) collapse(3) reduction(+:PotEnergy,pxx) schedule(static,1)
-#else
-    #pragma omp parallel for private(ic0,ic1,ic2,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
-      ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
-      shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
-#endif
+#pragma omp parallel for private(ic0,ic1,ic2,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
+    ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
+    shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
     for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
     for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
     for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
     {
-#ifdef USE_TTM
-        ttm_index = ic0 - md->SubDomain.ic_start[0] + 1;
-#endif
-
         /* iterate over all particles in cell ic */
 
         cell_t *c1;
@@ -128,22 +95,14 @@ void fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
                     }
                 }
             }
-
-#ifdef USE_TTM
-            EAM_TTM_UPDATE_FORCE;
-#endif
         }
     }
-
-#ifdef USE_TTM
-    ttm_pxx_local[1] += pxx;
-#endif
 
     PotEnergy = 0.5 * PotEnergy + FembSum;
     MPI_Allreduce(&PotEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
-void fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
+void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {
     fmd_ituple_t jc, kc;
     int ir2, irho, ir2_h, irho_h;
@@ -485,7 +444,7 @@ fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string
     // TO-DO: if element is not found in the potential, notify the library user
 }
 
-unsigned fmd_pot_eam_find_iloc(fmd_t *md, eam_t *eam, unsigned atomkind)
+unsigned _fmd_pot_eam_find_iloc(fmd_t *md, eam_t *eam, unsigned atomkind)
 {
     for (int i=0; i < eam->ElementsNo; i++)
         if (strcmp(md->potsys.atomkinds[atomkind].name, eam->elements[i].name) == 0)

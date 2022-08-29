@@ -52,12 +52,12 @@ void _fmd_timer_sendTimerTickEvents(fmd_t *md)
 {
     for (int i=0; i < md->timers_num; i++)
     {
-        if ( md->timers[i].enabled && md->MD_time >= md->timers[i].start &&
-             !(md->MD_time > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
+        if ( md->timers[i].enabled && md->time >= md->timers[i].start &&
+             !(md->time > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
         {
             if (md->timers[i].cat == TIMER_SIMPLE)
             {
-                if (_fmd_timer_is_its_time(md->MD_time, md->delta_t/2.0, md->timers[i].start, md->timers[i].interval))
+                if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, md->timers[i].start, md->timers[i].interval))
                 {
                     fmd_event_params_timer_tick_t params;
 

@@ -113,19 +113,20 @@ struct _fmd
     fmd_timer_t *timers;
     unsigned turies_num;
     turi_t *turies;
+    turi_t *active_ttm_turi;
     fmd_bool_t GlobalGridExists;
     fmd_bool_t BoxSizeDetermined;
     fmd_bool_t PBCdetermined;
     fmd_real_t CutoffRadius;
-    fmd_real_t MD_time;
+    fmd_real_t time;
     int time_iteration;
-    fmd_real_t delta_t;
+    fmd_real_t timestep;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
     fmd_real_t GlobalTemperature;         /* for the "active group" only */
     fmd_bool_t Is_MD_process;
     fmd_bool_t Is_MD_comm_root;
-    int LOP_iteration;                    // must be initialized with zero
+    int LOP_iteration;                    /* must be initialized with zero */
     int LOP_period;
     MPI_Comm MD_comm;
     fmd_real_t TotalKineticEnergy;
@@ -168,7 +169,6 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
-void identifyProcess(fmd_t *md);
 void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);

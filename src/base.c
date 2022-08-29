@@ -22,9 +22,6 @@
 #include "base.h"
 #include "md_ghost.h"
 #include "forces.h"
-#ifdef USE_TTM
-#include "ttm.h"
-#endif
 #include "timer.h"
 #include "molecule.h"
 #include "array.h"
@@ -209,7 +206,7 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
     fmd_real_t VelocityScale, mass;
     fmd_real_t x;
 
-    if (UseThermostat) VelocityScale = sqrt(1 + md->delta_t / md->BerendsenThermostatParam *
+    if (UseThermostat) VelocityScale = sqrt(1 + md->timestep / md->BerendsenThermostatParam *
                        (md->DesiredTemperature / md->GlobalTemperature - 1));
 
     LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
@@ -233,8 +230,8 @@ void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
             {
                 if (UseThermostat) VEL(c, i, d) *= VelocityScale;
 
-                VEL(c, i, d) += md->delta_t * 0.5 / mass * FRC(c, i, d);
-                x = POS(c, i, d) + md->delta_t * VEL(c, i, d);
+                VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
+                x = POS(c, i, d) + md->timestep * VEL(c, i, d);
 
                 if ( (md->ns[d] == 1) && ((x < 0.0) || (x >= md->l[d])) )
                 {
@@ -284,7 +281,7 @@ void fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
                     mass = md->potsys.atomkinds[c->atomkind[i]].mass;
                     for (d=0; d<3; d++)
                     {
-                        VEL(c, i, d) += md->delta_t * 0.5 / mass * FRC(c, i, d);
+                        VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
                         MomentumSum[d] += mass * VEL(c, i, d);
                     }
 
@@ -376,7 +373,7 @@ void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
     MPI_Allreduce(LocalUpper, UpperLimit, 3, FMD_MPI_REAL, MPI_MAX, md->MD_comm);
 }
 
-void identifyProcess(fmd_t *md)
+static void identifyProcess(fmd_t *md)
 {
     int mdnum;
 
@@ -385,12 +382,6 @@ void identifyProcess(fmd_t *md)
         md->Is_MD_process = FMD_TRUE;
     else
         md->Is_MD_process = FMD_FALSE;
-#ifdef USE_TTM
-    if (ttm_useExtended && md->world_rank == mdnum)
-        ttm_is_extended_process = 1;
-    else
-        ttm_is_extended_process = 0;
-#endif
 }
 
 void fmd_matt_setActiveGroup(fmd_t *md, int GroupID)
@@ -683,10 +674,6 @@ void fmd_matt_distribute(fmd_t *md)
 
     calculate_GlobalTemperature_etc(md);
 
-#ifdef USE_TTM
-        ttm_comp_min_atomsNo(global_grid, s_p); /* global_grid is NULL on non-root processes */
-#endif
-
     if (md->Is_MD_comm_root)
     {
         for (int i=1; i < md->SubDomain.numprocs; i++)  /* for all processes execpt the root */
@@ -752,7 +739,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
 
         assert( fscanf(fp, "%lf", &StateFileTime) == 1 ); /* TO-DO: handle error */
 
-        if (UseTime) md->MD_time = StateFileTime;
+        if (UseTime) md->time = StateFileTime;
 
         assert( fscanf(fp, "%u\n", &ParticlesNum) == 1 ); /* TO-DO: handle error */
         assert( fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2) == 3 ); /* TO-DO: handle error */
@@ -789,7 +776,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
         fmd_box_createGrid(md, md->CutoffRadius);
 
     if (UseTime)
-        MPI_Bcast(&md->MD_time, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
+        MPI_Bcast(&md->time, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
@@ -1115,7 +1102,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         sprintf(StateFilePath, "%s%s", md->SaveDirectory, filename);
         fp = f_open(StateFilePath, "w");
 
-        fprintf(fp, "%.16e\n", md->MD_time);
+        fprintf(fp, "%.16e\n", md->time);
         fprintf(fp, "%u\n", md->TotalNoOfParticles);
         fprintf(fp, formatstr_3xpoint16e, md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
@@ -1276,7 +1263,7 @@ fmd_t *fmd_create()
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
     md->LOP_iteration = 0;
     md->UseAutoStep = FMD_FALSE;
-    md->MD_time = 0.0;
+    md->time = 0.0;
     md->time_iteration = 0;
     md->SaveDirectory[0] = '\0';
     md->CompLocOrdParam = FMD_FALSE;
@@ -1295,6 +1282,7 @@ fmd_t *fmd_create()
     md->timers_num = 0;
     md->turies = NULL;
     md->turies_num = 0;
+    md->active_ttm_turi = NULL;
     md->DesiredTemperature = 300.0;
     md->SaveConfigMode = FMD_SCM_XYZ_PARTICLESNUM;
     md->cell_increment = 10;
@@ -1378,22 +1366,22 @@ void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode)
 
 void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t timeStep)
 {
-    md->delta_t = timeStep;
+    md->timestep = timeStep;
 }
 
 fmd_real_t fmd_dync_getTimeStep(fmd_t *md)
 {
-    return md->delta_t;
+    return md->timestep;
 }
 
 fmd_real_t fmd_dync_getTime(fmd_t *md)
 {
-    return md->MD_time;
+    return md->time;
 }
 
 void fmd_dync_incTime(fmd_t *md)
 {
-    md->MD_time += md->delta_t;
+    md->time += md->timestep;
     md->time_iteration++;
     if (md->turies_num > 0) _fmd_turies_update(md);
     if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
@@ -1403,20 +1391,20 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature)
 {
     fmd_real_t bak_mdTime, bak_DesiredTemperature;
-    fmd_real_t bak_delta_t, bak_BerendsenThermostatParam;
+    fmd_real_t bak_timestep, bak_BerendsenThermostatParam;
     fmd_real_t bak_GlobalTemperature;
     int bak_ActiveGroup;
 
     // make backups
-    bak_mdTime = md->MD_time;
-    bak_delta_t = md->delta_t;
+    bak_mdTime = md->time;
+    bak_timestep = md->timestep;
     bak_BerendsenThermostatParam = md->BerendsenThermostatParam;
     bak_DesiredTemperature = md->DesiredTemperature;
     bak_ActiveGroup = md->ActiveGroup;
     bak_GlobalTemperature = md->GlobalTemperature;
 
     // initialize
-    md->MD_time = 0.0;
+    md->time = 0.0;
     fmd_dync_setTimeStep(md, timestep);
     md->DesiredTemperature = temperature;
     md->GlobalTemperature = temperature;
@@ -1426,7 +1414,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     // compute forces for the first time
     fmd_dync_updateForces(md);
 
-    while (md->MD_time < duration)
+    while (md->time < duration)
     {
         // take first step of velocity Verlet integrator
         fmd_dync_VelocityVerlet_startStep(md, FMD_TRUE);
@@ -1445,8 +1433,8 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     if (bak_ActiveGroup != md->ActiveGroup && md->ActiveGroup != ACTIVE_GROUP_ALL)
         md->GlobalTemperature = bak_GlobalTemperature;
 
-    md->MD_time = bak_mdTime;
-    fmd_dync_setTimeStep(md, bak_delta_t);
+    md->time = bak_mdTime;
+    fmd_dync_setTimeStep(md, bak_timestep);
     md->DesiredTemperature = bak_DesiredTemperature;
     md->BerendsenThermostatParam = bak_BerendsenThermostatParam;
     md->ActiveGroup = bak_ActiveGroup;

@@ -22,17 +22,35 @@
 
 #include "config.h"
 #include "types.h"
+#include "array.h"
 
 typedef struct _ttm
 {
+    int dim;                /* 1D ttm or 3D ttm? */
     fmd_real_t C_gamma;     /* used when electron heat capacity is linear function of temperature */
     fmd_real_t K;           /* used when electron heat conductivity is constant */
     fmd_real_t G;           /* used when electron-ion coupling factor is constant */
+    fmd_array3D_t Te_aux;
+    unsigned ***num;
+    fmd_rtuple_t ***vcm;
+    fmd_real_t ***Ti;
+    fmd_real_t ***Te;
+    fmd_real_t ***Te2;
+    fmd_real_t ***xi;
+    unsigned *num_1d;
+    fmd_rtuple_t *vcm_1d;
+    fmd_real_t *Ti_1d;
+    fmd_real_t *Te_1d;
+    fmd_real_t *Te2_1d;
+    fmd_real_t *xi_1d;
+    unsigned timestep_ratio; /* the ratio of MD timestep to TTM timestep */
+    fmd_real_t timestep;
 } ttm_t;
 
 typedef struct _turi turi_t;
+typedef struct _fmd fmd_t;
 
-ttm_t *_fmd_ttm_constructor(turi_t *t);
+ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t);
 void _fmd_ttm_destructor(ttm_t **ttm);
 
 #endif /* TTM_H */
