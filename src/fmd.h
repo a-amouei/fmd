@@ -133,7 +133,6 @@ fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNu
   unsigned AtomKinds[], fmd_rtuple_t AtomPositions[]);
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz);
-void fmd_matt_setActiveGroup(fmd_t *md, int GroupID);
 void fmd_matt_setDesiredTemperature(fmd_t *md, fmd_real_t DesiredTemperature);
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
@@ -152,7 +151,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
   int GroupID);
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
-fmd_real_t fmd_matt_getGlobalTemperature(fmd_t *md);
+fmd_real_t fmd_matt_getGroupTemperature(fmd_t *md);
 void fmd_matt_distribute(fmd_t *md);
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
@@ -192,16 +191,10 @@ void fmd_free(fmd_t *md);
 void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
 
 fmd_real_t fmd_dync_getTimeStep(fmd_t *md);
-void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t TimeStep);
 fmd_real_t fmd_dync_getTime(fmd_t *md);
-void fmd_dync_updateForces(fmd_t *md);
-void fmd_dync_updateForcesLJ(fmd_t *md);
-void fmd_dync_incTime(fmd_t *md);
-void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
-void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat);
-int fmd_dync_VelocityVerlet_finishStep(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature);
+void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep);
 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);

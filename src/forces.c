@@ -199,7 +199,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
     MPI_Allreduce(&PotEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
-void fmd_dync_updateForces(fmd_t *md)
+void _fmd_dync_updateForces(fmd_t *md)
 {
     if (md->potsys.potcats == NULL)  // just for one time
         fmd_pot_prepareForForceComp(md);

@@ -15,7 +15,7 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc 02_collision.c -lfmd -lm -O3 -o 02_collision.x
+   $ gcc 02_collision.c -lfmd -O3 -o 02_collision.x
 
    and executed by
 
@@ -24,6 +24,32 @@
 
 #include <math.h>
 #include <fmd.h>
+
+fmd_handle_t timer1, timer2;
+
+void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
+{
+    switch (event)
+    {
+        case FMD_EVENT_TIMER_TICK: ;
+
+            fmd_handle_t timer = ((fmd_event_params_timer_tick_t *)params)->timer;
+
+            if (timer == timer1)
+            {
+                // report some quantities if the event is caused by timer1
+                fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
+                                              fmd_matt_getTotalEnergy(md));
+            }
+            else if (timer == timer2)
+            {
+                // save configuration if the event is caused by timer2
+                fmd_matt_saveConfiguration(md);
+            }
+
+            break;
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -36,7 +62,7 @@ int main(int argc, char *argv[])
     double lx, ly, lz;
     fmd_box_setSize(md, lx=250.0, ly=250.0, lz=250.0);
 
-    // set periodic boundary conditions in three dimensions
+    // no periodic boundary conditions in three dimensions
     fmd_box_setPBC(md, FMD_FALSE, FMD_FALSE, FMD_FALSE);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
@@ -89,9 +115,6 @@ int main(int argc, char *argv[])
     // distribute the matter among subdomains
     fmd_matt_distribute(md);
 
-    // set time step to 2 femtoseconds
-    fmd_dync_setTimeStep(md, 2e-3);
-
     // set where to save output files (default = current directory)
     //fmd_io_setSaveDirectory(md, "output/");
 
@@ -108,40 +131,16 @@ int main(int argc, char *argv[])
     fmd_matt_addVelocity(md, 0, +8., 0., 0.);
     fmd_matt_addVelocity(md, 1, -8., 0., 0.);
 
-    // activate all groups for dynamics; -1 as a groupID means all groups
-    fmd_matt_setActiveGroup(md, -1);
+    // assign an event handler to the FMD instance
+    fmd_setEventHandler(md, handleEvents);
 
-    // simulate for 6.5 picoseconds
-    double final_time = 6.5;
+    // make two simple timers
+    timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
+    timer2 = fmd_timer_makeSimple(md, 0.0, 0.06, -1.0);
 
-    // compute forces for the first time
-    fmd_dync_updateForces(md);
-
-    // the time loop starts here
-    // fmd_dync_getTime() returns current internal time of the FMD instance
-    while (fmd_dync_getTime(md) < final_time)
-    {
-        // save configuration every 60 femtoseconds
-        if (fmod(fmd_dync_getTime(md), 0.06) < fmd_dync_getTimeStep(md))
-            fmd_matt_saveConfiguration(md);
-
-        // report some quantities every time step
-        fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
-                                      fmd_matt_getTotalEnergy(md));
-
-        // use velocity Verlet integrator: start step
-        fmd_dync_VelocityVerlet_startStep(md, FMD_FALSE);
-
-        // compute forces
-        fmd_dync_updateForces(md);
-
-        // use velocity Verlet integrator: finish step
-        fmd_dync_VelocityVerlet_finishStep(md);
-
-        // increase internal time by one time step
-        fmd_dync_incTime(md);
-    }
-    // end of the time loop
+    // simulate for 6.5 picoseconds, with timesteps of 2 fs
+    // -1 as the second parameter means that both groups (objects) are active
+    fmd_dync_integrate(md, -1, 6.5, 2e-3);
 
     // save system's final state in a file
     //fmd_io_saveState(md, "state0.stt");

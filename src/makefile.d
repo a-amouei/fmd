@@ -13,6 +13,9 @@ forces.o: forces.c forces.h config.h eam.h types.h cspline.h lj.h morse.h \
 general.o: general.c general.h config.h types.h
 h5.o: h5.c h5.h config.h types.h array.h turi.h general.h base.h \
  potential.h subdomain.h events.h cell.h
+integrators.o: integrators.c base.h config.h potential.h types.h \
+ subdomain.h array.h events.h h5.h cell.h turi.h forces.h timer.h \
+ general.h
 list.o: list.c list.h config.h general.h types.h
 lj.o: lj.c lj.h config.h types.h potential.h base.h subdomain.h array.h \
  events.h h5.h cell.h list.h forces.h general.h

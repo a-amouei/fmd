@@ -123,7 +123,7 @@ struct _fmd
     fmd_real_t timestep;
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
-    fmd_real_t GlobalTemperature;         /* for the "active group" only */
+    fmd_real_t GroupTemperature;          /* for the "active group" only */
     fmd_bool_t Is_MD_process;
     fmd_bool_t Is_MD_comm_root;
     int LOP_iteration;                    /* must be initialized with zero */
@@ -166,12 +166,11 @@ typedef struct _fmd fmd_t;
 /* Functions */
 
 void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
-void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
 void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);
-void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t timeStep);
+void _fmd_refreshGrid(fmd_t *md);
 
 #endif /* BASE_H */

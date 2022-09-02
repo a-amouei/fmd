@@ -15,40 +15,65 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc 01_argon.c -lfmd -lm -O3 -o 01_argon.x
+   $ gcc 01_argon.c -lfmd -O3 -o 01_argon.x
 
-   and executed by
+   and can be executed by
 
    $ mpirun -n 2 ./01_argon.x
 */
 
-#include <math.h>
 #include <fmd.h>
+
+fmd_handle_t timer1, timer2;
+
+void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
+{
+    switch (event)
+    {
+        case FMD_EVENT_TIMER_TICK: ;
+
+            fmd_handle_t timer = ((fmd_event_params_timer_tick_t *)params)->timer;
+
+            if (timer == timer1)
+            {
+                // report some quantities if the event is caused by timer1
+                fmd_io_printf(md, "%f\t%f\t%e\n", fmd_dync_getTime(md),
+                                                  fmd_matt_getGroupTemperature(md),
+                                                  fmd_matt_getTotalEnergy(md));
+            }
+            else if (timer == timer2)
+            {
+                // save configuration if the event is caused by timer2
+                fmd_matt_saveConfiguration(md);
+            }
+
+            break;
+    }
+}
 
 int main(int argc, char *argv[])
 {
     fmd_t *md;
 
-    // create an FMD instance
+    // create an fmd instance
     md = fmd_create();
 
+    // assign an event handler to the instance
+    fmd_setEventHandler(md, handleEvents);
+
+    // make two simple timers
+    timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
+    timer2 = fmd_timer_makeSimple(md, 0.0, 0.04, -1.0);
+
     // set size of the simulation box (in Angstrom)
-    double latticeParameter = 5.26;
-    fmd_box_setSize(md, 10*latticeParameter, 10*latticeParameter, 10*latticeParameter);
+    double LatticeParameter = 5.26;
+    fmd_box_setSize(md, 10*LatticeParameter, 10*LatticeParameter, 10*LatticeParameter);
 
     // set periodic boundary conditions in three dimensions
     fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
     fmd_box_setSubDomains(md, 1, 2, 1);
-
-    /* sometimes the user launches more processes than the chosen number of subdomains; they're not needed here!
-       the function fmd_proc_isMD() can be called only after fmd_box_setSubDomains() */
-    if (! fmd_proc_isMD(md))
-    {
-        fmd_free(md);
-        return 0;
-    }
 
     // let's have only argon atoms
     fmd_string_t name[1] = {"Ar"};
@@ -67,59 +92,15 @@ int main(int argc, char *argv[])
     // create the box grid
     fmd_box_createGrid(md, cutoff);
 
-    // set the desired temperature (in Kelvin)
-    fmd_matt_setDesiredTemperature(md, 100.0);
-
     // make an fcc cuboid at a given position and with a given size
-    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, latticeParameter, 0, 0);
+    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, LatticeParameter, 0, 0);
 
     // distribute the matter among subdomains
     fmd_matt_distribute(md);
 
-    // set time step to 2 femtoseconds
-    fmd_dync_setTimeStep(md, 2e-3);
-
-    // let us simulate for 1.0 picoseconds
-    double final_time = 1.0;
-
-    // set where to save output files (default = current directory)
-    //fmd_io_setSaveDirectory(md, "output/");
-
-    // let configurations be saved as XYZ files
-    fmd_io_setSaveConfigMode(md, FMD_SCM_XYZ_PARTICLESNUM);
-
-    // set Berendsen thermostat parameter
-    fmd_dync_setBerendsenThermostatParameter(md, 2e-2);
-
-    // compute forces for the first time
-    fmd_dync_updateForces(md);
-
-    // the time loop starts here
-    // fmd_dync_getTime() returns current internal time of the FMD instance
-    while (fmd_dync_getTime(md) < final_time)
-    {
-        // save configuration every 40 femtoseconds
-        if (fmod(fmd_dync_getTime(md), 0.04) < fmd_dync_getTimeStep(md))
-            fmd_matt_saveConfiguration(md);
-
-        // report some quantities every time step
-        fmd_io_printf(md, "%f\t%f\t%e\n", fmd_dync_getTime(md),
-                                          fmd_matt_getGlobalTemperature(md),
-                                          fmd_matt_getTotalEnergy(md));
-
-        // use velocity Verlet integrator: start step
-        fmd_dync_VelocityVerlet_startStep(md, FMD_TRUE);
-
-        // compute forces
-        fmd_dync_updateForces(md);
-
-        // use velocity Verlet integrator: finish step
-        fmd_dync_VelocityVerlet_finishStep(md);
-
-        // increase internal time by one time step
-        fmd_dync_incTime(md);
-    }
-    // end of the time loop
+    // equilibrate for 1.0 picoseconds with a time step of 2 femtoseconds
+    // to reach a temperature of 100 Kelvins
+    fmd_dync_equilibrate(md, 0, 1.001, 2e-3, 2e-2, 100.0);
 
     // save system's final state in a file
     fmd_io_saveState(md, "state0.stt");
@@ -127,7 +108,7 @@ int main(int argc, char *argv[])
     // another report
     fmd_io_printf(md, "The run took about %.3f seconds to finish.\n", fmd_proc_getWallTime(md));
 
-    // release memory taken for the FMD instance (including subdomain and all particles)
+    // release memory taken for the fmd instance (including subdomain and all particles)
     fmd_free(md);
 
     return 0;

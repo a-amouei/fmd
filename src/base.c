@@ -46,8 +46,6 @@ typedef struct
 
 static char formatstr_3xpoint16e[] = "%.16e\t%.16e\t%.16e\n";
 
-static void refreshGrid(fmd_t *md);
-
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3)
 {
     for (unsigned i=0; i < dim1; i++)
@@ -199,109 +197,6 @@ void compLocOrdParam(fmd_t *md)
 */
 }
 
-void fmd_dync_VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
-{
-    fmd_ituple_t ic;
-    int d;
-    fmd_real_t VelocityScale, mass;
-    fmd_real_t x;
-
-    if (UseThermostat) VelocityScale = sqrt(1 + md->timestep / md->BerendsenThermostatParam *
-                       (md->DesiredTemperature / md->GlobalTemperature - 1));
-
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-    {
-        /* iterate over all particles in cell ic */
-
-        int i=0;
-        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
-
-        while (i < c->parts_num)
-        {
-            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
-            {
-                i++;
-                continue;
-            }
-
-            mass = md->potsys.atomkinds[c->atomkind[i]].mass;
-
-            for (d=0; d<DIM; d++)
-            {
-                if (UseThermostat) VEL(c, i, d) *= VelocityScale;
-
-                VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
-                x = POS(c, i, d) + md->timestep * VEL(c, i, d);
-
-                if ( (md->ns[d] == 1) && ((x < 0.0) || (x >= md->l[d])) )
-                {
-                    if (!md->PBC[d])
-                    {
-                        _fmd_cell_remove_atom(md, c, i);
-                        md->SubDomain.NumberOfParticles--;
-                        i--;
-                        break;
-                    }
-                    else
-                        if (x < 0.0) x += md->l[d]; else x -= md->l[d];
-                }
-
-                POS(c, i, d) = x;
-            }
-
-            i++;
-        }
-    }
-
-    refreshGrid(md);
-}
-
-void fmd_dync_VelocityVerlet_finishStep(fmd_t *md)
-{
-    fmd_ituple_t ic;
-    int d;
-    fmd_real_t m_vSqd_Sum = 0, m_vSqd_SumSum;
-    fmd_real_t mass;
-    int ParticlesNum = 0;
-    fmd_rtuple_t MomentumSum = {0., 0., 0.};
-    cell_t *c;
-    unsigned i;
-
-    for (ic[0] = md->SubDomain.ic_start[0]; ic[0] < md->SubDomain.ic_stop[0]; ic[0]++)
-    {
-        for (ic[1] = md->SubDomain.ic_start[1]; ic[1] < md->SubDomain.ic_stop[1]; ic[1]++)
-            for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
-                for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
-                {
-                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
-                        continue;
-
-                    ParticlesNum++;
-
-                    mass = md->potsys.atomkinds[c->atomkind[i]].mass;
-                    for (d=0; d<3; d++)
-                    {
-                        VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
-                        MomentumSum[d] += mass * VEL(c, i, d);
-                    }
-
-                    m_vSqd_Sum += mass * ( sqrr(VEL(c, i, 0)) +
-                                           sqrr(VEL(c, i, 1)) +
-                                           sqrr(VEL(c, i, 2)) );
-                }
-    }
-
-    MPI_Reduce(MomentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
-
-    MPI_Allreduce(&ParticlesNum, &md->ActiveGroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
-
-    MPI_Allreduce(&m_vSqd_Sum, &m_vSqd_SumSum, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
-    md->TotalKineticEnergy = 0.5 * m_vSqd_SumSum;
-    md->TotalMDEnergy = md->TotalKineticEnergy + md->TotalPotentialEnergy;
-
-    md->GlobalTemperature = m_vSqd_SumSum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
-}
-
 /* not correct under periodic boundary conditions
    see [J. Chem. Phys. 131, 154107 (2009)] */
 static fmd_real_t compVirial_internal(fmd_t *md)
@@ -384,11 +279,6 @@ static void identifyProcess(fmd_t *md)
         md->Is_MD_process = FMD_FALSE;
 }
 
-void fmd_matt_setActiveGroup(fmd_t *md, int GroupID)
-{
-    md->ActiveGroup = GroupID;
-}
-
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
 {
     cell_t ***grid;
@@ -426,8 +316,8 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
             }
 }
 
-/* calculate GlobalTemperature, ActiveGroupParticlesNum and TotalKineticEnergy from "global grid" */
-static void calculate_GlobalTemperature_etc(fmd_t *md)
+/* calculate GroupTemperature, ActiveGroupParticlesNum and TotalKineticEnergy from "global grid" */
+static void calculate_GroupTemperature_etc(fmd_t *md)
 {
     if (md->Is_MD_comm_root)
     {
@@ -451,13 +341,13 @@ static void calculate_GlobalTemperature_etc(fmd_t *md)
                     m_vSqd_Sum += mass * sqrr(VEL(c, i, d));
             }
 
-        md->GlobalTemperature = m_vSqd_Sum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
+        md->GroupTemperature = m_vSqd_Sum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
     }
 
     MPI_Bcast(&md->ActiveGroupParticlesNum, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
-    MPI_Bcast(&md->GlobalTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
+    MPI_Bcast(&md->GroupTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
 
-    md->TotalKineticEnergy = 3.0/2.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN * md->GlobalTemperature;
+    md->TotalKineticEnergy = 3.0/2.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN * md->GroupTemperature;
 }
 
 static void find_global_start_stop_ic_of_a_subd(fmd_t *md, int rank,
@@ -672,7 +562,7 @@ void fmd_matt_distribute(fmd_t *md)
 {
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
-    calculate_GlobalTemperature_etc(md);
+    calculate_GroupTemperature_etc(md);
 
     if (md->Is_MD_comm_root)
     {
@@ -829,7 +719,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
     }
 }
 
-static void refreshGrid(fmd_t *md)
+void _fmd_refreshGrid(fmd_t *md)
 {
     fmd_ituple_t ic, jc;
 
@@ -876,7 +766,7 @@ void rescaleVelocities(fmd_t *md)
 {
     fmd_ituple_t ic;
 
-    fmd_real_t scale = sqrt(md->DesiredTemperature / md->GlobalTemperature);
+    fmd_real_t scale = sqrt(md->DesiredTemperature / md->GroupTemperature);
 
     cell_t *cell;
     int i;
@@ -886,7 +776,7 @@ void rescaleVelocities(fmd_t *md)
             for (int d=0; d<3; d++)
                 VEL(cell, i, d) *= scale;
 
-    md->GlobalTemperature = md->DesiredTemperature;
+    md->GroupTemperature = md->DesiredTemperature;
 }
 
 static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)
@@ -1364,82 +1254,6 @@ void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode)
     md->SaveConfigMode = mode;
 }
 
-void fmd_dync_setTimeStep(fmd_t *md, fmd_real_t timeStep)
-{
-    md->timestep = timeStep;
-}
-
-fmd_real_t fmd_dync_getTimeStep(fmd_t *md)
-{
-    return md->timestep;
-}
-
-fmd_real_t fmd_dync_getTime(fmd_t *md)
-{
-    return md->time;
-}
-
-void fmd_dync_incTime(fmd_t *md)
-{
-    md->time += md->timestep;
-    md->time_iteration++;
-    if (md->turies_num > 0) _fmd_turies_update(md);
-    if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
-}
-
-void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
-  fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature)
-{
-    fmd_real_t bak_mdTime, bak_DesiredTemperature;
-    fmd_real_t bak_timestep, bak_BerendsenThermostatParam;
-    fmd_real_t bak_GlobalTemperature;
-    int bak_ActiveGroup;
-
-    // make backups
-    bak_mdTime = md->time;
-    bak_timestep = md->timestep;
-    bak_BerendsenThermostatParam = md->BerendsenThermostatParam;
-    bak_DesiredTemperature = md->DesiredTemperature;
-    bak_ActiveGroup = md->ActiveGroup;
-    bak_GlobalTemperature = md->GlobalTemperature;
-
-    // initialize
-    md->time = 0.0;
-    fmd_dync_setTimeStep(md, timestep);
-    md->DesiredTemperature = temperature;
-    md->GlobalTemperature = temperature;
-    md->BerendsenThermostatParam = strength;
-    md->ActiveGroup = GroupID;
-
-    // compute forces for the first time
-    fmd_dync_updateForces(md);
-
-    while (md->time < duration)
-    {
-        // take first step of velocity Verlet integrator
-        fmd_dync_VelocityVerlet_startStep(md, FMD_TRUE);
-
-        // compute forces
-        fmd_dync_updateForces(md);
-
-        // take last step of velocity Verlet integrator
-        fmd_dync_VelocityVerlet_finishStep(md);
-
-        fmd_dync_incTime(md);
-    }
-    // end of the time loop
-
-    // restore backups
-    if (bak_ActiveGroup != md->ActiveGroup && md->ActiveGroup != ACTIVE_GROUP_ALL)
-        md->GlobalTemperature = bak_GlobalTemperature;
-
-    md->time = bak_mdTime;
-    fmd_dync_setTimeStep(md, bak_timestep);
-    md->DesiredTemperature = bak_DesiredTemperature;
-    md->BerendsenThermostatParam = bak_BerendsenThermostatParam;
-    md->ActiveGroup = bak_ActiveGroup;
-}
-
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 {
     if (md->Is_MD_process && md->Is_MD_comm_root)
@@ -1502,14 +1316,9 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     gsl_rng_free(rng);
 }
 
-fmd_real_t fmd_matt_getGlobalTemperature(fmd_t *md)
+fmd_real_t fmd_matt_getGroupTemperature(fmd_t *md)
 {
-    return md->GlobalTemperature;
-}
-
-void fmd_dync_setBerendsenThermostatParameter(fmd_t *md, fmd_real_t parameter)
-{
-    md->BerendsenThermostatParam = parameter;
+    return md->GroupTemperature;
 }
 
 void fmd_free(fmd_t *md)
