@@ -1,23 +1,6 @@
-# Python
-*.pyc
-.idea
-.ipynb_checkpoints/
-*.ipynb
-*.backup
-.idea/
-
-# setup.py
-pyfmd.egg-info/
-build/
-dist/
-fmdenv/
-
-# C
 *.so
 *.o
 *.x
-
-# MD related files
 *.xyz
 *.stt
 *.vtf
