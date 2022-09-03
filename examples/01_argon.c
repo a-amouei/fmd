@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
     // create the box grid
     fmd_box_createGrid(md, cutoff);
 
+    // set the desired temperature (in Kelvin)
+    fmd_matt_setDesiredTemperature(md, 100.0);
+
     // make an fcc cuboid at a given position and with a given size
     fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, LatticeParameter, 0, 0);
 

@@ -106,6 +106,9 @@ int main(int argc, char *argv[])
     double y1 = (ly - cusize * lp1) / 2;
     double z1 = (lz - cusize * lp1) / 2;
 
+    // set the desired temperature (in Kelvin)
+    fmd_matt_setDesiredTemperature(md, 40.0);
+
     // make an fcc Cu cuboid at a given position and with a given size
     fmd_matt_makeCuboidFCC(md, x0, y0, z0, cusize, cusize, cusize, lp0, 0, 0);
 
