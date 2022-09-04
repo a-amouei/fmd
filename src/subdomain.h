@@ -64,8 +64,8 @@ typedef struct
 
 typedef struct _fmd fmd_t;
 
-void fmd_subd_init(fmd_t *md);
-void fmd_subd_free(fmd_t *md);
+void _fmd_subd_init(fmd_t *md);
+void _fmd_subd_free(fmd_t *md);
 fmd_real_t _fmd_convert_pos_to_subd_coord_1D(fmd_t *md, fmd_real_t pos, int d);
 void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s);
 void _fmd_conv_ic_loc_to_glob(fmd_t *md, fmd_ituple_t ic, fmd_ituple_t icglob);

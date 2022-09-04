@@ -560,7 +560,7 @@ void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
 
 void _fmd_matt_distribute(fmd_t *md)
 {
-    if (md->SubDomain.grid == NULL) fmd_subd_init(md);
+    if (md->SubDomain.grid == NULL) _fmd_subd_init(md);
 
     calculate_GroupTemperature_etc(md);
 
@@ -1323,7 +1323,7 @@ fmd_real_t fmd_matt_getGroupTemperature(fmd_t *md)
 
 void fmd_free(fmd_t *md)
 {
-    fmd_subd_free(md);
+    _fmd_subd_free(md);
     fmd_potsys_free(md);
     fmd_timer_free(md);
     free_mpi_types(md);

@@ -54,7 +54,7 @@ static void clean_grid_cells(cell_t ***grid, fmd_utuple_t ex)
         _fmd_cell_free(&ARRAY_ELEMENT(grid, ic));
 }
 
-void fmd_subd_free(fmd_t *md)
+void _fmd_subd_free(fmd_t *md)
 {
     if (md->SubDomain.grid != NULL)
     {
@@ -64,7 +64,7 @@ void fmd_subd_free(fmd_t *md)
     }
 }
 
-void fmd_subd_init(fmd_t *md)
+void _fmd_subd_init(fmd_t *md)
 {
     /* initialize is */
     INDEX_3D(md->SubDomain.myrank, md->ns, md->SubDomain.is);

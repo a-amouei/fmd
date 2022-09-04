@@ -642,7 +642,7 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime)
 {
-    if (md->SubDomain.grid == NULL) fmd_subd_init(md);
+    if (md->SubDomain.grid == NULL) _fmd_subd_init(md);
 
     int ti = md->turies_num;
 

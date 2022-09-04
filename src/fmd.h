@@ -176,9 +176,6 @@ fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2
   fmd_real_t D0, fmd_real_t alpha, fmd_real_t r0, fmd_real_t cutoff);
 void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t *pot);
 
-void fmd_subd_init(fmd_t *md);
-void fmd_subd_free(fmd_t *md);
-
 fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop);
 
 fmd_real_t fmd_proc_getWallTime(fmd_t *md);
