@@ -53,7 +53,7 @@ static void VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 
         while (i < c->parts_num)
         {
-            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+            if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
             {
                 i++;
                 continue;
@@ -108,7 +108,7 @@ static void VelocityVerlet_finishStep(fmd_t *md)
             for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
                 for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
                 {
-                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                         continue;
 
                     ParticlesNum++;
@@ -221,7 +221,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     // end of the time loop
 
     // restore backups
-    if (bak_ActiveGroup != md->ActiveGroup && md->ActiveGroup != ACTIVE_GROUP_ALL)
+    if (bak_ActiveGroup != md->ActiveGroup && md->ActiveGroup != FMD_GROUP_ALL)
         md->GroupTemperature = bak_GroupTemperature;
 
     md->time = bak_time;

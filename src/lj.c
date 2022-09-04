@@ -47,7 +47,7 @@ void fmd_computeLJ(fmd_t *md)
                 /* iterate over all items in cell ic */
                 for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
                 {
-                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                         continue;
 
                     unsigned atomkind1 = c1->atomkind[i1];
@@ -71,7 +71,7 @@ void fmd_computeLJ(fmd_t *md)
                                 /* iterate over all items in cell jc */
                                 for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                                 {
-                                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
+                                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                         continue;
 
                                     if (c1->molkind[i1] != 0 && c1->MolID[i1] == c2->MolID[i2]) continue;  // TO-DO

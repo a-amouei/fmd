@@ -23,6 +23,8 @@
 #define FMD_TRUE 1
 #define FMD_FALSE 0
 
+#define FMD_GROUP_ALL -1
+
 /* typedefs */
 
 typedef enum

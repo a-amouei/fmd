@@ -331,7 +331,7 @@ static void calculate_GroupTemperature_etc(fmd_t *md)
         LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
             for (c=&ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
             {
-                if (md->ActiveGroup != ACTIVE_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                     continue;
 
                 md->ActiveGroupParticlesNum++;
@@ -1160,7 +1160,7 @@ fmd_t *fmd_create()
     md->SubDomain.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
-    md->ActiveGroup = ACTIVE_GROUP_ALL;             /* all groups are active by default */
+    md->ActiveGroup = FMD_GROUP_ALL;             /* all groups are active by default */
     md->ParticlesDistributed = FMD_FALSE;
     md->GlobalGridExists = FMD_FALSE;
     md->global_grid = NULL;

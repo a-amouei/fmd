@@ -54,7 +54,7 @@ static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 
         for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
         {
-            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                 continue;
 
             eam_t *eam;
@@ -83,7 +83,7 @@ static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 
                         for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                         {
-                            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
+                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                 continue;
 
                             if ( (c1 != c2) || (i1 != i2) )
@@ -137,7 +137,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
 
         for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
         {
-            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                 continue;
 
             for (int d=0; d<DIM; d++)
@@ -165,7 +165,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
 
                         for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                         {
-                            if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
+                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                 continue;
 
                             if ( (c1 != c2) || (i1 != i2) )

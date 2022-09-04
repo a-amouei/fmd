@@ -44,7 +44,7 @@ void fmd_computeMorse(fmd_t *md)
 
                 for (int i1=0; i1 < c1->parts_num; i1++)
                 {
-                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                         continue;
 
                     unsigned atomkind1 = c1->atomkind[i1];
@@ -76,7 +76,7 @@ void fmd_computeMorse(fmd_t *md)
 
                                 for (int i2=0; i2 < c2->parts_num; i2++)
                                 {
-                                    if (md->ActiveGroup != ACTIVE_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
+                                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                         continue;
 
                                     if ( (c1 != c2) || (i1 != i2) )

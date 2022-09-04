@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 
     // simulate for 6.5 picoseconds, with timesteps of 2 fs
     // -1 as the second parameter means that both groups (objects) are active
-    fmd_dync_integrate(md, -1, 6.5, 2e-3);
+    fmd_dync_integrate(md, FMD_GROUP_ALL, 6.5, 2e-3);
 
     // save system's final state in a file
     //fmd_io_saveState(md, "state0.stt");

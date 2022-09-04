@@ -56,7 +56,7 @@
 #define NEWTON_PER_METER            6.2415091259e-02   // x (eV / ang^2)
 #define MAX_PATH_LENGTH             256
 
-#define ACTIVE_GROUP_ALL                        -1
+#define FMD_GROUP_ALL                        -1
 
 /* typedefs & structs */
 
