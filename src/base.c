@@ -308,7 +308,7 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
 
     LOOP3D(ic, start, stop)
         for (c = &ARRAY_ELEMENT(grid, ic), i=0; i < c->parts_num; i++)
-            if (GroupID == -1 || GroupID == c->GroupID[i])
+            if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
             {
                 VEL(c, i, 0) += vx;
                 VEL(c, i, 1) += vy;
@@ -1304,7 +1304,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
 
     LOOP3D(ic, start, stop)
         for (c = &ARRAY_ELEMENT(grid, ic), pi = 0; pi < c->parts_num; pi++)
-            if (GroupID == -1 || GroupID == c->GroupID[pi])
+            if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[pi])
             {
                 fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
                 fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
