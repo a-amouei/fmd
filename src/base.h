@@ -172,5 +172,6 @@ void loadStateFile(fmd_t *md, cell_t ***global_grid);
 void rescaleVelocities(fmd_t *md);
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);
 void _fmd_refreshGrid(fmd_t *md);
+void _fmd_matt_distribute(fmd_t *md);
 
 #endif /* BASE_H */

@@ -152,6 +152,8 @@ static void incTime(fmd_t *md)
 
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep)
 {
+    if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
+
     md->timestep = timestep;
     md->ActiveGroup = GroupID;
 
@@ -182,6 +184,8 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     fmd_real_t bak_time;
     fmd_real_t bak_GroupTemperature;
     int bak_ActiveGroup;
+
+    if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
 
     // make backups
     bak_time = md->time;

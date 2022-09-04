@@ -98,9 +98,6 @@ int main(int argc, char *argv[])
     // make an fcc cuboid at a given position and with a given size
     fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, LatticeParameter, 0, 0);
 
-    // distribute the matter among subdomains
-    fmd_matt_distribute(md);
-
     // equilibrate for 1.0 picoseconds with a time step of 2 femtoseconds
     // to reach a temperature of 100 Kelvins
     fmd_dync_equilibrate(md, 0, 1.001, 2e-3, 2e-2, 100.0);

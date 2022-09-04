@@ -115,9 +115,6 @@ int main(int argc, char *argv[])
     // add an fcc Ar cuboid with a different groupID
     fmd_matt_makeCuboidFCC(md, x1, y1, z1, cusize, cusize, cusize, lp1, 1, 1);
 
-    // distribute the matter among subdomains
-    fmd_matt_distribute(md);
-
     // set where to save output files (default = current directory)
     //fmd_io_setSaveDirectory(md, "output/");
 

@@ -558,7 +558,7 @@ void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
     }
 }
 
-void fmd_matt_distribute(fmd_t *md)
+void _fmd_matt_distribute(fmd_t *md)
 {
     if (md->SubDomain.grid == NULL) fmd_subd_init(md);
 
