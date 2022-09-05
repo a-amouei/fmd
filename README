@@ -44,7 +44,7 @@ It can aslo be uninstalled by
 
 $ make uninstall
 
-4) The examples
+3) The examples
 ===============
 
 The example C programs in the "examples" directory show how to use FMD
@@ -53,7 +53,7 @@ acquainted with FMD. The program files include the instructions needed
 for compiling and/or running the examples and contain good amount of
 comments to show what the purpose of each line is.
 
-5) Where to get more information
+4) Where to get more information
 ================================
 
 Documentation file(s) will gradually be developed in the "doc" directory.
