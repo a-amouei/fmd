@@ -1,25 +1,35 @@
 TO-DO:
 
-  #1    Review fmd_bond_apply()
-  #2    Write a function to update the field 'distances' in molkind_t
-  #3    Write a function to add molecule instances to the simulation box
-  #4    Add the ability to save bond data into VTF files (to view molecules with VMD)
-  #5    Check logic of fmd_box_setSize()
-  #6    Now that arrays are used instead of linked-lists to store particles, if an atom of a molecule leaves a grid cell and enters another 
-        cell or if its place in a cell is changed, the references to it in the data structures of the neighbor atoms of the same molecue must
-        be updated.
-  #7    In md_ghost.c, only data of atoms belonging to the active group should be communicated.
-  #8    See how much -ffast-math and -fomit-frame-pointer compiler options affect the performance.
+  #1          Review fmd_bond_apply()
+  
+  #2          Write a function to update the field 'distances' in molkind_t
+  
+  #3          Write a function to add molecule instances to the simulation box
+  
+  #4          Add the ability to save bond data into VTF files (to view molecules with VMD)
+  
+  #5          Check logic of fmd_box_setSize()
+  
+  #6          Now that arrays are used instead of linked-lists to store particles, if an atom of a molecule leaves a grid cell and
+              enters another cell or if its place in a cell is changed, the references to it in the data structures of the neighbor
+              atoms of the same molecue must be updated.
+              
+  #7          In md_ghost.c, only data of atoms belonging to the active group should be communicated.
+  
+  #8          See how much -ffast-math and -fomit-frame-pointer compiler options affect the performance.
 
 Questions:
 
-  #1    Q: In fmd_pot_prepareForForceComp() at potential.c, can fmd_list_find_custom()
-        be replaced with fmd_list_find()?
+  #1          Q: In fmd_pot_prepareForForceComp() at potential.c, can fmd_list_find_custom() be replaced with fmd_list_find()?
 
-        A: My first guess is that it can be done. But maybe needs more analysis.
+              A: My first guess is that it can be done. But maybe needs more analysis.
 
-  #2    Q: Can LocalID be finally removed from mol_atom_neighbor_t?
+  #2          Q: Can LocalID be finally removed from mol_atom_neighbor_t?
 
 Remarks:
 
   #1[CLOSED]  Since MPI_BYTE is used to transmit structs, currently the code may not be portable to heterogeneous machines.
+  
+  #2          In base.c, the function _fmd_compute_GroupTemperature_etc_localgrid() computes GroupMomentum, but the function
+              calculate_GroupTemperature_etc() doesn't. This is not a problem at the moment, because there is no function in the
+              library interface reporting the momemntum.
