@@ -196,7 +196,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
     }
 
     PotEnergy = 0.5 * PotEnergy + FembSum;
-    MPI_Allreduce(&PotEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&PotEnergy, &md->GroupPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
 void _fmd_dync_updateForces(fmd_t *md)

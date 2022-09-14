@@ -114,7 +114,7 @@ void fmd_computeLJ(fmd_t *md)
             }
 
     PotEnergy *= 2.0;
-    MPI_Allreduce(&PotEnergy, &md->TotalPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
+    MPI_Allreduce(&PotEnergy, &md->GroupPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,

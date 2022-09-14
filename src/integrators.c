@@ -94,7 +94,6 @@ static void VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 static void VelocityVerlet_finishStep(fmd_t *md)
 {
     fmd_ituple_t ic;
-    int d;
     fmd_real_t m_vSqd_Sum = 0, m_vSqd_SumSum;
     fmd_real_t mass;
     int ParticlesNum = 0;
@@ -102,39 +101,35 @@ static void VelocityVerlet_finishStep(fmd_t *md)
     cell_t *c;
     unsigned i;
 
-    for (ic[0] = md->SubDomain.ic_start[0]; ic[0] < md->SubDomain.ic_stop[0]; ic[0]++)
-    {
-        for (ic[1] = md->SubDomain.ic_start[1]; ic[1] < md->SubDomain.ic_stop[1]; ic[1]++)
-            for (ic[2] = md->SubDomain.ic_start[2]; ic[2] < md->SubDomain.ic_stop[2]; ic[2]++)
-                for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
-                {
-                    if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
-                        continue;
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                continue;
 
-                    ParticlesNum++;
+            ParticlesNum++;
 
-                    mass = md->potsys.atomkinds[c->atomkind[i]].mass;
-                    for (d=0; d<3; d++)
-                    {
-                        VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
-                        MomentumSum[d] += mass * VEL(c, i, d);
-                    }
+            mass = md->potsys.atomkinds[c->atomkind[i]].mass;
 
-                    m_vSqd_Sum += mass * ( sqrr(VEL(c, i, 0)) +
-                                           sqrr(VEL(c, i, 1)) +
-                                           sqrr(VEL(c, i, 2)) );
-                }
-    }
+            for (int d=0; d<DIM; d++)
+            {
+                VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
+                MomentumSum[d] += mass * VEL(c, i, d);
+            }
 
-    MPI_Reduce(MomentumSum, md->TotalMomentum, 3, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
+            m_vSqd_Sum += mass * ( sqrr(VEL(c, i, 0)) +
+                                   sqrr(VEL(c, i, 1)) +
+                                   sqrr(VEL(c, i, 2)) );
+        }
 
-    MPI_Allreduce(&ParticlesNum, &md->ActiveGroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
+    MPI_Reduce(MomentumSum, md->GroupMomentum, DIM, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
+
+    MPI_Allreduce(&ParticlesNum, &md->GroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
 
     MPI_Allreduce(&m_vSqd_Sum, &m_vSqd_SumSum, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
-    md->TotalKineticEnergy = 0.5 * m_vSqd_SumSum;
-    md->TotalMDEnergy = md->TotalKineticEnergy + md->TotalPotentialEnergy;
+    md->GroupKineticEnergy = 0.5 * m_vSqd_SumSum;
 
-    md->GroupTemperature = m_vSqd_SumSum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
+    md->GroupTemperature = m_vSqd_SumSum / (3.0 * md->GroupParticlesNum * K_BOLTZMANN);
 }
 
 static void tick(fmd_t *md)
@@ -154,8 +149,15 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
 {
     if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
 
+    if (GroupID != md->ActiveGroup && md->ActiveGroup != FMD_GROUP_ALL)
+    {
+        md->ActiveGroup = GroupID;
+        _fmd_compute_GroupTemperature_etc_localgrid(md);
+    }
+    else
+        md->ActiveGroup = GroupID;
+
     md->timestep = timestep;
-    md->ActiveGroup = GroupID;
 
     /* compute forces for the first time */
     _fmd_dync_updateForces(md);
@@ -182,23 +184,25 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature)
 {
     fmd_real_t bak_time;
-    fmd_real_t bak_GroupTemperature;
-    int bak_ActiveGroup;
 
     if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
 
     // make backups
     bak_time = md->time;
-    bak_ActiveGroup = md->ActiveGroup;
-    bak_GroupTemperature = md->GroupTemperature;
 
     // initialize
     md->time = 0.0;
     md->timestep = timestep;
     md->DesiredTemperature = temperature;
-    md->GroupTemperature = temperature;
     md->BerendsenThermostatParam = strength;
-    md->ActiveGroup = GroupID;
+
+    if (GroupID != md->ActiveGroup && md->ActiveGroup != FMD_GROUP_ALL)
+    {
+        md->ActiveGroup = GroupID;
+        _fmd_compute_GroupTemperature_etc_localgrid(md);
+    }
+    else
+        md->ActiveGroup = GroupID;
 
     // compute forces for the first time
     _fmd_dync_updateForces(md);
@@ -221,9 +225,5 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     // end of the time loop
 
     // restore backups
-    if (bak_ActiveGroup != md->ActiveGroup && md->ActiveGroup != FMD_GROUP_ALL)
-        md->GroupTemperature = bak_GroupTemperature;
-
     md->time = bak_time;
-    md->ActiveGroup = bak_ActiveGroup;
 }

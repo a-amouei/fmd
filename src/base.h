@@ -60,27 +60,6 @@
 
 /* typedefs & structs */
 
-/*typedef struct
-{
-    //fmd_rtuple_t x_bak;
-    //fmd_rtuple_t v_bak;
-    float LocOrdParam;
-    float x_avgd[3];
-    unsigned AtomID;
-    unsigned atomkind;
-    unsigned molkind;
-    unsigned MolID;
-    unsigned AtomID_local;
-} particle_core_t;
-
-typedef struct _particle
-{
-    particle_core_t core;
-    fmd_real_t FembPrime;
-    float LocOrdParamAvg;
-    list_t *neighbors;       *//* each data pointer in this list points to a mol_atom_neighbor_t */
-/*} particle_t;*/
-
 typedef enum
 {
     FMD_SCM_XYZ_PARTICLESNUM,
@@ -129,9 +108,8 @@ struct _fmd
     int LOP_iteration;                    /* must be initialized with zero */
     int LOP_period;
     MPI_Comm MD_comm;
-    fmd_real_t TotalKineticEnergy;
-    fmd_real_t TotalPotentialEnergy;
-    fmd_real_t TotalMDEnergy;
+    fmd_real_t GroupKineticEnergy;
+    fmd_real_t GroupPotentialEnergy;
     int world_rank;
     int world_numprocs;
     fmd_real_t DesiredTemperature;
@@ -149,16 +127,14 @@ struct _fmd
     FILE *ConfigFilep;
     fmd_real_t WallTimeOrigin;
     int ActiveGroup;
-    unsigned ActiveGroupParticlesNum;
-    fmd_rtuple_t TotalMomentum;
+    unsigned GroupParticlesNum;
+    fmd_rtuple_t GroupMomentum;
     fmd_bool_t ParticlesDistributed;
     fmd_bool_t MPI_initialized_by_me;
     h5_dataspaces_t h5_dataspaces;
     int cell_increment;
     int _OldNumberOfParticles;
     int _FileIndex;
-    fmd_real_t _OldTotalMDEnergy;
-    fmd_real_t _PrevFailedMDEnergy;
 };
 
 typedef struct _fmd fmd_t;
@@ -173,5 +149,6 @@ void rescaleVelocities(fmd_t *md);
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);
 void _fmd_refreshGrid(fmd_t *md);
 void _fmd_matt_distribute(fmd_t *md);
+void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md);
 
 #endif /* BASE_H */

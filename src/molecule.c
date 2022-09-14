@@ -490,5 +490,5 @@ void fmd_dync_computeBondForce(fmd_t *md)
                 }
             }
 
-    md->TotalPotentialEnergy += PotEnergy;
+    md->GroupPotentialEnergy += PotEnergy;
 }

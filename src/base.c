@@ -279,6 +279,80 @@ static void identifyProcess(fmd_t *md)
         md->Is_MD_process = FMD_FALSE;
 }
 
+/* calculate GroupTemperature, GroupParticlesNum and GroupKineticEnergy from "local grid" */
+void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md)
+{
+    fmd_ituple_t ic;
+    fmd_real_t m_vSqd_Sum = 0, m_vSqd_SumSum;
+    fmd_real_t mass;
+    int ParticlesNum = 0;
+    fmd_rtuple_t MomentumSum = {0., 0., 0.};
+    cell_t *c;
+    unsigned i;
+
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                continue;
+
+            ParticlesNum++;
+
+            mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+
+            for (int d=0; d<DIM; d++)
+                MomentumSum[d] += mass * VEL(c, i, d);
+
+            m_vSqd_Sum += mass * ( sqrr(VEL(c, i, 0)) +
+                                   sqrr(VEL(c, i, 1)) +
+                                   sqrr(VEL(c, i, 2)) );
+        }
+
+    MPI_Reduce(MomentumSum, md->GroupMomentum, DIM, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
+
+    MPI_Allreduce(&ParticlesNum, &md->GroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
+
+    MPI_Allreduce(&m_vSqd_Sum, &m_vSqd_SumSum, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
+    md->GroupKineticEnergy = 0.5 * m_vSqd_SumSum;
+
+    md->GroupTemperature = m_vSqd_SumSum / (3.0 * md->GroupParticlesNum * K_BOLTZMANN);
+}
+
+/* calculate GroupTemperature, GroupParticlesNum and GroupKineticEnergy from "global grid" */
+static void calculate_GroupTemperature_etc(fmd_t *md)
+{
+    if (md->Is_MD_comm_root)
+    {
+        fmd_ituple_t ic;
+        fmd_real_t m_vSqd_Sum = 0.0;
+        cell_t *c;
+        int i;
+
+        md->GroupParticlesNum = 0;
+
+        LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
+            for (c=&ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+            {
+                if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                    continue;
+
+                md->GroupParticlesNum++;
+
+                fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+
+                for (int d=0; d<DIM; d++)
+                    m_vSqd_Sum += mass * sqrr(VEL(c, i, d));
+            }
+
+        md->GroupTemperature = m_vSqd_Sum / (3.0 * md->GroupParticlesNum * K_BOLTZMANN);
+    }
+
+    MPI_Bcast(&md->GroupParticlesNum, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+    MPI_Bcast(&md->GroupTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
+
+    md->GroupKineticEnergy = 3.0/2.0 * md->GroupParticlesNum * K_BOLTZMANN * md->GroupTemperature;
+}
+
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
 {
     cell_t ***grid;
@@ -314,40 +388,11 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
                 VEL(c, i, 1) += vy;
                 VEL(c, i, 2) += vz;
             }
-}
 
-/* calculate GroupTemperature, ActiveGroupParticlesNum and TotalKineticEnergy from "global grid" */
-static void calculate_GroupTemperature_etc(fmd_t *md)
-{
-    if (md->Is_MD_comm_root)
-    {
-        fmd_ituple_t ic;
-        fmd_real_t m_vSqd_Sum = 0.0;
-        cell_t *c;
-        int i;
-
-        md->ActiveGroupParticlesNum = 0;
-
-        LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-            for (c=&ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
-            {
-                if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
-                    continue;
-
-                md->ActiveGroupParticlesNum++;
-
-                fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
-                for (int d=0; d<DIM; d++)
-                    m_vSqd_Sum += mass * sqrr(VEL(c, i, d));
-            }
-
-        md->GroupTemperature = m_vSqd_Sum / (3.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN);
-    }
-
-    MPI_Bcast(&md->ActiveGroupParticlesNum, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
-    MPI_Bcast(&md->GroupTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
-
-    md->TotalKineticEnergy = 3.0/2.0 * md->ActiveGroupParticlesNum * K_BOLTZMANN * md->GroupTemperature;
+    if (md->ParticlesDistributed)
+        _fmd_compute_GroupTemperature_etc_localgrid(md);
+    else
+        calculate_GroupTemperature_etc(md);
 }
 
 static void find_global_start_stop_ic_of_a_subd(fmd_t *md, int rank,
@@ -1178,8 +1223,6 @@ fmd_t *fmd_create()
     md->cell_increment = 10;
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
-    md->_OldTotalMDEnergy = 0.0;
-    md->_PrevFailedMDEnergy = 0.0;
     fmd_potsys_init(md);
     create_mpi_types(md);
     _fmd_h5_ds_init(&md->h5_dataspaces);
@@ -1268,7 +1311,7 @@ void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
 {
-    return md->TotalKineticEnergy + md->TotalPotentialEnergy;
+    return md->GroupKineticEnergy + md->GroupPotentialEnergy;
 }
 
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
@@ -1316,7 +1359,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
     gsl_rng_free(rng);
 }
 
-fmd_real_t fmd_matt_getGroupTemperature(fmd_t *md)
+fmd_real_t fmd_matt_getTemperature(fmd_t *md)
 {
     return md->GroupTemperature;
 }

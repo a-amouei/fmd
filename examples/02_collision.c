@@ -139,13 +139,11 @@ int main(int argc, char *argv[])
     timer2 = fmd_timer_makeSimple(md, 0.0, 0.06, -1.0);
 
     // simulate for 6.5 picoseconds, with timesteps of 2 fs
-    // -1 as the second parameter means that both groups (objects) are active
     fmd_dync_integrate(md, FMD_GROUP_ALL, 6.5, 2e-3);
 
     // save system's final state in a file
     //fmd_io_saveState(md, "state0.stt");
 
-    // another report
     fmd_io_printf(md, "The run took about %.3f seconds to finish.\n", fmd_proc_getWallTime(md));
 
     // release memory taken for the FMD instance (including subdomain and all particles)
