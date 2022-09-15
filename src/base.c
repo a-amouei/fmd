@@ -242,37 +242,73 @@ void createCommunicators(fmd_t *md)
     free(ranks);
 }
 
-void findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
+void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
 {
-    fmd_ituple_t ic;
-    int d;
-    fmd_rtuple_t LocalLower, LocalUpper;
+    cell_t ***grid;
+    const int *start, *stop;
 
-    LocalLower[0] = LocalLower[1] = LocalLower[2] = DBL_MAX;
-    LocalUpper[0] = LocalUpper[1] = LocalUpper[2] = DBL_MIN;
+    if (md->ParticlesDistributed)
+    {
+        grid = md->SubDomain.grid;
+        start = md->SubDomain.ic_start;
+        stop = md->SubDomain.ic_stop;
+    }
+    else
+    {
+        start = _fmd_ThreeZeros_int;
+        if (md->Is_MD_comm_root)
+        {
+            grid = md->global_grid;
+            stop = md->nc;
+        }
+        else
+            stop = start;
+    }
+
+    fmd_rtuple_t L, U;
+
+    for (int d=0; d<DIM; d++)
+    {
+        L[d] = DBL_MAX;
+        U[d] = DBL_MIN;
+    }
 
     int i;
     cell_t *c;
+    fmd_ituple_t ic;
 
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
-            for (d=0; d<3; d++)
+    LOOP3D(ic, start, stop)
+        for (c = &ARRAY_ELEMENT(grid, ic), i=0; i < c->parts_num; i++)
+            for (int d=0; d<DIM; d++)
             {
-                if (POS(c, i, d) < LocalLower[d])
-                    LocalLower[d] = POS(c, i, d);
-                if (POS(c, i, d) > LocalUpper[d])
-                    LocalUpper[d] = POS(c, i, d);
+                if (POS(c, i, d) < L[d])
+                    L[d] = POS(c, i, d);
+                if (POS(c, i, d) > U[d])
+                    U[d] = POS(c, i, d);
             }
 
-    MPI_Allreduce(LocalLower, LowerLimit, 3, FMD_MPI_REAL, MPI_MIN, md->MD_comm);
-    MPI_Allreduce(LocalUpper, UpperLimit, 3, FMD_MPI_REAL, MPI_MAX, md->MD_comm);
+    if (md->ParticlesDistributed)
+    {
+        MPI_Allreduce(L, LowerLimit, DIM, FMD_MPI_REAL, MPI_MIN, md->MD_comm);
+        MPI_Allreduce(U, UpperLimit, DIM, FMD_MPI_REAL, MPI_MAX, md->MD_comm);
+    }
+    else
+    {
+        MPI_Bcast(L, DIM, FMD_MPI_REAL, RANK0, md->MD_comm);
+        MPI_Bcast(U, DIM, FMD_MPI_REAL, RANK0, md->MD_comm);
+
+        for (int d=0; d<DIM; d++)
+        {
+            LowerLimit[d] = L[d];
+            UpperLimit[d] = U[d];
+        }
+    }
 }
 
 static void identifyProcess(fmd_t *md)
 {
-    int mdnum;
+    int mdnum = md->ns[0] * md->ns[1] * md->ns[2];
 
-    mdnum = md->ns[0] * md->ns[1] * md->ns[2];
     if (md->world_rank < mdnum)
         md->Is_MD_process = FMD_TRUE;
     else
