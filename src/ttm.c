@@ -79,6 +79,7 @@ ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
             int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, FMD_TRUE);
             int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, FMD_FALSE);
             int iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, FMD_FALSE);
+            int ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, FMD_TRUE);
 
             _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
             assert(ttm->Te_aux.data != NULL);
@@ -92,6 +93,7 @@ ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
                 ttm->Ti_1d = ((fmd_real_t ***)t->fields[iTi].data.data)[0][0];
                 ttm->Te_1d = ((fmd_real_t ***)t->fields[iTe].data.data)[0][0];
                 ttm->Te2_1d = ((fmd_real_t ***)ttm->Te_aux.data)[0][0];
+                ttm->xi_1d = ((fmd_real_t ***)t->fields[ixi].data.data)[0][0];
             }
             else
             {
@@ -102,6 +104,7 @@ ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
                 ttm->Ti = (fmd_real_t ***)t->fields[iTi].data.data;
                 ttm->Te = (fmd_real_t ***)t->fields[iTe].data.data;
                 ttm->Te2 = (fmd_real_t ***)ttm->Te_aux.data;
+                ttm->xi = (fmd_real_t ***)t->fields[ixi].data.data;
             }
         }
             break;

@@ -32,7 +32,8 @@ typedef enum
     FMD_FIELD_TEMPERATURE,
     FMD_FIELD_NUMBER,
     FMD_FIELD_NUMBER_DENSITY,
-    FMD_FIELD_TTM_TE
+    FMD_FIELD_TTM_TE,
+    FMD_FIELD_TTM_XI
 } fmd_field_t; /* category of the field */
 
 typedef struct
@@ -95,8 +96,6 @@ typedef struct _turi
                                           in a correct way. */
     fmd_ituple_t rank_of_upper_owner;
     fmd_btuple_t has_upper_lower_owner_procs;
-
-
     unsigned tcells_global_num;
     fmd_ituple_t itc_start;            /* width of turi-margin, refers to the first
                                           turi-cell in the interior of the local turi */

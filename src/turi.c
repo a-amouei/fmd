@@ -728,7 +728,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 static void set_field_data_el_size_and_type(field_t *f)
 {
     if (f->cat == FMD_FIELD_MASS || f->cat == FMD_FIELD_TEMPERATURE ||
-        f->cat == FMD_FIELD_NUMBER_DENSITY || f->cat == FMD_FIELD_TTM_TE)
+        f->cat == FMD_FIELD_NUMBER_DENSITY || f->cat == FMD_FIELD_TTM_TE ||
+        f->cat == FMD_FIELD_TTM_XI)
     {
         f->data_el_size = sizeof(fmd_real_t);
         f->datatype = DATATYPE_REAL;
@@ -1336,6 +1337,10 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t a
             dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, allreduce);
             break;
 
+        case FMD_FIELD_TTM_XI:
+            dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, allreduce);
+            break;
+
         default:
             ;
     }
@@ -1368,7 +1373,8 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t a
             f->dependcs[0] = dep1;
             f->dependcs[1] = dep2;
         }
-        else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY || cat == FMD_FIELD_TTM_TE)
+        else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY || cat == FMD_FIELD_TTM_TE ||
+                 cat == FMD_FIELD_TTM_XI)
         {
             f->dependcs_num = 1;
             f->dependcs = (unsigned *)m_alloc(sizeof(unsigned));
