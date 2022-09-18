@@ -203,12 +203,14 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
 
 static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 {
+    fmd_real_t start = md->time;
+
     /* compute forces for the first time */
     _fmd_dync_updateForces(md);
 
     tick(md);
 
-    while (md->time < duration)
+    while (md->time < start + duration)
     {
         /* update positions and velocities */
         SymplecticEuler_takeOneStep(md);
@@ -223,12 +225,14 @@ static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 
 static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, fmd_bool_t UseThermostat)
 {
+    fmd_real_t start = md->time;
+
     /* compute forces for the first time */
     _fmd_dync_updateForces(md);
 
     tick(md);
 
-    while (md->time < duration)
+    while (md->time < start + duration)
     {
         /* take first step of velocity Verlet integrator */
         VelocityVerlet_startStep(md, UseThermostat);
