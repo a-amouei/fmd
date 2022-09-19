@@ -135,19 +135,6 @@ static void VelocityVerlet_finishStep(fmd_t *md)
     updateGroupProperties(md, MomentumSum, ParticlesNum, m_vSqd_Sum);
 }
 
-static void tick(fmd_t *md)
-{
-    if (md->turies_num > 0) _fmd_turies_update(md);
-    if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
-}
-
-static void incTime(fmd_t *md)
-{
-    md->time += md->timestep;
-    md->time_iteration++;
-    tick(md);
-}
-
 /* implementation of semi-implicit Euler method */
 static void SymplecticEuler_takeOneStep(fmd_t *md)
 {
@@ -205,20 +192,43 @@ static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 {
     fmd_real_t start = md->time;
 
+    /* update force-independent fields */
+    if (md->turies_num > 0)
+        _fmd_turies_update(md, md->time_iteration, md->time, FMD_TRUE, FMD_TRUE, FMD_FALSE);
+
     /* compute forces for the first time */
     _fmd_dync_updateForces(md);
 
-    tick(md);
+    /* update force-dependent fields */
+    if (md->turies_num > 0)
+        _fmd_turies_update(md, md->time_iteration, md->time, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+
+    /* make a timer-tick event */
+    if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
 
     while (md->time < start + duration)
     {
         /* update positions and velocities */
         SymplecticEuler_takeOneStep(md);
 
+        /* update force-independent fields */
+        if (md->turies_num > 0)
+            _fmd_turies_update(md, md->time_iteration + 1, md->time + md->timestep,
+                               FMD_TRUE, FMD_TRUE, FMD_FALSE);
+
         /* compute forces */
         _fmd_dync_updateForces(md);
 
-        incTime(md);
+        /* step completed: now update time and time_iteration */
+        md->time += md->timestep;
+        md->time_iteration++;
+
+        /* update force-dependent fields */
+        if (md->turies_num > 0)
+            _fmd_turies_update(md, md->time_iteration, md->time, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+
+        /* make a timer-tick event */
+        if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
     }
     /* end of the time loop */
 }
@@ -230,7 +240,12 @@ static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, fmd_bool_t 
     /* compute forces for the first time */
     _fmd_dync_updateForces(md);
 
-    tick(md);
+    /* update fields */
+    if (md->turies_num > 0)
+        _fmd_turies_update(md, md->time_iteration, md->time, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+
+    /* make a timer-tick event */
+    if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
 
     while (md->time < start + duration)
     {
@@ -243,7 +258,16 @@ static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, fmd_bool_t 
         /* take last step of velocity Verlet integrator */
         VelocityVerlet_finishStep(md);
 
-        incTime(md);
+        /* step completed: now update time and time_iteration */
+        md->time += md->timestep;
+        md->time_iteration++;
+
+        /* update fields */
+        if (md->turies_num > 0)
+            _fmd_turies_update(md, md->time_iteration, md->time, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+
+        /* make a timer-tick event */
+        if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
     }
     /* end of the time loop */
 }

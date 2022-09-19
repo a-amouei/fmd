@@ -41,6 +41,7 @@ typedef struct
     int field_index;
     fmd_field_t cat;
     int timestep;                    /* the last timestep this field was updated */
+    fmd_real_t time;                 /* the last time this field was updated */
     unsigned dependcs_num;           /* number of the dependency fields */
     unsigned *dependcs;              /* indexes of the dependency fields */
     unsigned intervals_allreduce_num;
@@ -120,7 +121,8 @@ typedef struct _turi
 typedef struct _fmd fmd_t;
 
 int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce);
-void _fmd_turies_update(fmd_t *md);
+void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
+                        fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd);
 void fmd_turi_free(fmd_t *md);
 
 #endif /* TURI_H */
