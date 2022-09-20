@@ -142,6 +142,7 @@ typedef struct _fmd fmd_t;
 /* Functions */
 
 void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
+void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
 void compLocOrdParam(fmd_t *md);
 void createCommunicators(fmd_t *md);
 void loadStateFile(fmd_t *md, cell_t ***global_grid);

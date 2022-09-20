@@ -45,6 +45,7 @@ typedef struct _ttm
     fmd_real_t *xi_1d;
     unsigned timestep_ratio; /* the ratio of MD timestep to TTM timestep */
     fmd_real_t timestep;
+    fmd_real_t frontsurf;    /* position of front surface */
 } ttm_t;
 
 typedef struct _turi turi_t;

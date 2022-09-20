@@ -84,6 +84,11 @@ ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
             _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
             assert(ttm->Te_aux.data != NULL);
 
+            fmd_rtuple_t ll, ul;
+
+            fmd_matt_findLimits(md, ll, ul);
+            ttm->frontsurf = ll[DIM-1];
+
             if (t->tdims_global[0] == 1 && t->tdims_global[1] == 1)
             {
                 ttm->dim = 1;
