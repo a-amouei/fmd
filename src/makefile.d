@@ -9,7 +9,7 @@ eam.o: eam.c eam.h config.h forces.h types.h cspline.h base.h potential.h \
  subdomain.h array.h events.h h5.h cell.h list.h general.h
 forces.o: forces.c forces.h config.h eam.h types.h cspline.h lj.h morse.h \
  base.h potential.h subdomain.h array.h events.h h5.h cell.h md_ghost.h \
- list.h molecule.h general.h
+ list.h molecule.h general.h turi.h ttm.h
 general.o: general.c general.h config.h types.h
 h5.o: h5.c h5.h config.h types.h array.h turi.h general.h base.h \
  potential.h subdomain.h events.h cell.h

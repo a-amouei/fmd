@@ -172,7 +172,7 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
 
 static void pot_hybridpasses_update(fmd_t *md)
 {
-    // fill hybridpasses with zeros
+    // fill hybridpasses with zeros ( = FMD_FALSE )
     memset(md->potsys.hybridpasses, 0, sizeof(md->potsys.hybridpasses));
 
     list_t *potcats = md->potsys.potcats;
@@ -181,16 +181,16 @@ static void pot_hybridpasses_update(fmd_t *md)
         switch (*(potcat_t *)(potcats->data))
         {
             case POT_MORSE:
-                md->potsys.hybridpasses[0] = 1;
+                md->potsys.hybridpasses[0] = FMD_TRUE;
                 break;
 
             case POT_LJ_6_12:
-                md->potsys.hybridpasses[0] = 1;
+                md->potsys.hybridpasses[0] = FMD_TRUE;
                 break;
 
             case POT_EAM_ALLOY:
-                md->potsys.hybridpasses[0] = 1;
-                md->potsys.hybridpasses[1] = 1;
+                md->potsys.hybridpasses[0] = FMD_TRUE;
+                md->potsys.hybridpasses[1] = FMD_TRUE;
                 break;
         }
 

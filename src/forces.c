@@ -26,6 +26,8 @@
 #include "list.h"
 #include "molecule.h"
 #include "general.h"
+#include "turi.h"
+#include "ttm.h"
 
 static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {
@@ -199,6 +201,48 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
     MPI_Allreduce(&PotEnergy, &md->GroupPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
+static void add_ttm_term_to_forces(fmd_t *md)
+{
+    fmd_ituple_t ic;
+    cell_t *c;
+    unsigned i;
+
+    turi_t *t = md->active_ttm_turi;
+    ttm_t *ttm = t->ttm;
+
+    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                continue;
+
+            fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+
+            if (ttm->dim == 1)
+            {
+                int itc1d = (int)(POS(c, i, DIM-1) / t->tcellh[DIM-1]) + t->itc_glob_to_loc[DIM-1];
+
+                fmd_real_t xi = ttm->xi_1d[itc1d];
+                fmd_real_t *vcm = ttm->vcm_1d[itc1d];
+
+                FRC(c, i, DIM-1) += xi * mass * (VEL(c, i, DIM-1) - vcm[DIM-1]);
+            }
+            else
+            {
+                fmd_ituple_t itc;
+
+                for (int d=0; d<DIM; d++)
+                    itc[d] = (int)(POS(c, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
+
+                fmd_real_t ximass = ARRAY_ELEMENT(ttm->xi, itc) * mass;
+                fmd_real_t *vcm = ARRAY_ELEMENT(ttm->vcm, itc);
+
+                for (int d=0; d<DIM; d++)
+                    FRC(c, i, d) += ximass * (VEL(c, i, d) - vcm[d]);
+            }
+        }
+}
+
 void _fmd_dync_updateForces(fmd_t *md)
 {
     if (md->potsys.potcats == NULL)  // just for one time
@@ -244,6 +288,8 @@ void _fmd_dync_updateForces(fmd_t *md)
     }
 
     if (md->TotalNoOfMolecules > 0) fmd_dync_computeBondForce(md);   // TO-DO
+
+    if (md->active_ttm_turi != NULL) add_ttm_term_to_forces(md);
 
     _fmd_ghostparticles_delete(md);
 }
