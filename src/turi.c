@@ -1646,13 +1646,15 @@ static void turi_free(fmd_t *md, turi_t *t)
 {
     for (unsigned u=0; u < t->fields_num; u++)
         field_free(&t->fields[u]);
+
     free(t->fields);
 
     for (unsigned u=0; u < t->comms_num; u++)
         turi_comm_free(&t->comms[u]);
+
     free(t->comms);
 
-    _fmd_ttm_destructor(&t->ttm);
+    if (t->ttm != NULL) _fmd_ttm_destructor(&t->ttm);
 
     turi_ownerscomm_free(md, &t->ownerscomm);
 }
