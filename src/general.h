@@ -84,14 +84,20 @@ static inline fmd_real_t sqrrt(fmd_rtuple_t x)
 
 static inline void *re_alloc(void *ptr, size_t size)
 {
-    void *res;
-
-    res = realloc(ptr, size);
-    assert(res != NULL);   /* TO-DO: handle memory error */
-
-    return res;
+    if (size != 0)
+    {
+        void *res = realloc(ptr, size);
+        assert(res != NULL);   /* TO-DO: handle memory error */
+        return res;
+    }
+    else
+    {
+        if (ptr != NULL) free(ptr);
+        return NULL;
+    }
 }
 
+/* size should not be zero */
 static inline void *m_alloc(size_t size)
 {
     void *res;
@@ -102,6 +108,7 @@ static inline void *m_alloc(size_t size)
     return res;
 }
 
+/* size should not be zero */
 static inline void *c_alloc(size_t nmemb, size_t size)
 {
     void *res;
