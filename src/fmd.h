@@ -166,10 +166,10 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...);
-void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, fmd_bool_t useTime);
+void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, fmd_bool_t UseTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 
-fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t filePath);
+fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t FilePath);
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
 fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
 void fmd_pot_setCutoffRadius(fmd_t *md, fmd_real_t cutoff);
@@ -204,5 +204,6 @@ void fmd_ttm_setHeatConductivity(fmd_t *md, fmd_handle_t turi, fmd_params_t *par
 void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params);
 void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params);
+void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
 
 #endif /* FMD_H */
