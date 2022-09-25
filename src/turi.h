@@ -44,11 +44,11 @@ typedef struct
     fmd_real_t time;                 /* the last time this field was updated */
     unsigned dependcs_num;           /* number of the dependency fields */
     unsigned *dependcs;              /* indexes of the dependency fields */
-    unsigned intervals_allreduce_num;
-    fmd_real_t *intervals_allreduce; /* at these intervals a field update and "allreduce" MPI communication is done */
-    fmd_bool_t allreduce_now;
+    unsigned intervals_allhave_num;
+    fmd_real_t *intervals_allhave;   /* at these intervals a field update and "all-have" MPI communication are done */
+    fmd_bool_t allhave_now;
     unsigned intervals_num;
-    fmd_real_t *intervals;           /* intervals determine when to update the field and perform "reduce" MPI communication */
+    fmd_real_t *intervals;           /* intervals determine when to update the field and perform MPI communication */
     fmd_array3D_t data;
     unsigned data_el_size;           /* size of each data element in bytes */
     datatype_t datatype;
@@ -120,7 +120,7 @@ typedef struct _turi
 
 typedef struct _fmd fmd_t;
 
-int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce);
+int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allhave);
 void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
                         fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd);
 void fmd_turi_free(fmd_t *md);

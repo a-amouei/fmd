@@ -779,7 +779,7 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
     }
 }
 
-static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     /* allocate memory for buf1 and buf2 */
     fmd_rtuple_t *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
@@ -797,14 +797,14 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
 
         /* do communication */
 
-        if (allreduce)
+        if (allhave)
             MPI_Allreduce(buf1, buf2, DIM*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
         else
             MPI_Reduce(buf1, buf2, DIM*tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
 
         /* copy from buf2 to data array */
 
-        if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+        if (allhave || tcm->pset[0] == md->SubDomain.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -820,7 +820,7 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
     free(buf2);
 }
 
-static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     /* allocate memory for buf1 and buf2 */
     fmd_real_t *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
@@ -838,14 +838,14 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
 
         /* do communication */
 
-        if (allreduce)
+        if (allhave)
             MPI_Allreduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, tcm->comm);
         else
             MPI_Reduce(buf1, buf2, tcm->num_tcells, FMD_MPI_REAL, MPI_SUM, 0, tcm->comm);
 
         /* copy from buf2 to data array */
 
-        if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+        if (allhave || tcm->pset[0] == md->SubDomain.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -860,7 +860,7 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
     free(buf2);
 }
 
-static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce)
+static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     /* allocate memory for buf1 and buf2 */
     unsigned *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
@@ -878,14 +878,14 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
 
         /* do communication */
 
-        if (allreduce)
+        if (allhave)
             MPI_Allreduce(buf1, buf2, tcm->num_tcells, MPI_UNSIGNED, MPI_SUM, tcm->comm);
         else
             MPI_Reduce(buf1, buf2, tcm->num_tcells, MPI_UNSIGNED, MPI_SUM, 0, tcm->comm);
 
         /* copy from buf2 to data array */
 
-        if (allreduce || tcm->pset[0] == md->SubDomain.myrank)
+        if (allhave || tcm->pset[0] == md->SubDomain.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -901,7 +901,7 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     free(buf2);
 }
 
-static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                                 int time_iteration, fmd_real_t time)
 {
     unsigned ***num = (unsigned ***)f->data.data;
@@ -925,7 +925,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_unsigned(md, f, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_unsigned(md, f, t, allhave);
 
     f->timestep = time_iteration; /* mark as updated */
     f->time = time;
@@ -933,19 +933,19 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
     if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                                         int time_iteration, fmd_real_t time)
 {
     field_t *fdep = &t->fields[f->dependcs[0]];
 
     /* update the dependency field if not already updated */
     if (fdep->timestep != time_iteration)
-        update_field_number(md, fdep, t, allreduce || fdep->allreduce_now, time_iteration, time);
+        update_field_number(md, fdep, t, allhave || fdep->allhave_now, time_iteration, time);
 
     unsigned ***num = (unsigned ***)fdep->data.data;
     fmd_real_t ***nd = (fmd_real_t ***)f->data.data;
 
-    if (allreduce)
+    if (allhave)
     {
         fmd_ituple_t itc;
 
@@ -967,7 +967,7 @@ static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                               int time_iteration, fmd_real_t time)
 {
     fmd_real_t ***mass = (fmd_real_t ***)f->data.data;
@@ -992,7 +992,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_real(md, f, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_real(md, f, t, allhave);
 
     f->timestep = time_iteration; /* mark as updated */
     f->time = time;
@@ -1000,7 +1000,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allre
     if (md->EventHandler != NULL) call_field_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allreduce,
+static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allhave,
                                   int time_iteration, fmd_real_t time)
 {
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
@@ -1030,13 +1030,13 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_rtuple(md, fvcm, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_rtuple(md, fvcm, t, allhave);
 
     /* calculate vcm (last phase) */
 
     fmd_real_t ***mass = (fmd_real_t ***)fmass->data.data;
 
-    if (allreduce)
+    if (allhave)
     {
         LOOP3D(itc, t->itc_start, t->itc_stop)
             for (int d=0; d<DIM; d++)
@@ -1058,7 +1058,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
     if (md->EventHandler != NULL) call_field_update_event_handler(md, fvcm->field_index, t->turi_index);
 }
 
-static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allreduce,
+static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allhave,
                                       int time_iteration, fmd_real_t time)
 {
     fmd_ituple_t ic, itc;
@@ -1098,12 +1098,12 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     /* do communications */
     if (t->comms_num > 0)
     {
-        perform_field_comm_real(md, fmass, t, allreduce || fmass->allreduce_now);
-        perform_field_comm_rtuple(md, fvcm, t, allreduce);
+        perform_field_comm_real(md, fmass, t, allhave || fmass->allhave_now);
+        perform_field_comm_rtuple(md, fvcm, t, allhave);
     }
 
     /* calculate vcm (last phase) */
-    if (allreduce)
+    if (allhave)
     {
         LOOP3D(itc, t->itc_start, t->itc_stop)
             for (int d=0; d<DIM; d++)
@@ -1128,19 +1128,19 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     if (md->EventHandler != NULL) call_field_update_event_handler(md, fvcm->field_index, t->turi_index);
 }
 
-static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                              int time_iteration, fmd_real_t time)
 {
     field_t *fmass = &t->fields[f->dependcs[0]];
 
     if (fmass->timestep != time_iteration)  /* if fmass is not already updated */
-        update_field_vcm_and_mass(md, f, fmass, t, allreduce, time_iteration, time);
+        update_field_vcm_and_mass(md, f, fmass, t, allhave, time_iteration, time);
     else
-        update_field_vcm_only(md, f, fmass, t, allreduce, time_iteration, time);
+        update_field_vcm_only(md, f, fmass, t, allhave, time_iteration, time);
 }
 
 static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
-                                                turi_t *t, fmd_bool_t allreduce, int time_iteration,
+                                                turi_t *t, fmd_bool_t allhave, int time_iteration,
                                                 fmd_real_t time)
 {
     fmd_real_t ***temp = (fmd_real_t ***)ftemp->data.data;
@@ -1185,13 +1185,13 @@ static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field
     /* do communications */
     if (t->comms_num > 0)
     {
-        perform_field_comm_unsigned(md, fnum, t, allreduce || fnum->allreduce_now);
-        perform_field_comm_real(md, ftemp, t, allreduce);
+        perform_field_comm_unsigned(md, fnum, t, allhave || fnum->allhave_now);
+        perform_field_comm_real(md, ftemp, t, allhave);
     }
 
     /* calculate temperature (last phase) */
 
-    if (allreduce)
+    if (allhave)
     {
         LOOP3D(itc, t->itc_start, t->itc_stop)
             ARRAY_ELEMENT(temp, itc) /= (3.0 * K_BOLTZMANN * ARRAY_ELEMENT(num, itc));
@@ -1215,7 +1215,7 @@ static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field
 }
 
 static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
-                                          turi_t *t, fmd_bool_t allreduce, int time_iteration,
+                                          turi_t *t, fmd_bool_t allhave, int time_iteration,
                                           fmd_real_t time)
 {
     fmd_real_t ***temp = (fmd_real_t ***)ftemp->data.data;
@@ -1248,13 +1248,13 @@ static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fn
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_real(md, ftemp, t, allreduce);
+    if (t->comms_num > 0) perform_field_comm_real(md, ftemp, t, allhave);
 
     /* calculate temperature (last phase) */
 
     unsigned ***num = (unsigned ***)fnum->data.data;
 
-    if (allreduce)
+    if (allhave)
     {
         LOOP3D(itc, t->itc_start, t->itc_stop)
             ARRAY_ELEMENT(temp, itc) /= (3.0 * K_BOLTZMANN * ARRAY_ELEMENT(num, itc));
@@ -1274,7 +1274,7 @@ static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fn
     if (md->EventHandler != NULL) call_field_update_event_handler(md, ftemp->field_index, t->turi_index);
 }
 
-static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                                      int time_iteration, fmd_real_t time)
 {
     field_t *fnum = &t->fields[f->dependcs[0]];
@@ -1285,9 +1285,9 @@ static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_
         update_field_vcm(md, fvcm, t, FMD_TRUE, time_iteration, time);
 
     if (fnum->timestep != time_iteration)  /* if fnum is not already updated */
-        update_field_temperature_and_number(md, f, fnum, fvcm, t, allreduce, time_iteration, time);
+        update_field_temperature_and_number(md, f, fnum, fvcm, t, allhave, time_iteration, time);
     else
-        update_field_temperature_only(md, f, fnum, fvcm, t, allreduce, time_iteration, time);
+        update_field_temperature_only(md, f, fnum, fvcm, t, allhave, time_iteration, time);
 }
 
 #define ADD_interval_TO_ARRAY(array, num, interval)                            \
@@ -1297,15 +1297,15 @@ static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_
         (array)[(num)++] = (interval);                                         \
     } while(0)
 
-static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allreduce)
+static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allhave)
 {
     unsigned j;
 
-    /* see if the interval already exists in "intervals_allreduce" array */
-    for (j=0; j < f->intervals_allreduce_num; j++)
-        if (f->intervals_allreduce[j] == interval) break;
+    /* see if the interval already exists in "intervals_allhave" array */
+    for (j=0; j < f->intervals_allhave_num; j++)
+        if (f->intervals_allhave[j] == interval) break;
 
-    if (j == f->intervals_allreduce_num) /* no, doesn't exist there */
+    if (j == f->intervals_allhave_num) /* no, doesn't exist there */
     {
         /* see if the interval already exists in "intervals" array */
         for (j=0; j < f->intervals_num; j++)
@@ -1313,29 +1313,29 @@ static void field_intervals_add(field_t *f, fmd_real_t interval, fmd_bool_t allr
 
         if (j == f->intervals_num) /* doesn't exist in "intervals" either */
         {
-            if (allreduce) /* add it to "intervals_allreduce" */
-                ADD_interval_TO_ARRAY(f->intervals_allreduce, f->intervals_allreduce_num, interval);
+            if (allhave) /* add it to "intervals_allhave" */
+                ADD_interval_TO_ARRAY(f->intervals_allhave, f->intervals_allhave_num, interval);
             else /* add it to "intervals" */
                 ADD_interval_TO_ARRAY(f->intervals, f->intervals_num, interval);
         }
         else /* it exists in "intervals" array */
         {
-            if (allreduce)
+            if (allhave)
             {
                 /* remove it from "intervals" */
                 f->intervals[j] = f->intervals[--f->intervals_num];
                 f->intervals = re_alloc(f->intervals, f->intervals_num * sizeof(fmd_real_t));
 
-                /* add it to "intervals_allreduce" */
-                ADD_interval_TO_ARRAY(f->intervals_allreduce, f->intervals_allreduce_num, interval);
+                /* add it to "intervals_allhave" */
+                ADD_interval_TO_ARRAY(f->intervals_allhave, f->intervals_allhave_num, interval);
             }
         }
     }
 }
 
-/* when a field is updated and allreduce is equal to FMD_FALSE, in the current subdomain
+/* when a field is updated and allhave is equal to FMD_FALSE, in the current subdomain
    the field is only updated in those turi-cells which are "owned" by the current subdomain. */
-int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allreduce)
+int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allhave)
 {
     int i;
     field_t *f;
@@ -1345,24 +1345,24 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t a
     switch (cat)
     {
         case FMD_FIELD_TEMPERATURE:
-            dep1 = _fmd_field_add(t, FMD_FIELD_NUMBER, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_NUMBER, interval, allhave);
             dep2 = _fmd_field_add(t, FMD_FIELD_VCM, interval, FMD_TRUE);
             break;
 
         case FMD_FIELD_VCM:
-            dep1 = _fmd_field_add(t, FMD_FIELD_MASS, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_MASS, interval, allhave);
             break;
 
         case FMD_FIELD_NUMBER_DENSITY:
-            dep1 = _fmd_field_add(t, FMD_FIELD_NUMBER, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_NUMBER, interval, allhave);
             break;
 
         case FMD_FIELD_TTM_TE:
-            dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, FMD_FALSE);
             break;
 
         case FMD_FIELD_TTM_XI:
-            dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, allreduce);
+            dep1 = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, interval, FMD_FALSE);
             break;
 
         default:
@@ -1377,15 +1377,13 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t a
     if (i == t->fields_num)
     {
         /* add the field */
-
         t->fields = (field_t *)re_alloc(t->fields, (t->fields_num+1) * sizeof(field_t));
-
         f = &t->fields[t->fields_num];
         f->field_index = t->fields_num;
         f->cat = cat;
         f->timestep = -1;
-        f->intervals_allreduce = NULL;
-        f->intervals_allreduce_num = 0;
+        f->intervals_allhave = NULL;
+        f->intervals_allhave_num = 0;
         f->intervals = NULL;
         f->intervals_num = 0;
         t->fields_num++;
@@ -1416,8 +1414,8 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t a
     else
         f = &t->fields[i];
 
-    /* add the interval if doesn't already exist in "intervals" or "intervals_allreduce" arrays */
-    field_intervals_add(f, interval, allreduce);
+    /* add the interval if doesn't already exist in "intervals" or "intervals_allhave" arrays */
+    field_intervals_add(f, interval, allhave);
 
     return i;
 }
@@ -1427,86 +1425,86 @@ fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_re
     return _fmd_field_add(&md->turies[turi], cat, interval, FMD_FALSE);
 }
 
-static void update_field_anykind(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_anykind(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                                  int time_iteration, fmd_real_t time)
 {
     switch (f->cat)
     {
         case FMD_FIELD_NUMBER:
-            update_field_number(md, f, t, allreduce, time_iteration, time);
+            update_field_number(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_NUMBER_DENSITY:
-            update_field_number_density(md, f, t, allreduce, time_iteration, time);
+            update_field_number_density(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_MASS:
-            update_field_mass(md, f, t, allreduce, time_iteration, time);
+            update_field_mass(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_VCM:
-            update_field_vcm(md, f, t, allreduce, time_iteration, time);
+            update_field_vcm(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_TEMPERATURE:
-            update_field_temperature(md, f, t, allreduce, time_iteration, time);
+            update_field_temperature(md, f, t, allhave, time_iteration, time);
             break;
     }
 }
 
-static void update_field_ForceIndependent(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field_ForceIndependent(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                                           int time_iteration, fmd_real_t time)
 {
     switch (f->cat)
     {
         case FMD_FIELD_NUMBER:
-            update_field_number(md, f, t, allreduce, time_iteration, time);
+            update_field_number(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_NUMBER_DENSITY:
-            update_field_number_density(md, f, t, allreduce, time_iteration, time);
+            update_field_number_density(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_MASS:
-            update_field_mass(md, f, t, allreduce, time_iteration, time);
+            update_field_mass(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_VCM:
-            update_field_vcm(md, f, t, allreduce, time_iteration, time);
+            update_field_vcm(md, f, t, allhave, time_iteration, time);
             break;
 
         case FMD_FIELD_TEMPERATURE:
-            update_field_temperature(md, f, t, allreduce, time_iteration, time);
+            update_field_temperature(md, f, t, allhave, time_iteration, time);
             break;
     }
 }
 
-static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allreduce,
+static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                          int time_iteration, fmd_real_t time,
                          fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd)
 {
     if (Xupd && Vupd && Fupd)
-        update_field_anykind(md, f, t, allreduce, time_iteration, time);
+        update_field_anykind(md, f, t, allhave, time_iteration, time);
     else
         if (Xupd && Vupd)
-            update_field_ForceIndependent(md, f, t, allreduce, time_iteration, time);
+            update_field_ForceIndependent(md, f, t, allhave, time_iteration, time);
         else
             assert(0); /* TO-DO - this kind is not handled yet */
 }
 
-/* this subroutine updates the variable allreduce_now in all fields */
-static inline void allreduce_now_update(fmd_t *md, turi_t *t)
+/* this subroutine updates the variable allhave_now in all fields */
+static inline void allhave_now_update(fmd_t *md, turi_t *t)
 {
     for (int fi = 0; fi < t->fields_num; fi++)
     {
         field_t *f = &t->fields[fi];
 
-        f->allreduce_now = FMD_FALSE;
+        f->allhave_now = FMD_FALSE;
 
-        for (int j = 0; j < f->intervals_allreduce_num; j++)
-            if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals_allreduce[j]))
+        for (int j = 0; j < f->intervals_allhave_num; j++)
+            if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals_allhave[j]))
             {
-                f->allreduce_now = FMD_TRUE;
+                f->allhave_now = FMD_TRUE;
                 break;
             }
     }
@@ -1521,7 +1519,7 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
 
         if (md->time >= t->starttime && !(md->time > t->stoptime && t->stoptime >= t->starttime))
         {
-            allreduce_now_update(md, t);
+            allhave_now_update(md, t);
 
             /* start from fields with higher indexes */
             for (int fi = t->fields_num-1; fi >= 0; fi--)
@@ -1530,7 +1528,7 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
 
                 if (f->timestep == time_iteration) continue; /* see if the field is already updated */
 
-                if (f->allreduce_now)
+                if (f->allhave_now)
                 {
                     update_field(md, f, t, FMD_TRUE, time_iteration, time, Xupd, Vupd, Fupd);
                     break;
@@ -1611,7 +1609,7 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
 static void field_free(field_t *f)
 {
     if (f->dependcs_num > 0) free(f->dependcs);
-    free(f->intervals_allreduce);
+    free(f->intervals_allhave);
     free(f->intervals);
     _fmd_array_3d_free(&f->data);
 }
