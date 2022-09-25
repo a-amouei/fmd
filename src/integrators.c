@@ -22,6 +22,7 @@
 #include "forces.h"
 #include "timer.h"
 #include "general.h"
+#include "ttm.h"
 
 #define WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, x)                  \
     if ( ((md)->ns[(d)] == 1) && (((x) < 0.0) || ((x) >= (md)->l[(d)])) )      \
@@ -191,6 +192,8 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
 static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 {
     fmd_real_t start = md->time;
+
+    if (md->active_ttm_turi != NULL) _fmd_ttm_getReady(md);
 
     /* update force-independent fields */
     if (md->turies_num > 0)

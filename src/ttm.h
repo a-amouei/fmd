@@ -26,10 +26,10 @@
 
 typedef struct _ttm
 {
-    int dim;                /* 1D ttm or 3D ttm? */
-    fmd_real_t C_gamma;     /* used when electron heat capacity is linear function of temperature */
-    fmd_real_t K;           /* used when electron heat conductivity is constant */
-    fmd_real_t G;           /* used when electron-ion coupling factor is constant */
+    int dim;                    /* 1D ttm or 3D ttm? */
+    fmd_real_t C_gamma;         /* used when electron heat capacity is linear function of temperature */
+    fmd_real_t K;               /* used when electron heat conductivity is constant */
+    fmd_real_t G;               /* used when electron-ion coupling factor is constant */
     fmd_array3D_t Te_aux;
     unsigned ***num;
     fmd_rtuple_t ***vcm;
@@ -43,15 +43,19 @@ typedef struct _ttm
     fmd_real_t *Te_1d;
     fmd_real_t *Te2_1d;
     fmd_real_t *xi_1d;
-    unsigned timestep_ratio; /* the ratio of MD timestep to TTM timestep */
+    unsigned timestep_ratio;    /* the ratio of MD timestep to TTM timestep */
     fmd_real_t timestep;
-    fmd_real_t frontsurf;    /* position of front surface */
+    fmd_real_t frontsurf;       /* position of front surface */
+    fmd_real_t CellActivFrac;   /* "cell activation fraction" */
+    unsigned initial_atoms_num;
+    unsigned min_atoms_num;     /* ttm-cells with fewer atoms than this are deactivated */
 } ttm_t;
 
 typedef struct _turi turi_t;
 typedef struct _fmd fmd_t;
 
-ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t);
-void _fmd_ttm_destructor(ttm_t **ttm);
+ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t);
+void _fmd_ttm_destruct(ttm_t **ttm);
+void _fmd_ttm_getReady(fmd_t *md);
 
 #endif /* TTM_H */

@@ -60,14 +60,43 @@ typedef struct
     fmd_real_t value;
 } fmd_ttm_params_Te_constant_t;
 
-void _fmd_ttm_destructor(ttm_t **ttm)
+void _fmd_ttm_getReady(fmd_t *md)
+{
+    turi_t *t = md->active_ttm_turi;
+    ttm_t *ttm = t->ttm;
+
+    fmd_rtuple_t ll, ul;
+
+    fmd_matt_findLimits(md, ll, ul);
+    ttm->frontsurf = ll[DIM-1];
+
+    fmd_real_t vol = 1.0;
+
+    for (int d=0; d<DIM; d++)
+        vol *= ul[d] - ll[d];
+
+    ttm->initial_atoms_num = md->GroupParticlesNum / vol * t->tcell_volume;
+    ttm->min_atoms_num = ttm->initial_atoms_num * ttm->CellActivFrac;
+}
+
+void _fmd_ttm_destruct(ttm_t **ttm)
 {
     _fmd_array_3d_free(&(*ttm)->Te_aux);
     free(*ttm);
     *ttm = NULL;
 }
 
-ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
+static void ttm_type1_solve_1d(turi_t *t, ttm_t *ttm)
+{
+    for (int i = t->itc_start[DIM-1]; i < t->itc_stop[DIM-1]; i++)
+        ttm->xi_1d[i] = 0.0;
+
+    for (int i=0; i < ttm->timestep_ratio; i++)
+    {
+    }
+}
+
+ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
 {
     ttm_t *ttm = (ttm_t *)m_alloc(sizeof(ttm_t));
 
@@ -84,10 +113,8 @@ ttm_t *_fmd_ttm_constructor(fmd_t *md, turi_t *t)
             _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
             assert(ttm->Te_aux.data != NULL);
 
-            fmd_rtuple_t ll, ul;
-
-            fmd_matt_findLimits(md, ll, ul);
-            ttm->frontsurf = ll[DIM-1];
+            /* set default value for "cell activation fraction" */
+            ttm->CellActivFrac = 0.1;
 
             if (t->tdims_global[0] == 1 && t->tdims_global[1] == 1)
             {
@@ -184,10 +211,18 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t c
     {
         case FMD_TTM_TE_CONSTANT:
         {
-            fmd_ituple_t itc;
+            if (ttm->dim == 1)
+            {
+                for (int itc = t->itc_start[DIM-1]; itc < t->itc_stop[DIM-1]; itc++)
+                    ttm->Te_1d[itc] = ((fmd_ttm_params_Te_constant_t *)params)->value;
+            }
+            else
+            {
+                fmd_ituple_t itc;
 
-            LOOP3D(itc, t->itc_start, t->itc_stop)
-                ARRAY_ELEMENT(ttm->Te, itc) = ((fmd_ttm_params_Te_constant_t *)params)->value;
+                LOOP3D(itc, t->itc_start, t->itc_stop)
+                    ARRAY_ELEMENT(ttm->Te, itc) = ((fmd_ttm_params_Te_constant_t *)params)->value;
+            }
         }
         break;
 
@@ -214,6 +249,15 @@ void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_rat
         default:
             assert(0); /* TO-DO: handle error */
     }
+}
+
+void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value)
+{
+    assert(value >= 0 && value <= 1); /* TO-DO: handle error */
+
+    ttm_t *ttm = md->turies[turi].ttm;
+
+    ttm->CellActivFrac = value;
 }
 
 static void pack(fmd_t *md, turi_t *t, fmd_ituple_t vitc_start, fmd_ituple_t vitc_stop, size_t *size, fmd_pointer_t *out)

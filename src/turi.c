@@ -714,7 +714,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
             break;
 
         case FMD_TURI_TTM_TYPE1:
-            t->ttm = _fmd_ttm_constructor(md, t);
+            t->ttm = _fmd_ttm_construct(md, t);
             md->active_ttm_turi = t;
             break;
 
@@ -1652,7 +1652,7 @@ static void turi_free(fmd_t *md, turi_t *t)
 
     free(t->comms);
 
-    if (t->ttm != NULL) _fmd_ttm_destructor(&t->ttm);
+    if (t->ttm != NULL) _fmd_ttm_destruct(&t->ttm);
 
     turi_ownerscomm_free(md, &t->ownerscomm);
 }
