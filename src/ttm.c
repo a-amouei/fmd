@@ -284,24 +284,16 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t c
 
     ttm_t *ttm = t->ttm;
 
+    fmd_ituple_t itc;
+
     switch (cat)
     {
         case FMD_TTM_TE_CONSTANT:
-        {
-            if (ttm->dim == 1)
-            {
-                for (int itc = t->itc_start[DIM-1]; itc < t->itc_stop[DIM-1]; itc++)
-                    ttm->Te_1d[itc] = ((fmd_ttm_params_Te_constant_t *)params)->value;
-            }
-            else
-            {
-                fmd_ituple_t itc;
+            LOOP3D(itc, t->itc_start, t->itc_stop)
+                ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) =
+                  ((fmd_ttm_params_Te_constant_t *)params)->value;
 
-                LOOP3D(itc, t->itc_start, t->itc_stop)
-                    ARRAY_ELEMENT(ttm->Te, itc) = ((fmd_ttm_params_Te_constant_t *)params)->value;
-            }
-        }
-        break;
+            break;
 
         default:
             assert(0); /* TO-DO: handle error */
