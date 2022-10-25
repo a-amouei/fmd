@@ -88,11 +88,80 @@ void _fmd_ttm_destruct(ttm_t **ttm)
 
 static void ttm_type1_solve_1d(turi_t *t, ttm_t *ttm)
 {
-    for (int i = t->itc_start[DIM-1]; i < t->itc_stop[DIM-1]; i++)
+    if (t->ownerscomm.owned_tcells_num == 0)
+    {
+        return;
+    }
+
+    /* xi intialization, cell-activation, cell-deactivation */
+    for (int i = t->itc_start_owned[2]; i < t->itc_stop[2]; i++)
+    {
         ttm->xi_1d[i] = 0.0;
 
-    for (int i=0; i < ttm->timestep_ratio; i++)
+        /* cell activation */
+        if (ttm->Te_1d[i] < 0.0 && ttm->num_1d[i] >= ttm->min_atoms_num)
+        {
+            int count = 0;
+            fmd_real_t sum = 0.0;
+
+            if (ttm->Te_1d[i-1] >= 0.0)
+            {
+                sum += ttm->Te_1d[i-1] * ttm->num_1d[i-1];
+                count += ttm->num_1d[i-1];
+            }
+
+            if (ttm->Te_1d[i+1] >= 0.0)
+            {
+                sum += ttm->Te_1d[i+1] * ttm->num_1d[i+1];
+                count += ttm->num_1d[i+1];
+            }
+
+            ttm->Te_1d[i] = (count > 0) ? sum/count : ttm->Ti_1d[i];
+        }
+
+        /* cell deactivation */
+        if (ttm->num_1d[i] < ttm->min_atoms_num) ttm->Te_1d[i] = -1.0;
+    }
+
+    /* time loop */
+    for (int j=0; j < ttm->timestep_ratio; j++)
     {
+        /* spatial loop */
+        for (int i = t->itc_start_owned[2]; i < t->itc_stop[2]; i++)
+        {
+            if (ttm->Te_1d[i] < 0) continue;  /* nothing to be done with an deactivated cell */
+
+            int im1 = (i == t->itc_start_owned[2]) ? 0 : i-1;
+            int ilo = (ttm->num_1d[im1] < ttm->min_atoms_num) ? i : im1;
+            int ihi = (ttm->num_1d[i+1] < ttm->min_atoms_num) ? i : i+1;
+
+            fmd_real_t source = 0; /* TO-DO */
+
+            ttm->Te2_1d[i] = ttm->Te_1d[i] + ttm->timestep/(ttm->C_gamma * ttm->Te_1d[i]) * (
+              ttm->K * (ttm->Te_1d[ihi]-2*ttm->Te_1d[i]+ttm->Te_1d[ilo])/ttm->dz2
+              - ttm->G * (ttm->Te_1d[i] - ttm->Ti_1d[i]) + source );
+
+            ttm->xi_1d[i] += ttm->Te2_1d[i];
+        } /* end of spatial loop */
+
+        fmd_real_t *tempo = ttm->Te2_1d;
+        ttm->Te2_1d = ttm->Te_1d;
+        ttm->Te_1d = tempo;
+    } /* end of time loop */
+
+    if (ttm->Te2_1d != ((fmd_real_t ***)ttm->Te_aux.data)[0][0])
+    {
+        fmd_array3D_t tempo = ttm->Te_aux;
+        ttm->Te_aux = t->fields[ttm->iTe].data;
+        t->fields[ttm->iTe].data = tempo;
+    }
+
+    for (int i = t->itc_start_owned[2]; i < t->itc_stop[2]; i++)
+    {
+        if (ttm->num_1d[i] >= ttm->min_atoms_num)
+            ttm->xi_1d[i] = ttm->G * t->tcell_volume *
+                            (ttm->xi_1d[i] / ttm->timestep_ratio - ttm->Ti_1d[i]) /
+                            (3 * K_BOLTZMANN * ttm->num_1d[i] * ttm->Ti_1d[i]);
     }
 }
 
@@ -107,8 +176,8 @@ ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
             int inum = _fmd_field_add(t, FMD_FIELD_NUMBER, md->timestep, FMD_FALSE);
             int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, FMD_TRUE);
             int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, FMD_FALSE);
-            int iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, FMD_FALSE);
-            int ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, FMD_TRUE);
+            ttm->iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, FMD_FALSE);
+            ttm->ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, FMD_TRUE);
 
             _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
             assert(ttm->Te_aux.data != NULL);
@@ -123,9 +192,15 @@ ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
                 ttm->num_1d = ((unsigned ***)t->fields[inum].data.data)[0][0];
                 ttm->vcm_1d = ((fmd_rtuple_t ***)t->fields[ivcm].data.data)[0][0];
                 ttm->Ti_1d = ((fmd_real_t ***)t->fields[iTi].data.data)[0][0];
-                ttm->Te_1d = ((fmd_real_t ***)t->fields[iTe].data.data)[0][0];
+                ttm->Te_1d = ((fmd_real_t ***)t->fields[ttm->iTe].data.data)[0][0];
                 ttm->Te2_1d = ((fmd_real_t ***)ttm->Te_aux.data)[0][0];
-                ttm->xi_1d = ((fmd_real_t ***)t->fields[ixi].data.data)[0][0];
+                ttm->xi_1d = ((fmd_real_t ***)t->fields[ttm->ixi].data.data)[0][0];
+
+                ttm->num_1d[0] = ttm->num_1d[t->itc_stop[2]] = 0;
+
+                ttm->dz2 = t->tcellh[2] * t->tcellh[2];
+
+                ttm->update_xe_te = ttm_type1_solve_1d;
             }
             else
             {
@@ -134,9 +209,11 @@ ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
                 ttm->num = (unsigned ***)t->fields[inum].data.data;
                 ttm->vcm = (fmd_rtuple_t ***)t->fields[ivcm].data.data;
                 ttm->Ti = (fmd_real_t ***)t->fields[iTi].data.data;
-                ttm->Te = (fmd_real_t ***)t->fields[iTe].data.data;
+                ttm->Te = (fmd_real_t ***)t->fields[ttm->iTe].data.data;
                 ttm->Te2 = (fmd_real_t ***)ttm->Te_aux.data;
-                ttm->xi = (fmd_real_t ***)t->fields[ixi].data.data;
+                ttm->xi = (fmd_real_t ***)t->fields[ttm->ixi].data.data;
+
+                ttm->update_xe_te = NULL; /* no 3D updater is written */
             }
         }
             break;

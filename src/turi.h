@@ -121,6 +121,7 @@ typedef struct _turi
 typedef struct _fmd fmd_t;
 
 int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allhave);
+void _fmd_field_call_update_event_handler(fmd_t *md, int field_index, int turi_index);
 void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
                         fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd);
 void fmd_turi_free(fmd_t *md);

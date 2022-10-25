@@ -72,7 +72,7 @@ static void communicate_in_direction_d(
 
 /* vitc stands for "virtual index of turi-cell" */
 static void prepare_communication_in_direction_d(
-    fmd_t *md, turi_t *t, int d, fmd_ituple_t vitc_start_send_lower,
+    turi_t *t, int d, fmd_ituple_t vitc_start_send_lower,
     fmd_ituple_t vitc_stop_send_lower, fmd_ituple_t vitc_start_receive_lower,
     fmd_ituple_t vitc_stop_receive_lower, fmd_ituple_t vitc_start_send_upper,
     fmd_ituple_t vitc_stop_send_upper, fmd_ituple_t vitc_start_receive_upper,
@@ -134,7 +134,7 @@ void _fmd_turi_update_ghosts(fmd_t *md, turi_t *t, fields_packer_t pack, fields_
                                                      subdomain in direction d */
         {
             prepare_communication_in_direction_d(
-                md, t, d, vitc_start_send_lower, vitc_stop_send_lower,
+                t, d, vitc_start_send_lower, vitc_stop_send_lower,
                 vitc_start_receive_lower, vitc_stop_receive_lower,
                 vitc_start_send_upper, vitc_stop_send_upper,
                 vitc_start_receive_upper, vitc_stop_receive_upper);

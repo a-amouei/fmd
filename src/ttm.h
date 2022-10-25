@@ -24,6 +24,12 @@
 #include "types.h"
 #include "array.h"
 
+typedef struct _turi turi_t;
+typedef struct _fmd fmd_t;
+typedef struct _ttm ttm_t;
+
+typedef void (*xi_te_updater_t)(turi_t *t, ttm_t *ttm);
+
 typedef struct _ttm
 {
     int dim;                    /* 1D ttm or 3D ttm? */
@@ -31,12 +37,14 @@ typedef struct _ttm
     fmd_real_t K;               /* used when electron heat conductivity is constant */
     fmd_real_t G;               /* used when electron-ion coupling factor is constant */
     fmd_array3D_t Te_aux;
+    int iTe;                    /* index of the field for electron temperature */
+    int ixi;                    /* index of the field for xi */
     unsigned ***num;
     fmd_rtuple_t ***vcm;
     fmd_real_t ***Ti;
     fmd_real_t ***Te;
     fmd_real_t ***Te2;
-    fmd_real_t ***xi;
+    fmd_real_t ***xi;           /* electron-ion coupling factor */
     unsigned *num_1d;
     fmd_rtuple_t *vcm_1d;
     fmd_real_t *Ti_1d;
@@ -49,10 +57,9 @@ typedef struct _ttm
     fmd_real_t CellActivFrac;   /* "cell activation fraction" */
     unsigned initial_atoms_num;
     unsigned min_atoms_num;     /* ttm-cells with fewer atoms than this are deactivated */
+    fmd_real_t dz2;             /* delta_z^2 -- for 1D case */
+    xi_te_updater_t update_xe_te;
 } ttm_t;
-
-typedef struct _turi turi_t;
-typedef struct _fmd fmd_t;
 
 ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t);
 void _fmd_ttm_destruct(ttm_t **ttm);
