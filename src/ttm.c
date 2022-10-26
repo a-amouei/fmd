@@ -120,7 +120,7 @@ static void ttm_type1_solve_1d(turi_t *t, ttm_t *ttm)
         }
 
         /* cell deactivation */
-        if (ttm->num_1d[i] < ttm->min_atoms_num) ttm->Te_1d[i] = -1.0;
+        if (ttm->num_1d[i] < ttm->min_atoms_num) ttm->Te_1d[i] = ttm->Te2_1d[i] = -1.0;
     }
 
     /* time loop */
