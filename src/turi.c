@@ -672,6 +672,8 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
                 else /* if (t->tdims_global[0] == 1 && t->tdims_global[1] == 1) is true, ttm is 1D */
                     t->itc_start[d] = (t->tdims_global[0] == 1 && t->tdims_global[1] == 1) ? 0 : 1;
 
+                break;
+
             default:
                 t->itc_start[d] = 0;
         }
@@ -751,7 +753,7 @@ static void set_field_data_el_size_and_type(field_t *f)
         assert(0);  /* TO-DO */
 }
 
-inline static void prepare_buf1_real(fmd_real_t *buf1, turi_comm_t *tcm, field_t *f)
+inline static void prepare_buf1_for_reduce_real(fmd_real_t *buf1, turi_comm_t *tcm, field_t *f)
 {
     for (int j=0; j < tcm->num_tcells; j++)
     {
@@ -761,7 +763,7 @@ inline static void prepare_buf1_real(fmd_real_t *buf1, turi_comm_t *tcm, field_t
     }
 }
 
-inline static void prepare_buf1_rtuple(fmd_rtuple_t *buf1, turi_comm_t *tcm, field_t *f)
+inline static void prepare_buf1_for_reduce_rtuple(fmd_rtuple_t *buf1, turi_comm_t *tcm, field_t *f)
 {
     for (int j=0; j < tcm->num_tcells; j++)
     {
@@ -772,7 +774,7 @@ inline static void prepare_buf1_rtuple(fmd_rtuple_t *buf1, turi_comm_t *tcm, fie
     }
 }
 
-inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field_t *f)
+inline static void prepare_buf1_for_reduce_unsigned(unsigned *buf1, turi_comm_t *tcm, field_t *f)
 {
     for (int j=0; j < tcm->num_tcells; j++)
     {
@@ -782,7 +784,7 @@ inline static void prepare_buf1_unsigned(unsigned *buf1, turi_comm_t *tcm, field
     }
 }
 
-static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
+static void perform_field_reduce_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     /* allocate memory for buf1 and buf2 */
     fmd_rtuple_t *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
@@ -796,7 +798,7 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
 
         /* prepare buf1 (send-buffer) */
 
-        prepare_buf1_rtuple(buf1, tcm, f);
+        prepare_buf1_for_reduce_rtuple(buf1, tcm, f);
 
         /* do communication */
 
@@ -823,7 +825,7 @@ static void perform_field_comm_rtuple(fmd_t *md, field_t *f, turi_t *t, fmd_bool
     free(buf2);
 }
 
-static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
+static void perform_field_reduce_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     /* allocate memory for buf1 and buf2 */
     fmd_real_t *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
@@ -837,7 +839,7 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
 
         /* prepare buf1 (send-buffer) */
 
-        prepare_buf1_real(buf1, tcm, f);
+        prepare_buf1_for_reduce_real(buf1, tcm, f);
 
         /* do communication */
 
@@ -863,7 +865,7 @@ static void perform_field_comm_real(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t
     free(buf2);
 }
 
-static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
+static void perform_field_reduce_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     /* allocate memory for buf1 and buf2 */
     unsigned *buf1 = m_alloc(t->num_tcells_max * sizeof(*buf1));
@@ -877,7 +879,7 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
 
         /* prepare buf1 (send-buffer) */
 
-        prepare_buf1_unsigned(buf1, tcm, f);
+        prepare_buf1_for_reduce_unsigned(buf1, tcm, f);
 
         /* do communication */
 
@@ -904,6 +906,49 @@ static void perform_field_comm_unsigned(fmd_t *md, field_t *f, turi_t *t, fmd_bo
     free(buf2);
 }
 
+static void perform_field_bcast_real(fmd_t *md, field_t *f, turi_t *t)
+{
+    /* allocate memory for buffer */
+    fmd_real_t *buf = m_alloc(t->num_tcells_max * sizeof(*buf));
+
+    /* perform communication for every communicator */
+
+    for (int i=0; i < t->comms_num; i++)
+    {
+        turi_comm_t *tcm = &t->comms[i];
+
+        /* prepare buffer on root process */
+
+        if (tcm->pset[0] == md->SubDomain.myrank)
+        {
+            for (int j=0; j < tcm->num_tcells; j++)
+            {
+                int *itc = tcm->itcs[j];
+
+                buf[j] = ARRAY_ELEMENT((fmd_real_t ***)f->data.data, itc);
+            }
+        }
+
+        /* do communication (broadcast buffer) */
+
+        MPI_Bcast(buf, tcm->num_tcells, FMD_MPI_REAL, 0, tcm->comm);
+
+        /* copy from buffer to data array on non-root processes */
+
+        if (tcm->pset[0] != md->SubDomain.myrank)
+        {
+            for (int j=0; j < tcm->num_tcells; j++)
+            {
+                int *itc = tcm->itcs[j];
+
+                ARRAY_ELEMENT((fmd_real_t ***)f->data.data, itc) = ((fmd_real_t *)buf)[j];
+            }
+        }
+    }
+
+    free(buf);
+}
+
 static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
                                 int time_iteration, fmd_real_t time)
 {
@@ -928,7 +973,7 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_unsigned(md, f, t, allhave);
+    if (t->comms_num > 0) perform_field_reduce_unsigned(md, f, t, allhave);
 
     f->timestep = time_iteration; /* mark as updated */
     f->time = time;
@@ -995,7 +1040,7 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allha
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_real(md, f, t, allhave);
+    if (t->comms_num > 0) perform_field_reduce_real(md, f, t, allhave);
 
     f->timestep = time_iteration; /* mark as updated */
     f->time = time;
@@ -1033,7 +1078,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_rtuple(md, fvcm, t, allhave);
+    if (t->comms_num > 0) perform_field_reduce_rtuple(md, fvcm, t, allhave);
 
     /* calculate vcm (last phase) */
 
@@ -1101,8 +1146,8 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     /* do communications */
     if (t->comms_num > 0)
     {
-        perform_field_comm_real(md, fmass, t, allhave || fmass->allhave_now);
-        perform_field_comm_rtuple(md, fvcm, t, allhave);
+        perform_field_reduce_real(md, fmass, t, allhave || fmass->allhave_now);
+        perform_field_reduce_rtuple(md, fvcm, t, allhave);
     }
 
     /* calculate vcm (last phase) */
@@ -1188,8 +1233,8 @@ static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field
     /* do communications */
     if (t->comms_num > 0)
     {
-        perform_field_comm_unsigned(md, fnum, t, allhave || fnum->allhave_now);
-        perform_field_comm_real(md, ftemp, t, allhave);
+        perform_field_reduce_unsigned(md, fnum, t, allhave || fnum->allhave_now);
+        perform_field_reduce_real(md, ftemp, t, allhave);
     }
 
     /* calculate temperature (last phase) */
@@ -1251,7 +1296,7 @@ static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fn
         }
 
     /* do communications */
-    if (t->comms_num > 0) perform_field_comm_real(md, ftemp, t, allhave);
+    if (t->comms_num > 0) perform_field_reduce_real(md, ftemp, t, allhave);
 
     /* calculate temperature (last phase) */
 
@@ -1303,7 +1348,7 @@ static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t, int tim
 
     ttm_t *ttm = t->ttm;
 
-    ttm->update_xe_te(t, ttm);
+    if (t->ownerscomm.owned_tcells_num > 0) ttm->update_xe_te(md, t, ttm);
 
     field_t *fxi = &t->fields[ttm->ixi];
     fxi->time = time;                    /* mark as updated */
@@ -1312,6 +1357,9 @@ static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t, int tim
     field_t *fTe = &t->fields[ttm->iTe];
     fTe->time = time;                    /* mark as updated */
     fTe->timestep = time_iteration;
+
+    if (t->comms > 0) perform_field_bcast_real(md, fxi, t);
+
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fTe->field_index, t->turi_index);
 }
 

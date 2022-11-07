@@ -27,8 +27,9 @@
 typedef struct _turi turi_t;
 typedef struct _fmd fmd_t;
 typedef struct _ttm ttm_t;
+typedef struct _tghost_pack tghost_pack_t;
 
-typedef void (*xi_te_updater_t)(turi_t *t, ttm_t *ttm);
+typedef void (*xi_te_updater_t)(fmd_t *md, turi_t *t, ttm_t *ttm);
 
 typedef struct _ttm
 {
@@ -59,6 +60,7 @@ typedef struct _ttm
     unsigned min_atoms_num;     /* ttm-cells with fewer atoms than this are deactivated */
     fmd_real_t dz2;             /* delta_z^2 -- for 1D case */
     xi_te_updater_t update_xe_te;
+    tghost_pack_t *tgp;
 } ttm_t;
 
 ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t);

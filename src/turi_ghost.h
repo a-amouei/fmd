@@ -27,10 +27,33 @@
 typedef struct _turi turi_t;
 typedef struct _fmd fmd_t;
 
+typedef void (*fields_packer1d_t)(fmd_t *md, turi_t *t, fmd_bool_t SendToUp, fmd_pointer_t sendbuf, int *pos);
+typedef void (*fields_unpacker1d_t)(fmd_t *md, turi_t *t, fmd_bool_t SendToUp, fmd_pointer_t recvbuf);
+
 typedef void (*fields_packer_t)(fmd_t *md, turi_t *t, fmd_ituple_t vitc_start, fmd_ituple_t vitc_stop,
                                 size_t *size, fmd_pointer_t *out);
 typedef void (*fields_unpacker_t)(fmd_t *md, turi_t *t, fmd_ituple_t vitc_start, fmd_ituple_t vitc_stop, fmd_pointer_t in);
 
+typedef struct _tghost_pack
+{
+    union
+    {
+        fields_packer1d_t _1D;
+        fields_packer_t _3D;
+    } pack;
+
+    union
+    {
+        fields_unpacker1d_t _1D;
+        fields_unpacker_t _3D;
+    } unpack;
+
+    size_t bufsize;
+    fmd_pointer_t sendbuf;
+    fmd_pointer_t recvbuf;
+} tghost_pack_t;
+
+void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p);
 void _fmd_turi_update_ghosts(fmd_t *md, turi_t *t, fields_packer_t pack, fields_unpacker_t unpack);
 
 #endif /* TURI_GHOST_H */

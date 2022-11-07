@@ -23,6 +23,36 @@
 #include "general.h"
 #include "turi.h"
 
+void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p)
+{
+    MPI_Status status;
+    int count;
+
+    /* sending to lower process, receiving from upper process */
+
+    if (t->rank_of_lower_owner[d] != MPI_PROC_NULL)
+        p->pack._1D(md, t, FMD_FALSE, p->sendbuf, &count);
+
+    MPI_Sendrecv(p->sendbuf, count, MPI_PACKED, t->rank_of_lower_owner[d], 85101,
+                 p->recvbuf, p->bufsize, MPI_PACKED, t->rank_of_upper_owner[d], 85101,
+                 md->MD_comm, &status);
+
+    if (t->rank_of_upper_owner[d] != MPI_PROC_NULL)
+        p->unpack._1D(md, t, FMD_FALSE, p->recvbuf);
+
+    /* sending to upper process, receiving from lower process */
+
+    if (t->rank_of_upper_owner[d] != MPI_PROC_NULL)
+        p->pack._1D(md, t, FMD_TRUE, p->sendbuf, &count);
+
+    MPI_Sendrecv(p->sendbuf, count, MPI_PACKED, t->rank_of_upper_owner[d], 85103,
+                 p->recvbuf, p->bufsize, MPI_PACKED, t->rank_of_lower_owner[d], 85103,
+                 md->MD_comm, &status);
+
+    if (t->rank_of_lower_owner[d] != MPI_PROC_NULL)
+        p->unpack._1D(md, t, FMD_TRUE, p->recvbuf);
+}
+
 static void communicate_in_direction_d(
     fmd_t *md, turi_t *t, int d, fmd_ituple_t vitc_start_send_lower,
     fmd_ituple_t vitc_stop_send_lower, fmd_ituple_t vitc_start_receive_lower,

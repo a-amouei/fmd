@@ -15,7 +15,7 @@ h5.o: h5.c h5.h config.h types.h array.h turi.h general.h base.h \
  potential.h subdomain.h events.h cell.h
 integrators.o: integrators.c base.h config.h potential.h types.h \
  subdomain.h array.h events.h h5.h cell.h turi.h forces.h timer.h \
- general.h
+ general.h ttm.h
 list.o: list.c list.h config.h general.h types.h
 lj.o: lj.c lj.h config.h types.h potential.h base.h subdomain.h array.h \
  events.h h5.h cell.h list.h forces.h general.h
