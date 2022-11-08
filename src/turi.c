@@ -1684,6 +1684,15 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
             }
             break;
 
+        case FMD_FIELD_TTM_TE:
+            gather_field_data_real(md, t, f, &data);
+            if (md->Is_MD_comm_root)
+            {
+                _fmd_h5_save_scalar_field_float(md, "ttm-Te", t, path, &data);
+                _fmd_array_3d_free(&data);
+            }
+            break;
+
         default:
             assert(0);
     }
