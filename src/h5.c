@@ -140,7 +140,7 @@ static void create_mesh(h5_dataspaces_t *ds, hid_t parent, fmd_utuple_t dims, fm
     assert(status >= 0);
 }
 
-void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr)
+void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3s_t *arr)
 {
     hid_t file_id, dataset_id, dataspace_id;
     herr_t status;
@@ -185,7 +185,7 @@ void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *
     assert(status >= 0);
 }
 
-void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3D_t *arr)
+void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3s_t *arr)
 {
     hid_t file_id, dataset_id, dataspace_id;
     herr_t status;

@@ -49,7 +49,7 @@ typedef struct
     fmd_bool_t allhave_now;
     unsigned intervals_num;
     fmd_real_t *intervals;           /* intervals determine when to update the field and perform MPI communication */
-    fmd_array3D_t data;
+    fmd_array3s_t data;
     unsigned data_el_size;           /* size of each data element in bytes */
     datatype_t datatype;
 } field_t;

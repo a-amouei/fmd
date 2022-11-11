@@ -37,7 +37,7 @@ typedef struct _ttm
     fmd_real_t C_gamma;         /* used when electron heat capacity is linear function of temperature */
     fmd_real_t K;               /* used when electron heat conductivity is constant */
     fmd_real_t G;               /* used when electron-ion coupling factor is constant */
-    fmd_array3D_t Te_aux;
+    fmd_array3s_t Te_aux;
     int iTe;                    /* index of the field for electron temperature */
     int ixi;                    /* index of the field for xi */
     unsigned ***num;

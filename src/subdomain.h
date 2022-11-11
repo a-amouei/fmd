@@ -45,7 +45,7 @@ typedef struct _cell cell_t;
 typedef struct
 {
     cell_t ***grid;                   /* must be equal to grid_array->data */
-    fmd_array3D_t grid_array;
+    fmd_array3s_t grid_array;
     int myrank;                       /* rank of the local process in MD_comm */
     int numprocs;                     /* number of processes in MD_comm */
     fmd_ituple_t is;                  /* position of subdomain in the subdomain grid */

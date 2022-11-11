@@ -58,7 +58,9 @@ typedef enum
     FMD_FIELD_VCM,
     FMD_FIELD_TEMPERATURE,
     FMD_FIELD_NUMBER,
-    FMD_FIELD_NUMBER_DENSITY
+    FMD_FIELD_NUMBER_DENSITY,
+    FMD_FIELD_TTM_TE,
+    FMD_FIELD_TTM_XI
 } fmd_field_t;
 
 typedef enum
@@ -73,11 +75,17 @@ typedef enum
 
 typedef struct _fmd fmd_t;
 
+typedef struct _fmd_array3d fmd_array3s_t;
+
 typedef struct _fmd_pot fmd_pot_t;
 
 typedef double fmd_real_t;
 
 typedef fmd_real_t fmd_rtuple_t[3];
+
+typedef unsigned fmd_utriple_t[3];
+
+typedef void ***fmd_array3_t;
 
 typedef int fmd_handle_t;
 
@@ -196,8 +204,11 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep);
 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
+fmd_handle_t fmd_field_find(fmd_t *md, fmd_handle_t turi, fmd_field_t cat);
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
 void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path);
+fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t field,
+  fmd_array3_t *array, fmd_utriple_t dims);
 
 void fmd_ttm_setHeatCapacity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 void fmd_ttm_setHeatConductivity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
@@ -205,5 +216,7 @@ void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *param
 void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params);
 void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
+
+void fmd_array3s_free(fmd_array3s_t *array);
 
 #endif /* FMD_H */

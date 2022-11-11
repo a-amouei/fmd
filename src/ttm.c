@@ -182,7 +182,7 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
     if (ttm->Te2_1d != ((fmd_real_t ***)ttm->Te_aux.data)[0][0])
     {
-        fmd_array3D_t tempo = ttm->Te_aux;
+        fmd_array3s_t tempo = ttm->Te_aux;
         ttm->Te_aux = t->fields[ttm->iTe].data;
         t->fields[ttm->iTe].data = tempo;
     }

@@ -255,9 +255,8 @@ inline fmd_real_t impreal(fmd_real_t x)
 #endif
 }
 
-static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
+static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3s_t *out)
 {
-    out->data = NULL;
     turi_ownerscomm_t *owcomm = &t->ownerscomm;
 
     /* only "owners" participate in the collective communication below */
@@ -300,9 +299,8 @@ static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3D
     }
 }
 
-static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
+static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_array3s_t *out)
 {
-    out->data = NULL;
     turi_ownerscomm_t *owcomm = &t->ownerscomm;
 
     /* only "owners" participate in the collective communication below */
@@ -345,9 +343,8 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
     }
 }
 
-static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array3D_t *out)
+static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array3s_t *out)
 {
-    out->data = NULL;
     turi_ownerscomm_t *owcomm = &t->ownerscomm;
 
     /* only "owners" participate in the collective communication below */
@@ -1630,7 +1627,7 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
     }
 }
 
-static void convert_inmass_to_outmass(fmd_array3D_t *ar)
+static void convert_inmass_to_outmass(fmd_array3s_t *ar)
 {
     fmd_utriple_t iv;
 
@@ -1638,12 +1635,57 @@ static void convert_inmass_to_outmass(fmd_array3D_t *ar)
         ARRAY_ELEMENT((fmd_real_t ***)(ar->data), iv) *= MD_MASS_UNIT;
 }
 
+fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t field,
+                                  fmd_array3_t *array, fmd_utriple_t dims)
+{
+    turi_t *t = &md->turies[turi];
+    field_t *f = &t->fields[field];
+
+    fmd_array3s_t *p;
+
+    if (md->Is_MD_comm_root) p = m_alloc(sizeof(*p));
+
+    switch(f->cat)
+    {
+        case FMD_FIELD_VCM:
+            gather_field_data_rtuple(md, t, f, p);
+            break;
+
+        case FMD_FIELD_NUMBER_DENSITY:
+        case FMD_FIELD_TEMPERATURE:
+        case FMD_FIELD_TTM_TE:
+            gather_field_data_real(md, t, f, p);
+            break;
+
+        case FMD_FIELD_MASS:
+            gather_field_data_real(md, t, f, p);
+            if (md->Is_MD_comm_root) convert_inmass_to_outmass(p);
+            break;
+
+        default:
+            assert(0);
+    }
+
+    if (md->Is_MD_comm_root)
+    {
+        *array = p->data;
+        dims[0] = p->dims[0];
+        dims[1] = p->dims[1];
+        dims[2] = p->dims[2];
+    }
+    else
+        p = NULL;
+
+    return p;
+
+}
+
 void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path)
 {
     turi_t *t = &md->turies[turi];
     field_t *f = &t->fields[field];
 
-    fmd_array3D_t data;
+    fmd_array3s_t data;
 
     switch(f->cat)
     {
@@ -1758,4 +1800,15 @@ void fmd_turi_free(fmd_t *md)
     md->turies = NULL;
     md->turies_num = 0;
     md->active_ttm_turi = NULL;
+}
+
+/* negative returned value means the field doesn't exist */
+fmd_handle_t fmd_field_find(fmd_t *md, fmd_handle_t turi, fmd_field_t cat)
+{
+    turi_t *t = &md->turies[turi];
+
+    for (unsigned u=0; u < t->fields_num; u++)
+        if (t->fields[u].cat == cat) return u;
+
+    return -1;
 }

@@ -171,7 +171,7 @@ void _fmd_array_ordinary3d_free(void ***array, unsigned dim1, unsigned dim2)
 
 /* This function first tries to create a "neat" 3D array. If it isn't possible,
    then tries to make a "semi-neat" one. If not possible yet, makes an "ordinary" 3D array. */
-void _fmd_array_3d_create(fmd_utriple_t dims, unsigned elsize, datatype_t dt, fmd_array3D_t *array)
+void _fmd_array_3d_create(fmd_utriple_t dims, unsigned elsize, datatype_t dt, fmd_array3s_t *array)
 {
     array->data = _fmd_array_neat3d_create(dims, elsize);
     if (array->data != NULL)
@@ -195,7 +195,7 @@ void _fmd_array_3d_create(fmd_utriple_t dims, unsigned elsize, datatype_t dt, fm
     array->datatype = dt;
 }
 
-void _fmd_array_3d_free(fmd_array3D_t *array)
+void _fmd_array_3d_free(fmd_array3s_t *array)
 {
     switch (array->kind)
     {
@@ -211,7 +211,16 @@ void _fmd_array_3d_free(fmd_array3D_t *array)
     }
 }
 
-float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3D_t *array)
+void fmd_array3s_free(fmd_array3s_t *array)
+{
+    if (array != NULL)
+    {
+        _fmd_array_3d_free(array);
+        free(array);
+    }
+}
+
+float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3s_t *array)
 {
     float *f = (float *)malloc(array->dims[0] * array->dims[1] * array->dims[2] * sizeof(*f));
     if (f == NULL) return NULL;
@@ -253,7 +262,7 @@ float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3D_t *array
     return f;
 }
 
-float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3D_t *array)
+float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3s_t *array)
 {
     float *f = (float *)malloc(3 * array->dims[0] * array->dims[1] * array->dims[2] * sizeof(*f));
     if (f == NULL) return NULL;

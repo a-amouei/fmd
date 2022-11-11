@@ -66,4 +66,6 @@ typedef enum
 
 typedef struct _fmd_params fmd_params_t;
 
+typedef void ***fmd_array3_t;
+
 #endif /* TYPES_H */
