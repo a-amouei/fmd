@@ -1355,7 +1355,7 @@ static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t, int tim
     fTe->time = time;                    /* mark as updated */
     fTe->timestep = time_iteration;
 
-    if (t->comms > 0) perform_field_bcast_real(md, fxi, t);
+    if (t->comms_num > 0) perform_field_bcast_real(md, fxi, t);
 
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fTe->field_index, t->turi_index);
 }
