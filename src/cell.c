@@ -66,10 +66,10 @@ void _fmd_cellinfo_init(cellinfo_t *cinfo)
     cinfo->GroupID_active = FMD_TRUE;
     cinfo->AtomID_active = FMD_TRUE;
     cinfo->atomkind_active = FMD_TRUE;
-    cinfo->molkind_active = FMD_TRUE;
-    cinfo->MolID_active = FMD_TRUE;
-    cinfo->AtomIDlocal_active = FMD_TRUE;
-    cinfo->neighbors_active = FMD_TRUE;
+    cinfo->molkind_active = FMD_FALSE;
+    cinfo->MolID_active = FMD_FALSE;
+    cinfo->AtomIDlocal_active = FMD_FALSE;
+    cinfo->neighbors_active = FMD_FALSE;
 }
 
 void _fmd_cell_resize(fmd_t *md, cell_t *c)
