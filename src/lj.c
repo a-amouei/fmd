@@ -74,7 +74,8 @@ void fmd_computeLJ(fmd_t *md)
                                     if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                         continue;
 
-                                    if (c1->molkind[i1] != 0 && c1->MolID[i1] == c2->MolID[i2]) continue;  // TO-DO
+                                    if (c1->molkind != NULL)
+                                        if (c1->molkind[i1] != 0 && c1->MolID[i1] == c2->MolID[i2]) continue;  // TO-DO
 
                                     if ( (c1 != c2) || (i1 != i2) )
                                     {
