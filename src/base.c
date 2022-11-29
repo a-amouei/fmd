@@ -1018,6 +1018,7 @@ void fmd_matt_saveConfiguration(fmd_t *md)
                 md->_OldNumberOfParticles = md->TotalNoOfParticles;
             }
             save_XYZ_data(md, globaldata);
+            fflush(md->ConfigFilep);
             break;
 
         case FMD_SCM_XYZ_SEPARATE:
