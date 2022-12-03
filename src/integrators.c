@@ -35,7 +35,7 @@
             break;                                                             \
         }                                                                      \
         else                                                                   \
-            if ((x) < 0.0) (x) += (md)->l[(d)]; else (x) -= (md)->l[(d)];      \
+            (x) += ((x) < 0.0 ? (md)->l[(d)] : -(md)->l[(d)]);                 \
     }                                                                          \
     do {} while (0)
 
@@ -53,7 +53,6 @@ static void VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
 {
     fmd_ituple_t ic;
     fmd_real_t VelocityScale, mass;
-    fmd_real_t x;
     cell_t *c;
     unsigned i;
 
@@ -74,11 +73,9 @@ static void VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
                 if (UseThermostat) VEL(c, i, d) *= VelocityScale;
 
                 VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
-                x = POS(c, i, d) + md->timestep * VEL(c, i, d);
+                POS(c, i, d) += md->timestep * VEL(c, i, d);
 
-                WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, x);
-
-                POS(c, i, d) = x;
+                WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, POS(c, i, d));
             }
         }
 
@@ -141,7 +138,7 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
 {
     fmd_ituple_t ic;
     int d;
-    fmd_real_t mass, x;
+    fmd_real_t mass;
     cell_t *c;
     unsigned i;
     int ParticlesNum = 0;
@@ -159,11 +156,9 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
             for (d=0; d<DIM; d++)
             {
                 VEL(c, i, d) += md->timestep * FRC(c, i, d) / mass;
-                x = POS(c, i, d) + md->timestep * VEL(c, i, d);
+                POS(c, i, d) += md->timestep * VEL(c, i, d);
 
-                WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, x);
-
-                POS(c, i, d) = x;
+                WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, POS(c, i, d));
             }
 
             if (d == DIM)  /* if particle is not removed */

@@ -389,6 +389,71 @@ static void calculate_GroupTemperature_etc(fmd_t *md)
     md->GroupKineticEnergy = 3.0/2.0 * md->GroupParticlesNum * K_BOLTZMANN * md->GroupTemperature;
 }
 
+#define WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX_2(md, c, i, d, x)                \
+    if ( (((x) < 0.0) || ((x) >= (md)->l[(d)])) )                              \
+    {                                                                          \
+        if (!(md)->PBC[(d)])                                                   \
+        {                                                                      \
+            _fmd_cell_remove_atom((md), (c), (i));                             \
+            (md)->SubDomain.NumberOfParticles--;                               \
+            (i)--;                                                             \
+            break;                                                             \
+        }                                                                      \
+        else                                                                   \
+            (x) += ((x) < 0.0 ? (md)->l[(d)] : -(md)->l[(d)]);                 \
+    }                                                                          \
+    do {} while (0)
+
+void fmd_matt_displace(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
+{
+    assert(!md->ParticlesDistributed);
+
+    if (!md->Is_MD_comm_root) return;
+
+    fmd_rtriple_t dr;
+
+    dr[0] = dx;
+    dr[1] = dy;
+    dr[2] = dz;
+
+    fmd_ituple_t ic, jc;
+    int i;
+    cell_t *c;
+
+    LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
+        for (c = &ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+            if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
+                for (int d=0; d<3; d++)
+                {
+                    POS(c, i, d) += dr[d];
+
+                    WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX_2(md, c, i, d, POS(c, i, d));
+                }
+
+    LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
+        for (c = &ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+            if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
+            {
+                for (int d=0; d<3; d++)
+                {
+                    jc[d] = (int)floor(POS(c, i, d) / md->cellh[d]);
+
+                    assert(!(jc[d] < 0 || jc[d] >= md->nc[d])); /* TO-DO: handle error */
+                }
+
+                if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
+                {
+                    cell_t *c2 = &ARRAY_ELEMENT(md->global_grid, jc);
+                    unsigned j = _fmd_cell_new_particle(md, c2);
+
+                    _fmd_cell_copy_atom_from_cell_to_cell(c, i, c2, j);
+                    _fmd_cell_remove_atom(md, c, i);
+
+                    i--;
+                }
+            }
+}
+
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
 {
     cell_t ***grid;
