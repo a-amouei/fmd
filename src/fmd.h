@@ -166,6 +166,7 @@ fmd_real_t fmd_matt_getTemperature(fmd_t *md);
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
 void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
+void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 
 void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
 void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz);
