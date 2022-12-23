@@ -242,6 +242,29 @@ void createCommunicators(fmd_t *md)
     free(ranks);
 }
 
+void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
+{
+    int i;
+    cell_t *c;
+    fmd_ituple_t ic;
+
+    if (md->ParticlesDistributed)
+    {
+        LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
+            for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+                if (old == FMD_GROUP_ALL || c->GroupID[i] == old) c->GroupID[i] = new;
+    }
+    else
+    {
+        if (md->Is_MD_comm_root)
+        {
+            LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
+                for (c = &ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+                    if (old == FMD_GROUP_ALL || c->GroupID[i] == old) c->GroupID[i] = new;
+        }
+    }
+}
+
 void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
 {
     cell_t ***grid;
