@@ -1,5 +1,5 @@
 /*
-  base.h: This file is part of Free Molecular Dynamics
+  misc.h: This file is part of Free Molecular Dynamics
 
   Copyright (C) 2019 Arham Amouye Foumani
 
@@ -17,8 +17,8 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef BASE_H
-#define BASE_H
+#ifndef MISC_H
+#define MISC_H
 
 #include "config.h"
 
@@ -48,4 +48,4 @@ typedef struct _fmd fmd_t;
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);
 void _fmd_refreshGrid(fmd_t *md);
 
-#endif /* BASE_H */
+#endif /* MISC_H */
