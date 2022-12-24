@@ -18,8 +18,9 @@
 */
 
 #include "lj.h"
+#include "fmd-private.h"
 #include "potential.h"
-#include "base.h"
+#include "misc.h"
 #include "list.h"
 #include "forces.h"
 #include "general.h"

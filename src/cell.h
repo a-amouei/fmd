@@ -30,7 +30,7 @@
 
 typedef struct _list list_t;
 
-typedef struct _cell
+struct _cell
 {
     unsigned parts_num;
     unsigned capacity;
@@ -44,9 +44,11 @@ typedef struct _cell
     unsigned *AtomIDlocal;    /* Atom ID in molecule */
     list_t **neighbors;       /* for each molecule atom in cell there is a list of neighbors;
                                  each data pointer in this list points to a mol_atom_neighbor_t */
-} cell_t;
+};
 
-typedef struct
+typedef struct _cell cell_t;
+
+struct _cellinfo
 {
     fmd_bool_t x_active;
     fmd_bool_t v_active;
@@ -59,7 +61,9 @@ typedef struct
     fmd_bool_t MolID_active;
     fmd_bool_t AtomIDlocal_active;
     fmd_bool_t neighbors_active;
-} cellinfo_t;
+};
+
+typedef struct _cellinfo cellinfo_t;
 
 typedef struct _fmd fmd_t;
 

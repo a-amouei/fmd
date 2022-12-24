@@ -17,8 +17,10 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include "turi.h"
-#include "base.h"
+#include "fmd-private.h"
+#include "misc.h"
 #include "subdomain.h"
 #include "timer.h"
 #include "events.h"

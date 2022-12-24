@@ -19,11 +19,13 @@
 
 #include <stdio.h>
 #include "ttm.h"
+#include "fmd-private.h"
+#include "matter.h"
 #include "general.h"
 #include "turi.h"
-#include "turi_ghost.h"
+#include "turi-ghost.h"
 #include "types.h"
-#include "base.h"
+//#include "misc.h"
 
 typedef struct
 {

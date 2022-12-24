@@ -18,6 +18,7 @@
 */
 
 #include "h5.h"
+#include "fmd-private.h"
 #include "types.h"
 #include "array.h"
 #include "turi.h"
@@ -25,7 +26,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "base.h"
+#include "misc.h"
 
 void _fmd_h5_ds_init(h5_dataspaces_t *ds)
 {

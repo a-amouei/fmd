@@ -18,7 +18,8 @@
 */
 
 #include "cell.h"
-#include "base.h"
+#include "fmd-private.h"
+#include "misc.h"
 #include "types.h"
 #include "general.h"
 

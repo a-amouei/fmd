@@ -17,8 +17,10 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <tgmath.h>
 #include "morse.h"
-#include "base.h"
+#include "fmd-private.h"
+#include "misc.h"
 #include "forces.h"
 #include "list.h"
 #include "potential.h"

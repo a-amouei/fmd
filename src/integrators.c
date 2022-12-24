@@ -17,7 +17,9 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "base.h"
+#include "fmd-private.h"
+#include "matter.h"
+#include "misc.h"
 #include "turi.h"
 #include "forces.h"
 #include "timer.h"

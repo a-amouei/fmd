@@ -17,8 +17,12 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
+#include <tgmath.h>
+#include <float.h>
 #include "eam.h"
-#include "base.h"
+#include "fmd-private.h"
+#include "misc.h"
 #include "list.h"
 #include "general.h"
 

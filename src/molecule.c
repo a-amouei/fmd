@@ -17,9 +17,12 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
+#include <tgmath.h>
 #include "molecule.h"
+#include "fmd-private.h"
 #include "potential.h"
-#include "base.h"
+#include "misc.h"
 #include "array.h"
 #include "list.h"
 #include "general.h"

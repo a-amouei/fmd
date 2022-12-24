@@ -18,7 +18,8 @@
 */
 
 #include "subdomain.h"
-#include "base.h"
+#include "fmd-private.h"
+#include "misc.h"
 #include "general.h"
 
 fmd_real_t _fmd_convert_pos_to_subd_coord_1D(fmd_t *md, fmd_real_t pos, int d)

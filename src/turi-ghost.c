@@ -17,9 +17,10 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "turi_ghost.h"
+#include "turi-ghost.h"
+#include "fmd-private.h"
 #include "types.h"
-#include "base.h"
+#include "misc.h"
 #include "general.h"
 #include "turi.h"
 

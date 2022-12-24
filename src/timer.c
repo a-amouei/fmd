@@ -18,7 +18,8 @@
 */
 
 #include "timer.h"
-#include "base.h"
+#include "fmd-private.h"
+#include "misc.h"
 #include "events.h"
 #include "general.h"
 

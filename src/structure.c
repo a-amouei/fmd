@@ -17,7 +17,11 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "base.h"
+#include <time.h>
+#include <tgmath.h>
+#include <gsl/gsl_randist.h>
+#include "fmd-private.h"
+#include "misc.h"
 #include "molecule.h"
 #include "array.h"
 #include "general.h"

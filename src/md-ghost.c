@@ -20,8 +20,9 @@
 /* functions for working with ghost cells of MD subdomains, including
    communication of data from or to them */
 
-#include "base.h"
-#include "md_ghost.h"
+#include "fmd-private.h"
+#include "misc.h"
+#include "md-ghost.h"
 #include "types.h"
 #include "general.h"
 #include "cell.h"

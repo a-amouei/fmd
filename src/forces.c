@@ -17,12 +17,14 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <tgmath.h>
 #include "forces.h"
+#include "fmd-private.h"
 #include "eam.h"
 #include "lj.h"
 #include "morse.h"
-#include "base.h"
-#include "md_ghost.h"
+#include "misc.h"
+#include "md-ghost.h"
 #include "list.h"
 #include "molecule.h"
 #include "general.h"
@@ -264,8 +266,7 @@ void _fmd_dync_updateForces(fmd_t *md)
                 fmd_computeMorse(md);
                 break;
 
-            case POT_EAM_ALLOY:
-                if (md->CompLocOrdParam) compLocOrdParam(md);
+            case POT_EAM_ALLOY: ;
                 fmd_real_t FembSum;
                 _fmd_computeEAM_pass1(md, &FembSum);
                 _fmd_ghostparticles_update_Femb(md);
