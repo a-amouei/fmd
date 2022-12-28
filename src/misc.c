@@ -419,7 +419,33 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     FILE *fp;
     MPI_Status status;
     cell_t *c;
-    unsigned pi;
+    unsigned pi;  /* particle index, not the famous pi number! */
+
+    if (!md->ParticlesDistributed)
+    {
+        if (md->Is_MD_comm_root)
+        {
+            sprintf(StateFilePath, "%s%s", md->SaveDirectory, filename);
+            fp = f_open(StateFilePath, "w");
+
+            fprintf(fp, "%.16e\n", md->time);
+            fprintf(fp, "%u\n", md->TotalNoOfParticles);
+            fprintf(fp, formatstr_3xpoint16e, md->l[0], md->l[1], md->l[2]);
+            fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
+
+            LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
+                for (c = &ARRAY_ELEMENT(md->global_grid, ic), pi=0; pi < c->parts_num; pi++)
+                {
+                    fprintf(fp, "%s %d\n", md->potsys.atomkinds[c->atomkind[pi]].name, c->GroupID[pi]);
+                    fprintf(fp, formatstr_3xpoint16e, POS(c, pi, 0), POS(c, pi, 1), POS(c, pi, 2));
+                    fprintf(fp, formatstr_3xpoint16e, VEL(c, pi, 0), VEL(c, pi, 1), VEL(c, pi, 2));
+                }
+
+            fclose(fp);
+        }
+
+        return;
+    }
 
     if (md->Is_MD_comm_root)
     {
