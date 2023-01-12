@@ -17,6 +17,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <tgmath.h>
 #include "fmd-private.h"
 #include "matter.h"
 #include "misc.h"

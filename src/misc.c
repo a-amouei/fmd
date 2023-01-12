@@ -18,6 +18,7 @@
 */
 
 #include <string.h>
+#include <tgmath.h>
 #include <omp.h>
 #include "matter.h"
 #include "misc.h"

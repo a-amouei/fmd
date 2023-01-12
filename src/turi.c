@@ -18,6 +18,7 @@
 */
 
 #include <string.h>
+#include <tgmath.h>
 #include "turi.h"
 #include "fmd-private.h"
 #include "misc.h"
@@ -1599,7 +1600,8 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
     {
         turi_t *t = &md->turies[ti];
 
-        if (md->time >= t->starttime && !(md->time > t->stoptime && t->stoptime >= t->starttime))
+        if ( (md->time >= t->starttime - md->timestep/2.0) &&
+             ((md->time < t->stoptime + md->timestep/2.0) || t->stoptime < t->starttime) )
         {
             allhave_now_update(md, t);
 

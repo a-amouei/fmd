@@ -17,11 +17,23 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <tgmath.h>
 #include "timer.h"
 #include "fmd-private.h"
 #include "misc.h"
 #include "events.h"
 #include "general.h"
+
+fmd_bool_t _fmd_timer_is_its_time(fmd_real_t t, fmd_real_t dt_half, fmd_real_t starttime, fmd_real_t interval)
+{
+    fmd_real_t tc = round((t - starttime) / interval) * interval + starttime;
+    fmd_real_t d = t - tc;
+
+    if (d >= -dt_half && d < dt_half)
+        return FMD_TRUE;
+    else
+        return FMD_FALSE;
+}
 
 void fmd_timer_free(fmd_t *md)
 {
@@ -53,8 +65,9 @@ void _fmd_timer_sendTimerTickEvents(fmd_t *md)
 {
     for (int i=0; i < md->timers_num; i++)
     {
-        if ( md->timers[i].enabled && md->time >= md->timers[i].start &&
-             !(md->time > md->timers[i].stop && md->timers[i].stop >= md->timers[i].start) )
+        if ( md->timers[i].enabled &&
+            (md->time >= md->timers[i].start - md->timestep/2.0) &&
+            ((md->time < md->timers[i].stop + md->timestep/2.0) || md->timers[i].stop < md->timers[i].start) )
         {
             if (md->timers[i].cat == TIMER_SIMPLE)
             {
