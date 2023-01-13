@@ -75,6 +75,15 @@ static void potlist_free(fmd_t *md)
     fmd_list_free(md->potsys.potlist);
 }
 
+static void atomkinds_free(fmd_t *md)
+{
+    for (int i=0; i < md->potsys.atomkinds_num; i++)
+        free(md->potsys.atomkinds[i].name);
+
+    free(md->potsys.atomkinds);
+    md->potsys.atomkinds_num = 0;
+}
+
 void fmd_potsys_free(fmd_t *md)
 {
     if (md->potsys.molkinds != NULL)
@@ -85,7 +94,7 @@ void fmd_potsys_free(fmd_t *md)
 
     if (md->potsys.atomkinds != NULL)
     {
-        free(md->potsys.atomkinds);
+        atomkinds_free(md);
         md->potsys.atomkinds = NULL;
     }
 
