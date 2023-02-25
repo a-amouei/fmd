@@ -1576,7 +1576,7 @@ static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
 }
 
 /* this subroutine updates the variable allhave_now in all fields */
-static inline void allhave_now_update(fmd_t *md, turi_t *t)
+static void allhave_now_update(fmd_t *md, turi_t *t)
 {
     for (int fi = 0; fi < t->fields_num; fi++)
     {
@@ -1613,10 +1613,7 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
                 if (f->timestep == time_iteration) continue; /* see if the field is already updated */
 
                 if (f->allhave_now)
-                {
                     update_field(md, f, t, FMD_TRUE, time_iteration, time, Xupd, Vupd, Fupd);
-                    break;
-                }
                 else
                 {
                     for (int j=0; j < f->intervals_num; j++)
