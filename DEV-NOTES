@@ -17,6 +17,13 @@ TO-DO:
   #7          In md_ghost.c, only data of atoms belonging to the active group should be communicated.
   
   #8          See how much -ffast-math and -fomit-frame-pointer compiler options affect the performance.
+  
+  #9          In ttm_type1_solve_1d() of ttm.c, a call to _fmd_turi_update_ghosts_1d() once appears before the time loop and
+              once inside the loop just before its end brace. At both, the function transfers the values of FMD_FIELD_NUMBER and
+              FMD_FIELD_TTM_TE fields to be filled in ghost turi-cells, using packer/unpacker functions type1_1d_pack() and
+              type1_1d_unpack() (which are defined inside ttm.c). Since inside the mentioned time loop the FMD_FIELD_NUMBER field is
+              constant, _fmd_turi_update_ghosts_1d() when is called from within the loop should not transfer values of the 
+              FMD_FIELD_NUMBER field.
 
 Questions:
 
