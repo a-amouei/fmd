@@ -33,7 +33,7 @@
         if (!(md)->PBC[(d)])                                                   \
         {                                                                      \
             _fmd_cell_remove_atom((md), (c), (i));                             \
-            (md)->SubDomain.NumberOfParticles--;                               \
+            (md)->Subdomain.NumberOfParticles--;                               \
             (i)--;                                                             \
             break;                                                             \
         }                                                                      \
@@ -63,8 +63,8 @@ static void VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
         VelocityScale = sqrt(1 + md->timestep / md->BerendsenThermostatParam *
                         (md->DesiredTemperature / md->GroupTemperature - 1));
 
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -111,8 +111,8 @@ static void VelocityVerlet_finishStep(fmd_t *md)
     cell_t *c;
     unsigned i;
 
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -148,8 +148,8 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
     fmd_rtuple_t MomentumSum = {0., 0., 0.};
     fmd_real_t m_vSqd_Sum = 0;
 
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;

@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
-    fmd_box_setSubDomains(md, 1, 2, 1);
+    fmd_box_setSubdomains(md, 1, 2, 1);
 
     // let's have only argon atoms
     fmd_string_t name[1] = {"Ar"};

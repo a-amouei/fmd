@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
     fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
 
-    fmd_box_setSubDomains(md, 1, 1, 1);
+    fmd_box_setSubdomains(md, 1, 1, 1);
 
     fmd_string_t atom_names[2] = {"C", "O"};
     double atom_masses[2] = {12.011, 15.999};

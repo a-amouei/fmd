@@ -48,15 +48,15 @@ static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
     #pragma omp parallel for private(ic0,ic1,ic2,kc,jc,rv,r2,h,ir2,ir2_h,a,b,rho, \
       rhoDD,F,F_DD,irho,irho_h) shared(md,pottable,atomkinds) default(none) collapse(3) reduction(+:Femb_sum) \
       schedule(static,1)
-    for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
-    for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
-    for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
+    for (ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+    for (ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+    for (ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
     {
         /* iterate over all particles in cell ic */
         cell_t *c1;
         unsigned i1;
 
-        for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
+        for (c1 = &md->Subdomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                 continue;
@@ -85,7 +85,7 @@ static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
                         cell_t *c2;
                         unsigned i2;
 
-                        for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
+                        for (c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                         {
                             if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                 continue;
@@ -130,16 +130,16 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
 #pragma omp parallel for private(ic0,ic1,ic2,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
     ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
     shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
-    for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
-    for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
-    for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
+    for (ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+    for (ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+    for (ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
     {
         /* iterate over all particles in cell ic */
 
         cell_t *c1;
         unsigned i1;
 
-        for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
+        for (c1 = &md->Subdomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                 continue;
@@ -167,7 +167,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
                         cell_t *c2;
                         unsigned i2;
 
-                        for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
+                        for (c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                         {
                             if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                 continue;
@@ -212,8 +212,8 @@ static void add_ttm_term_to_forces(fmd_t *md)
     turi_t *t = md->active_ttm_turi;
     ttm_t *ttm = t->ttm;
 
-    LOOP3D(ic, md->SubDomain.ic_start, md->SubDomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->SubDomain.grid, ic), i=0; i < c->parts_num; i++)
+    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;

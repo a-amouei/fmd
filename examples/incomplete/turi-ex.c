@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     fmd_box_setPBC(md, FMD_FALSE, FMD_FALSE, FMD_FALSE);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
-    fmd_box_setSubDomains(md, 1, 2, 1);
+    fmd_box_setSubdomains(md, 1, 2, 1);
 
     /* sometimes the user launches more processes than the chosen number of subdomains; they're not needed here!
        the function fmd_proc_isMD() can be called only after fmd_box_setSubDomains() */

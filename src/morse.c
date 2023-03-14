@@ -36,11 +36,11 @@ void fmd_computeMorse(fmd_t *md)
 
     #pragma omp parallel for shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
 
-    for (int ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
-        for (int ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
-            for (int ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
+    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+        for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+            for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
             {
-                cell_t *c1 = &md->SubDomain.grid[ic0][ic1][ic2];
+                cell_t *c1 = &md->Subdomain.grid[ic0][ic1][ic2];
 
                 /* iterate over all particles in cell c1 */
 
@@ -72,7 +72,7 @@ void fmd_computeMorse(fmd_t *md)
                             {
                                 SET_jc_IN_DIRECTION(2);
 
-                                cell_t *c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc);
+                                cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
 
                                 /* iterate over all particles in cell c2 */
 

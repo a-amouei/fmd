@@ -170,7 +170,7 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 
 void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
 void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz);
-void fmd_box_setSubDomains(fmd_t *md, int dimx, int dimy, int dimz);
+void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz);
 void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);

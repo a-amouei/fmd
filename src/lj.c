@@ -38,15 +38,15 @@ void fmd_computeLJ(fmd_t *md)
     /* iterate over all cells(lists) */
     #pragma omp parallel for private(ic0,ic1,ic2,d,kc,jc,rv,r2) \
       shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
-    for (ic0 = md->SubDomain.ic_start[0]; ic0 < md->SubDomain.ic_stop[0]; ic0++)
-        for (ic1 = md->SubDomain.ic_start[1]; ic1 < md->SubDomain.ic_stop[1]; ic1++)
-            for (ic2 = md->SubDomain.ic_start[2]; ic2 < md->SubDomain.ic_stop[2]; ic2++)
+    for (ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+        for (ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+            for (ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
             {
                 int i1, i2;
                 cell_t *c1, *c2;
 
                 /* iterate over all items in cell ic */
-                for (c1 = &md->SubDomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
+                for (c1 = &md->Subdomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
                 {
                     if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
                         continue;
@@ -70,7 +70,7 @@ void fmd_computeLJ(fmd_t *md)
                                 SET_jc_IN_DIRECTION(2);
 
                                 /* iterate over all items in cell jc */
-                                for (c2 = &ARRAY_ELEMENT(md->SubDomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
+                                for (c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
                                 {
                                     if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
                                         continue;

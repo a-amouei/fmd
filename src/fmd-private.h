@@ -56,7 +56,7 @@ typedef struct _turi turi_t;
 
 struct _fmd
 {
-    SubDomain_t SubDomain;
+    Subdomain_t Subdomain;
     potsys_t potsys;
     cell_t ***global_grid;
     cellinfo_t cellinfo;

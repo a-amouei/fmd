@@ -49,7 +49,7 @@ static void *create_packbuffer_for_Fembpack(fmd_t *md, fmd_ituple_t ic_start, fm
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -75,7 +75,7 @@ static void Femb_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
@@ -93,7 +93,7 @@ static void Femb_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
     LOOP3D(ic, ic_start, ic_stop)
     {
         unsigned num;
-        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        cell_t *c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -122,7 +122,7 @@ static void *create_packbuffer_for_ghostinit(fmd_t *md, fmd_ituple_t ic_start, f
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -165,7 +165,7 @@ static void ghostinit_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
@@ -185,7 +185,7 @@ static void ghostinit_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
 
 static inline void init_trans_and_dis(fmd_t *md, int dim, int dir, fmd_bool_t *trans, fmd_real_t *dis)
 {
-    if (md->SubDomain.is[dim] == 0)
+    if (md->Subdomain.is[dim] == 0)
     {
         if (dir == +1)
         {
@@ -193,7 +193,7 @@ static inline void init_trans_and_dis(fmd_t *md, int dim, int dir, fmd_bool_t *t
             *dis = -md->l[dim];
         }
     }
-    else if (md->SubDomain.is[dim] == md->ns[dim]-1)
+    else if (md->Subdomain.is[dim] == md->ns[dim]-1)
     {
         if (dir == -1)
         {
@@ -216,7 +216,7 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
     LOOP3D(ic, ic_start, ic_stop)
     {
         unsigned num;
-        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        cell_t *c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -267,7 +267,7 @@ static void *create_packbuffer_for_migrate(fmd_t *md, fmd_ituple_t ic_start, fmd
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         if (c->parts_num > 0)
         {
@@ -307,11 +307,11 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
     {
         LOOP3D(ic, ic_start, ic_stop)
         {
-            c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+            c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
             if (c->parts_num > 0)
             {
-                md->SubDomain.NumberOfParticles -= c->parts_num;
+                md->Subdomain.NumberOfParticles -= c->parts_num;
                 _fmd_cell_minimize(md, c);
             }
         }
@@ -324,7 +324,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     LOOP3D(ic, ic_start, ic_stop)
     {
-        c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
@@ -352,7 +352,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
                 MPI_Pack(c->AtomIDlocal, c->parts_num, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
             }
 
-            md->SubDomain.NumberOfParticles -= c->parts_num;
+            md->Subdomain.NumberOfParticles -= c->parts_num;
             _fmd_cell_minimize(md, c);
         }
     }
@@ -371,7 +371,7 @@ static void migrate_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
     LOOP3D(ic, ic_start, ic_stop)
     {
         unsigned incr;
-        cell_t *c = &ARRAY_ELEMENT(md->SubDomain.grid, ic);
+        cell_t *c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
 
         MPI_Unpack(in, insize, &byte, &incr, 1, MPI_UNSIGNED, md->MD_comm);
 
@@ -380,7 +380,7 @@ static void migrate_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
             unsigned oldnum = c->parts_num;
 
             c->parts_num += incr;
-            md->SubDomain.NumberOfParticles += incr;
+            md->Subdomain.NumberOfParticles += incr;
 
             _fmd_cell_resize(md, c);
 
@@ -450,7 +450,7 @@ static void transfer(fmd_t *md, int source, int dest,
 }
 
 static void particles_prepare_migration_in_direction_d(
-    SubDomain_t *s_p, int d, fmd_ituple_t ic_start_send_lower,
+    Subdomain_t *s_p, int d, fmd_ituple_t ic_start_send_lower,
     fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
     fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
     fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
@@ -503,13 +503,13 @@ static void ghostparticles_prepare_init_update_in_direction_d(
     {
         if (dd == d) // only ghost
         {
-            ic_start_send_lower[dd] = md->SubDomain.ic_start[dd];
+            ic_start_send_lower[dd] = md->Subdomain.ic_start[dd];
             ic_stop_send_lower[dd] = ic_start_send_lower[dd] + 1;
-            ic_stop_receive_lower[dd] = md->SubDomain.ic_start[dd];
+            ic_stop_receive_lower[dd] = md->Subdomain.ic_start[dd];
             ic_start_receive_lower[dd] = ic_stop_receive_lower[dd] - 1;
-            ic_stop_send_upper[dd] = md->SubDomain.ic_stop[dd];
+            ic_stop_send_upper[dd] = md->Subdomain.ic_stop[dd];
             ic_start_send_upper[dd] = ic_stop_send_upper[dd] - 1;
-            ic_start_receive_upper[dd] = md->SubDomain.ic_stop[dd];
+            ic_start_receive_upper[dd] = md->Subdomain.ic_stop[dd];
             ic_stop_receive_upper[dd] = ic_start_receive_upper[dd] + 1;
         }
         else if (dd > d) // including ghost
@@ -517,22 +517,22 @@ static void ghostparticles_prepare_init_update_in_direction_d(
             ic_start_receive_lower[dd] = ic_start_send_lower[dd]
                                        = ic_start_receive_upper[dd]
                                        = ic_start_send_upper[dd]
-                                       = md->SubDomain.ic_start[dd] - (md->ns[dd] == 1 ? 0 : 1);
+                                       = md->Subdomain.ic_start[dd] - (md->ns[dd] == 1 ? 0 : 1);
             ic_stop_receive_lower[dd]  = ic_stop_send_lower[dd]
                                        = ic_stop_receive_upper[dd]
                                        = ic_stop_send_upper[dd]
-                                       = md->SubDomain.ic_stop[dd] + (md->ns[dd] == 1 ? 0 : 1);
+                                       = md->Subdomain.ic_stop[dd] + (md->ns[dd] == 1 ? 0 : 1);
         }
         else // excluding ghost
         {
             ic_start_receive_lower[dd] = ic_start_send_lower[dd]
                                        = ic_start_receive_upper[dd]
                                        = ic_start_send_upper[dd]
-                                       = md->SubDomain.ic_start[dd];
+                                       = md->Subdomain.ic_start[dd];
             ic_stop_receive_lower[dd]  = ic_stop_send_lower[dd]
                                        = ic_stop_receive_upper[dd]
                                        = ic_stop_send_upper[dd]
-                                       = md->SubDomain.ic_stop[dd];
+                                       = md->Subdomain.ic_stop[dd];
         }
     }
 }
@@ -557,13 +557,13 @@ void _fmd_ghostparticles_update_Femb(fmd_t *md)
 
             /* sending to lower process, receiving from upper process */
 
-            transfer(md, md->SubDomain.rank_of_upper_subd[d], md->SubDomain.rank_of_lower_subd[d],
+            transfer(md, md->Subdomain.rank_of_upper_subd[d], md->Subdomain.rank_of_lower_subd[d],
                      ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper, ic_stop_receive_upper,
                      Femb_pack, Femb_unpack, d, -1);
 
             /* sending to upper process, receiving from lower process */
 
-            transfer(md, md->SubDomain.rank_of_lower_subd[d], md->SubDomain.rank_of_upper_subd[d],
+            transfer(md, md->Subdomain.rank_of_lower_subd[d], md->Subdomain.rank_of_upper_subd[d],
                      ic_start_send_upper, ic_stop_send_upper, ic_start_receive_lower, ic_stop_receive_lower,
                      Femb_pack, Femb_unpack, d, +1);
         }
@@ -590,13 +590,13 @@ void _fmd_ghostparticles_init(fmd_t *md)
 
             /* sending to lower process, receiving from upper process */
 
-            transfer(md, md->SubDomain.rank_of_upper_subd[d], md->SubDomain.rank_of_lower_subd[d],
+            transfer(md, md->Subdomain.rank_of_upper_subd[d], md->Subdomain.rank_of_lower_subd[d],
                      ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper, ic_stop_receive_upper,
                      ghostinit_pack, ghostinit_unpack, d, -1);
 
             /* sending to upper process, receiving from lower process */
 
-            transfer(md, md->SubDomain.rank_of_lower_subd[d], md->SubDomain.rank_of_upper_subd[d],
+            transfer(md, md->Subdomain.rank_of_lower_subd[d], md->Subdomain.rank_of_upper_subd[d],
                      ic_start_send_upper, ic_stop_send_upper, ic_start_receive_lower, ic_stop_receive_lower,
                      ghostinit_pack, ghostinit_unpack, d, +1);
         }
@@ -608,7 +608,7 @@ static inline void cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_
     fmd_ituple_t ic;
 
     LOOP3D(ic, ic_from, ic_to)
-        _fmd_cell_minimize(md, &ARRAY_ELEMENT(md->SubDomain.grid, ic));
+        _fmd_cell_minimize(md, &ARRAY_ELEMENT(md->Subdomain.grid, ic));
 }
 
 void _fmd_ghostparticles_delete(fmd_t *md)
@@ -619,18 +619,18 @@ void _fmd_ghostparticles_delete(fmd_t *md)
 
     for (d=0; d<DIM; d++)
     {
-        ic_from[d] = md->SubDomain.ic_start[d] - (md->ns[d] == 1 ? 0 : 1);
-        jc[d] = ic_to[d] = md->SubDomain.ic_stop[d] + (md->ns[d] == 1 ? 0 : 1);
+        ic_from[d] = md->Subdomain.ic_start[d] - (md->ns[d] == 1 ? 0 : 1);
+        jc[d] = ic_to[d] = md->Subdomain.ic_stop[d] + (md->ns[d] == 1 ? 0 : 1);
     }
 
     for (d=0; d<DIM; d++)
     {
-        jc[d] = md->SubDomain.ic_start[d];
+        jc[d] = md->Subdomain.ic_start[d];
         cleanGridSegment(md, ic_from, jc);
-        ic_from[d] = md->SubDomain.ic_stop[d];
+        ic_from[d] = md->Subdomain.ic_stop[d];
         cleanGridSegment(md, ic_from, ic_to);
-        ic_from[d] = md->SubDomain.ic_start[d];
-        jc[d] = ic_to[d] = md->SubDomain.ic_stop[d];
+        ic_from[d] = md->Subdomain.ic_start[d];
+        jc[d] = ic_to[d] = md->Subdomain.ic_stop[d];
     }
 }
 
@@ -646,20 +646,20 @@ void _fmd_particles_migrate(fmd_t *md)
         if (md->ns[d] != 1)
         {
             particles_prepare_migration_in_direction_d(
-                &md->SubDomain, d,
+                &md->Subdomain, d,
                 ic_start_receive_lower, ic_stop_receive_lower,
                 ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper,
                 ic_stop_receive_upper, ic_start_send_upper, ic_stop_send_upper);
 
             /* sending to lower process, receiving from upper process */
 
-            transfer(md, md->SubDomain.rank_of_upper_subd[d], md->SubDomain.rank_of_lower_subd[d],
+            transfer(md, md->Subdomain.rank_of_upper_subd[d], md->Subdomain.rank_of_lower_subd[d],
                      ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper, ic_stop_receive_upper,
                      migrate_pack, migrate_unpack, d, -1);
 
             /* sending to upper process, receiving from lower process */
 
-            transfer(md, md->SubDomain.rank_of_lower_subd[d], md->SubDomain.rank_of_upper_subd[d],
+            transfer(md, md->Subdomain.rank_of_lower_subd[d], md->Subdomain.rank_of_upper_subd[d],
                      ic_start_send_upper, ic_stop_send_upper, ic_start_receive_lower, ic_stop_receive_lower,
                      migrate_pack, migrate_unpack, d, +1);
         }

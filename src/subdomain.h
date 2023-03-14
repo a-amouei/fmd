@@ -60,7 +60,7 @@ typedef struct
     unsigned NumberOfParticles;
     fmd_ituple_t r;                   /* r[d] = fmd_t.nc[d] % fmd_t.ns[d]; */
     fmd_ituple_t w;                   /* w[d] = fmd_t.nc[d] / fmd_t.ns[d]; */
-} SubDomain_t;
+} Subdomain_t;
 
 typedef struct _fmd fmd_t;
 
