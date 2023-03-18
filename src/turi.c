@@ -1663,6 +1663,10 @@ fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t fie
             if (md->Is_MD_comm_root) convert_inmass_to_outmass(p);
             break;
 
+        case FMD_FIELD_NUMBER:
+            gather_field_data_unsigned(md, t, f, p);
+            break;
+
         default:
             assert(0);
     }
@@ -1678,7 +1682,6 @@ fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t fie
         p = NULL;
 
     return p;
-
 }
 
 void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path)
