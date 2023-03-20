@@ -28,6 +28,10 @@
 
 #define RANK0 0
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /* error codes */
 #define ERROR_NCELL_TOO_SMALL                   1
 #define ERROR_UNEXPECTED_PARTICLE_POSITION      2
@@ -35,9 +39,12 @@
 #define ERROR_UNSUITABLE_FILE                   4
 
 /* unit conversion factors */
-#define JOULE_PER_METER3_KELVIN2    6.2415091259e-12   /* (eV / Ang^3 Kelvin^2) */
-#define WATT_PER_METER_KELVIN       6.2415091259e-4    /* (eV / ps ang Kelvin) */
-#define WATT_PER_METER3_KELVIN      6.2415091259e-24   /* (eV / ps ang^3 Kelvin) */
+#define METER                       1e10               /* Ang */
+#define SECOND                      1e12               /* ps */
+#define JOULE_PER_METER3_KELVIN2    6.2415091259e-12   /* (eV / Ang^3 Kelvin^2)  */
+#define WATT_PER_METER_KELVIN       6.2415091259e-4    /* (eV / ps Ang Kelvin)   */
+#define WATT_PER_METER2             6.2415091259e-14   /* (eV / ps Ang^2)        */
+#define WATT_PER_METER3_KELVIN      6.2415091259e-24   /* (eV / ps Ang^3 Kelvin) */
 
 /* physical constants */
 #define K_BOLTZMANN                 8.6173303e-5       /* (eV / Kelvin) */

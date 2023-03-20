@@ -18,6 +18,7 @@
 */
 
 #include <stdio.h>
+#include <tgmath.h>
 #include "ttm.h"
 #include "fmd-private.h"
 #include "matter.h"
@@ -46,6 +47,15 @@ typedef struct
 {
     unsigned value;
 } fmd_ttm_params_timestep_ratio_constant_t;
+
+typedef struct
+{
+    fmd_real_t fluence;
+    fmd_real_t reflectance;
+    fmd_real_t t0;
+    fmd_real_t duration;
+    fmd_real_t AbsorptionDepth;
+} fmd_ttm_params_laser_simple_t;
 
 typedef enum
 {
@@ -153,19 +163,35 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
         if (ttm->num_1d[i] < ttm->min_atoms_num) ttm->Te_1d[i] = ttm->Te2_1d[i] = -1.0;
     }
 
+    fmd_bool_t CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? FMD_TRUE : FMD_FALSE;
+
     /* time loop */
     for (int j=0; j < ttm->timestep_ratio; j++)
     {
+        fmd_real_t source_spcind;
+
+        if (CalcSource)
+            source_spcind = ttm->laser_factor_constant *
+                            exp(ttm->laser_m_2sig2_inv * sqrr(md->time + j * ttm->timestep - ttm->laser_t0));
+
         /* spatial loop */
         for (int i = t->itc_start_owned[2]; i < t->itc_stop[2]; i++)
         {
             if (ttm->Te_1d[i] < 0) continue;  /* nothing to be done with an deactivated cell */
 
+            fmd_real_t source;
+
+            if (CalcSource)
+            {
+                fmd_real_t z = (i - t->itc_glob_to_loc[2] + 0.5) * t->tcellh[2];
+                source = source_spcind * exp(ttm->laser_m_absdepth_inv * (z - ttm->frontsurf));
+            }
+            else
+                source = 0.0;
+
             int im1 = (i == t->itc_start_owned[2]) ? 0 : i-1;
             int ilo = (ttm->num_1d[im1] < ttm->min_atoms_num) ? i : im1;
             int ihi = (ttm->num_1d[i+1] < ttm->min_atoms_num) ? i : i+1;
-
-            fmd_real_t source = 0; /* TO-DO */
 
             ttm->Te2_1d[i] = ttm->Te_1d[i] + ttm->timestep/(ttm->C_gamma * ttm->Te_1d[i]) * (
               ttm->K * (ttm->Te_1d[ihi]-2*ttm->Te_1d[i]+ttm->Te_1d[ilo])/ttm->dz2
@@ -390,4 +416,34 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t 
     ttm_t *ttm = md->turies[turi].ttm;
 
     ttm->CellActivFrac = value;
+}
+
+void fmd_ttm_setLaserSource(fmd_t *md, fmd_handle_t turi, fmd_params_t *params)
+{
+    turi_t *t = &md->turies[turi];
+
+    ttm_t *ttm = t->ttm;
+
+    switch (t->cat)
+    {
+        case FMD_TURI_TTM_TYPE1: ;
+            fmd_real_t Lp = ((fmd_ttm_params_laser_simple_t *)params)->AbsorptionDepth * METER;
+
+            fmd_real_t R = ((fmd_ttm_params_laser_simple_t *)params)->reflectance;
+
+            fmd_real_t I0 = sqrt(4*log(2)/M_PI) * ((fmd_ttm_params_laser_simple_t *)params)->fluence /
+                            ((fmd_ttm_params_laser_simple_t *)params)->duration * WATT_PER_METER2;
+
+            fmd_real_t sigma = ((fmd_ttm_params_laser_simple_t *)params)->duration / sqrt(8*log(2)) * SECOND;
+
+            ttm->laser_t0 = ((fmd_ttm_params_laser_simple_t *)params)->t0 * SECOND;
+            ttm->laser_tdiff = 4*sqrt(2) * sigma;
+            ttm->laser_m_2sig2_inv = -0.5 / sqrr(sigma);
+            ttm->laser_m_absdepth_inv = -1. / Lp;
+            ttm->laser_factor_constant = I0 * (1 - R) / Lp;
+            break;
+
+        default:
+            assert(0); /* TO-DO: handle error */
+    }
 }

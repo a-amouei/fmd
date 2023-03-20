@@ -61,6 +61,11 @@ typedef struct _ttm
     fmd_real_t dz2;             /* delta_z^2 -- for 1D case */
     xi_te_updater_t update_xe_te;
     tghost_pack_t *tgp;
+    fmd_real_t laser_factor_constant;
+    fmd_real_t laser_m_absdepth_inv;  /* -1 x inverse of absorption depth */
+    fmd_real_t laser_m_2sig2_inv;
+    fmd_real_t laser_t0;
+    fmd_real_t laser_tdiff;
 } ttm_t;
 
 ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t);

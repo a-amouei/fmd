@@ -133,6 +133,15 @@ typedef struct
     unsigned value;
 } fmd_ttm_params_timestep_ratio_constant_t;
 
+typedef struct
+{
+    fmd_real_t fluence;
+    fmd_real_t reflectance;
+    fmd_real_t t0;
+    fmd_real_t duration;
+    fmd_real_t AbsorptionDepth;
+} fmd_ttm_params_laser_simple_t;
+
 /* functions */
 
 fmd_handle_t fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[]);
@@ -218,6 +227,7 @@ void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *param
 void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params);
 void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
+void fmd_ttm_setLaserSource(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 
 void fmd_array3s_free(fmd_array3s_t *array);
 
