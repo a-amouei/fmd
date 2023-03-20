@@ -33,6 +33,8 @@ void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p)
 
     if (t->rank_of_lower_owner[d] != MPI_PROC_NULL)
         p->pack._1D(md, t, FMD_FALSE, p->sendbuf, &count);
+    else
+        count = 0;
 
     MPI_Sendrecv(p->sendbuf, count, MPI_PACKED, t->rank_of_lower_owner[d], 85101,
                  p->recvbuf, p->bufsize, MPI_PACKED, t->rank_of_upper_owner[d], 85101,
@@ -45,6 +47,8 @@ void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p)
 
     if (t->rank_of_upper_owner[d] != MPI_PROC_NULL)
         p->pack._1D(md, t, FMD_TRUE, p->sendbuf, &count);
+    else
+        count = 0;
 
     MPI_Sendrecv(p->sendbuf, count, MPI_PACKED, t->rank_of_upper_owner[d], 85103,
                  p->recvbuf, p->bufsize, MPI_PACKED, t->rank_of_lower_owner[d], 85103,
