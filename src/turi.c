@@ -35,6 +35,12 @@ typedef struct
     unsigned size;         /* number of elements */
 } array_t;
 
+fmd_bool_t _is_time_within_turi_start_stop_times(fmd_t *md, turi_t *t)
+{
+    return (md->time >= t->starttime - md->timestep/2.0) &&
+           ((md->time < t->stoptime + md->timestep/2.0) || t->stoptime < t->starttime);
+}
+
 static unsigned identify_tcell_processes_set(fmd_t *md, fmd_rtuple_t tcellh,
   fmd_ituple_t itc, int **pset);
 
@@ -1600,8 +1606,7 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
     {
         turi_t *t = &md->turies[ti];
 
-        if ( (md->time >= t->starttime - md->timestep/2.0) &&
-             ((md->time < t->stoptime + md->timestep/2.0) || t->stoptime < t->starttime) )
+        if (_is_time_within_turi_start_stop_times(md, t))
         {
             allhave_now_update(md, t);
 

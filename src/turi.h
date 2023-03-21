@@ -124,6 +124,7 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t a
 void _fmd_field_call_update_event_handler(fmd_t *md, int field_index, int turi_index);
 void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
                         fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd);
+fmd_bool_t _is_time_within_turi_start_stop_times(fmd_t *md, turi_t *t);
 void fmd_turi_free(fmd_t *md);
 
 #endif /* TURI_H */

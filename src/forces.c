@@ -290,7 +290,9 @@ void _fmd_dync_updateForces(fmd_t *md)
 
     if (md->TotalNoOfMolecules > 0) fmd_dync_computeBondForce(md);   // TO-DO
 
-    if (md->active_ttm_turi != NULL) add_ttm_term_to_forces(md);
+    if (md->active_ttm_turi != NULL)
+        if (_is_time_within_turi_start_stop_times(md, md->active_ttm_turi))
+            add_ttm_term_to_forces(md);
 
     _fmd_ghostparticles_delete(md);
 }
