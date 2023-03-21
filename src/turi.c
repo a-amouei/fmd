@@ -1582,13 +1582,20 @@ static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
 }
 
 /* this subroutine updates the variable allhave_now in all fields */
-static void allhave_now_update(fmd_t *md, turi_t *t)
+static void allhave_now_update(fmd_t *md, turi_t *t, fmd_bool_t IsTTM)
 {
     for (int fi = 0; fi < t->fields_num; fi++)
     {
         field_t *f = &t->fields[fi];
 
         f->allhave_now = FMD_FALSE;
+
+        /* fields on a TTM turi must be updated every time step */
+        if (IsTTM && f->intervals_allhave_num > 0)
+        {
+            f->allhave_now = FMD_TRUE;
+            continue;
+        }
 
         for (int j = 0; j < f->intervals_allhave_num; j++)
             if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals_allhave[j]))
@@ -1608,7 +1615,9 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
 
         if (_is_time_within_turi_start_stop_times(md, t))
         {
-            allhave_now_update(md, t);
+            fmd_bool_t IsTTM = (t->cat == FMD_TURI_TTM_TYPE1);
+
+            allhave_now_update(md, t, IsTTM);
 
             /* start from fields with higher indexes */
             for (int fi = t->fields_num-1; fi >= 0; fi--)
@@ -1621,12 +1630,17 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
                     update_field(md, f, t, FMD_TRUE, time_iteration, time, Xupd, Vupd, Fupd);
                 else
                 {
-                    for (int j=0; j < f->intervals_num; j++)
-                        if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals[j]))
-                        {
-                            update_field(md, f, t, FMD_FALSE, time_iteration, time, Xupd, Vupd, Fupd);
-                            break;
-                        }
+                    if (IsTTM) /* fields on a TTM turi must be updated every time step */
+                        update_field(md, f, t, FMD_FALSE, time_iteration, time, Xupd, Vupd, Fupd);
+                    else
+                    {
+                        for (int j=0; j < f->intervals_num; j++)
+                            if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals[j]))
+                            {
+                                update_field(md, f, t, FMD_FALSE, time_iteration, time, Xupd, Vupd, Fupd);
+                                break;
+                            }
+                    }
                 }
             }
         }
