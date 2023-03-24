@@ -126,7 +126,7 @@ static size_t type1_1d_calc_tghost_buffsize(fmd_t *md)
     return size;
 }
 
-static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
+static void ttm_presolve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
     if (t->has_upper_lower_owner_procs[2])
         _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
@@ -162,7 +162,10 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
         /* cell deactivation */
         if (ttm->num_1d[i] < ttm->min_atoms_num) ttm->Te_1d[i] = ttm->Te2_1d[i] = -1.0;
     }
+}
 
+static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
+{
     fmd_bool_t CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? FMD_TRUE : FMD_FALSE;
 
     /* time loop */
@@ -253,6 +256,7 @@ static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
 
         ttm->dz2 = t->tcellh[2] * t->tcellh[2];
 
+        ttm->preupdate_xe_te = ttm_presolve_1d;
         ttm->update_xe_te = ttm_type1_solve_1d;
 
        if (t->ownerscomm.owned_tcells_num == 0)
@@ -278,7 +282,8 @@ static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
         ttm->Te2 = (fmd_real_t ***)ttm->Te_aux.data;
         ttm->xi = (fmd_real_t ***)t->fields[ttm->ixi].data.data;
 
-        ttm->update_xe_te = NULL; /* no 3D updater is written */
+        ttm->preupdate_xe_te = NULL;
+        ttm->update_xe_te = NULL; /* no 3D preupdater and updater is written */
     }
 }
 

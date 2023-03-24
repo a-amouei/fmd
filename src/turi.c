@@ -955,8 +955,7 @@ static void perform_field_bcast_real(fmd_t *md, field_t *f, turi_t *t)
     free(buf);
 }
 
-static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                                int time_iteration, fmd_real_t time)
+static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     unsigned ***num = (unsigned ***)f->data.data;
 
@@ -981,20 +980,19 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t all
     /* do communications */
     if (t->comms_num > 0) perform_field_reduce_unsigned(md, f, t, allhave);
 
-    f->timestep = time_iteration; /* mark as updated */
-    f->time = time;
+    f->timestep = md->time_iteration; /* mark as updated */
+    f->time = md->time;
 
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                                        int time_iteration, fmd_real_t time)
+static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     field_t *fdep = &t->fields[f->dependcs[0]];
 
     /* update the dependency field if not already updated */
-    if (fdep->timestep != time_iteration)
-        update_field_number(md, fdep, t, allhave || fdep->allhave_now, time_iteration, time);
+    if (fdep->timestep != md->time_iteration)
+        update_field_number(md, fdep, t, allhave || fdep->allhave_now);
 
     unsigned ***num = (unsigned ***)fdep->data.data;
     fmd_real_t ***nd = (fmd_real_t ***)f->data.data;
@@ -1015,14 +1013,13 @@ static void update_field_number_density(fmd_t *md, field_t *f, turi_t *t, fmd_bo
         }
     }
 
-    f->timestep = time_iteration; /* mark as updated */
-    f->time = time;
+    f->timestep = md->time_iteration; /* mark as updated */
+    f->time = md->time;
 
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                              int time_iteration, fmd_real_t time)
+static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     fmd_real_t ***mass = (fmd_real_t ***)f->data.data;
 
@@ -1048,14 +1045,13 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allha
     /* do communications */
     if (t->comms_num > 0) perform_field_reduce_real(md, f, t, allhave);
 
-    f->timestep = time_iteration; /* mark as updated */
-    f->time = time;
+    f->timestep = md->time_iteration; /* mark as updated */
+    f->time = md->time;
 
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, f->field_index, t->turi_index);
 }
 
-static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allhave,
-                                  int time_iteration, fmd_real_t time)
+static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allhave)
 {
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
 
@@ -1106,14 +1102,13 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
         }
     }
 
-    fvcm->timestep = time_iteration; /* mark as updated */
-    fvcm->time = time;
+    fvcm->timestep = md->time_iteration; /* mark as updated */
+    fvcm->time = md->time;
 
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fvcm->field_index, t->turi_index);
 }
 
-static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allhave,
-                                      int time_iteration, fmd_real_t time)
+static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, fmd_bool_t allhave)
 {
     fmd_ituple_t ic, itc;
 
@@ -1173,29 +1168,27 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
         }
     }
 
-    fmass->timestep = time_iteration; /* mark as updated */
-    fmass->time = time;
+    fmass->timestep = md->time_iteration; /* mark as updated */
+    fmass->time = md->time;
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fmass->field_index, t->turi_index);
 
-    fvcm->timestep = time_iteration; /* mark as updated */
-    fvcm->time = time;
+    fvcm->timestep = md->time_iteration; /* mark as updated */
+    fvcm->time = md->time;
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fvcm->field_index, t->turi_index);
 }
 
-static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                             int time_iteration, fmd_real_t time)
+static void update_field_vcm(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     field_t *fmass = &t->fields[f->dependcs[0]];
 
-    if (fmass->timestep != time_iteration)  /* if fmass is not already updated */
-        update_field_vcm_and_mass(md, f, fmass, t, allhave, time_iteration, time);
+    if (fmass->timestep != md->time_iteration)  /* if fmass is not already updated */
+        update_field_vcm_and_mass(md, f, fmass, t, allhave);
     else
-        update_field_vcm_only(md, f, fmass, t, allhave, time_iteration, time);
+        update_field_vcm_only(md, f, fmass, t, allhave);
 }
 
 static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
-                                                turi_t *t, fmd_bool_t allhave, int time_iteration,
-                                                fmd_real_t time)
+                                                turi_t *t, fmd_bool_t allhave)
 {
     fmd_real_t ***temp = (fmd_real_t ***)ftemp->data.data;
     unsigned ***num = (unsigned ***)fnum->data.data;
@@ -1259,18 +1252,17 @@ static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field
         }
     }
 
-    fnum->timestep = time_iteration; /* mark as updated */
-    fnum->time = time;
+    fnum->timestep = md->time_iteration; /* mark as updated */
+    fnum->time = md->time;
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fnum->field_index, t->turi_index);
 
-    ftemp->timestep = time_iteration; /* mark as updated */
-    ftemp->time = time;
+    ftemp->timestep = md->time_iteration; /* mark as updated */
+    ftemp->time = md->time;
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, ftemp->field_index, t->turi_index);
 }
 
 static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fnum, field_t *fvcm,
-                                          turi_t *t, fmd_bool_t allhave, int time_iteration,
-                                          fmd_real_t time)
+                                          turi_t *t, fmd_bool_t allhave)
 {
     fmd_real_t ***temp = (fmd_real_t ***)ftemp->data.data;
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
@@ -1322,51 +1314,63 @@ static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fn
         }
     }
 
-    ftemp->timestep = time_iteration; /* mark as updated */
-    ftemp->time = time;
+    ftemp->timestep = md->time_iteration; /* mark as updated */
+    ftemp->time = md->time;
 
     if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, ftemp->field_index, t->turi_index);
 }
 
-static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                                     int time_iteration, fmd_real_t time)
+static void update_field_temperature(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     field_t *fnum = &t->fields[f->dependcs[0]];
     field_t *fvcm = &t->fields[f->dependcs[1]];
 
     /* update the vcm field if not already updated */
-    if (fvcm->timestep != time_iteration)
-        update_field_vcm(md, fvcm, t, FMD_TRUE, time_iteration, time);
+    if (fvcm->timestep != md->time_iteration)
+        update_field_vcm(md, fvcm, t, FMD_TRUE);
 
-    if (fnum->timestep != time_iteration)  /* if fnum is not already updated */
-        update_field_temperature_and_number(md, f, fnum, fvcm, t, allhave, time_iteration, time);
+    if (fnum->timestep != md->time_iteration)  /* if fnum is not already updated */
+        update_field_temperature_and_number(md, f, fnum, fvcm, t, allhave);
     else
-        update_field_temperature_only(md, f, fnum, fvcm, t, allhave, time_iteration, time);
+        update_field_temperature_only(md, f, fnum, fvcm, t, allhave);
 }
 
-static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t, int time_iteration, fmd_real_t time)
+static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t)
 {
     field_t *ftemp = &t->fields[f->dependcs[0]];
 
     /* update the temperature field if not already updated */
-    if (ftemp->timestep != time_iteration)
-        update_field_temperature(md, ftemp, t, FMD_FALSE, time_iteration, time);
+    if (ftemp->timestep != md->time_iteration)
+        update_field_temperature(md, ftemp, t, FMD_FALSE);
 
     ttm_t *ttm = t->ttm;
+    field_t *fTe = &t->fields[ttm->iTe];
 
-    if (t->ownerscomm.owned_tcells_num > 0) ttm->update_xe_te(md, t, ttm);
+    fTe->time = md->time;
+
+    if (t->ownerscomm.owned_tcells_num > 0)
+    {
+        ttm->preupdate_xe_te(md, t, ttm);
+
+        if (md->EventHandler != NULL)
+            _fmd_field_call_update_event_handler(md, fTe->field_index, t->turi_index);
+
+        ttm->update_xe_te(md, t, ttm);
+    }
+    else
+    {
+        if (md->EventHandler != NULL)
+            _fmd_field_call_update_event_handler(md, fTe->field_index, t->turi_index);
+    }
 
     field_t *fxi = &t->fields[ttm->ixi];
-    fxi->time = time;                    /* mark as updated */
-    fxi->timestep = time_iteration;
+    fxi->time = md->time;                    /* mark as updated */
+    fxi->timestep = md->time_iteration;
 
-    field_t *fTe = &t->fields[ttm->iTe];
-    fTe->time = time;                    /* mark as updated */
-    fTe->timestep = time_iteration;
+    fTe->time = md->time + md->timestep;
+    fTe->timestep = md->time_iteration;      /* mark as updated */
 
     if (t->comms_num > 0) perform_field_bcast_real(md, fxi, t);
-
-    if (md->EventHandler != NULL) _fmd_field_call_update_event_handler(md, fTe->field_index, t->turi_index);
 }
 
 #define ADD_interval_TO_ARRAY(array, num, interval)                            \
@@ -1504,79 +1508,72 @@ fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_re
     return _fmd_field_add(&md->turies[turi], cat, interval, FMD_FALSE);
 }
 
-static void update_field_anykind(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                                 int time_iteration, fmd_real_t time)
+static void update_field_TRUE_TRUE_TRUE(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     switch (f->cat)
     {
-        case FMD_FIELD_NUMBER:
-            update_field_number(md, f, t, allhave, time_iteration, time);
-            break;
-
-        case FMD_FIELD_NUMBER_DENSITY:
-            update_field_number_density(md, f, t, allhave, time_iteration, time);
-            break;
-
-        case FMD_FIELD_MASS:
-            update_field_mass(md, f, t, allhave, time_iteration, time);
+        case FMD_FIELD_TEMPERATURE:
+            update_field_temperature(md, f, t, allhave);
             break;
 
         case FMD_FIELD_VCM:
-            update_field_vcm(md, f, t, allhave, time_iteration, time);
+            update_field_vcm(md, f, t, allhave);
             break;
 
-        case FMD_FIELD_TEMPERATURE:
-            update_field_temperature(md, f, t, allhave, time_iteration, time);
+        case FMD_FIELD_NUMBER_DENSITY:
+            update_field_number_density(md, f, t, allhave);
             break;
 
-        case FMD_FIELD_TTM_TE:
-        case FMD_FIELD_TTM_XI:
-            update_field_ttm_Te_and_xi(md, f, t, time_iteration, time);
+        case FMD_FIELD_NUMBER:
+            update_field_number(md, f, t, allhave);
+            break;
+
+        case FMD_FIELD_MASS:
+            update_field_mass(md, f, t, allhave);
             break;
     }
 }
 
-static void update_field_ForceIndependent(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                                          int time_iteration, fmd_real_t time)
+static void update_field_TRUE_TRUE_FALSE(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave)
 {
     switch (f->cat)
     {
-        case FMD_FIELD_NUMBER:
-            update_field_number(md, f, t, allhave, time_iteration, time);
-            break;
-
-        case FMD_FIELD_NUMBER_DENSITY:
-            update_field_number_density(md, f, t, allhave, time_iteration, time);
-            break;
-
-        case FMD_FIELD_MASS:
-            update_field_mass(md, f, t, allhave, time_iteration, time);
-            break;
-
-        case FMD_FIELD_VCM:
-            update_field_vcm(md, f, t, allhave, time_iteration, time);
+        case FMD_FIELD_TTM_TE:
+        case FMD_FIELD_TTM_XI:
+            update_field_ttm_Te_and_xi(md, f, t);
             break;
 
         case FMD_FIELD_TEMPERATURE:
-            update_field_temperature(md, f, t, allhave, time_iteration, time);
+            update_field_temperature(md, f, t, allhave);
             break;
 
-        case FMD_FIELD_TTM_TE:
-        case FMD_FIELD_TTM_XI:
-            update_field_ttm_Te_and_xi(md, f, t, time_iteration, time);
+        case FMD_FIELD_VCM:
+            update_field_vcm(md, f, t, allhave);
+            break;
+
+        case FMD_FIELD_NUMBER_DENSITY:
+            update_field_number_density(md, f, t, allhave);
+            break;
+
+        case FMD_FIELD_NUMBER:
+            update_field_number(md, f, t, allhave);
+            break;
+
+        case FMD_FIELD_MASS:
+            update_field_mass(md, f, t, allhave);
             break;
     }
 }
 
+/* the meanings of Xupd, Vupd and Fupd are described where _fmd_turies_update() is defined. */
 static void update_field(fmd_t *md, field_t *f, turi_t *t, fmd_bool_t allhave,
-                         int time_iteration, fmd_real_t time,
                          fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd)
 {
     if (Xupd && Vupd && Fupd)
-        update_field_anykind(md, f, t, allhave, time_iteration, time);
+        update_field_TRUE_TRUE_TRUE(md, f, t, allhave);
     else
         if (Xupd && Vupd)
-            update_field_ForceIndependent(md, f, t, allhave, time_iteration, time);
+            update_field_TRUE_TRUE_FALSE(md, f, t, allhave);
         else
             assert(0); /* TO-DO - this kind is not handled yet */
 }
@@ -1606,8 +1603,29 @@ static void allhave_now_update(fmd_t *md, turi_t *t, fmd_bool_t IsTTM)
     }
 }
 
-void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
-                        fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd)
+/* meaning of Xupd, Vupd and Fupd:
+
+   IMPORTANT: this function assumes that if Fupd=TRUE, the positions, velocities and forces are
+   updated, and if Vupd=TRUE, the positions and velocities are updated. The function must not be called
+   when this assumption is wrong!
+
+   Xupd=TRUE, Vupd=FALSE, Fupd=FALSE means that only positions are updated, so the function must update
+   fields which depend only on positions.
+
+   Xupd=TRUE, Vupd=TRUE, Fupd=FALSE means that positions and velocities are updated, so the function
+   must update all fields which do not depend on forces.
+
+   Xupd=FALSE, Vupd=TRUE, Fupd=FALSE means that positions and velocities are updated and that the fields
+   which depend only on positions are already updated, so the function must update fields which depend
+   on both positions and velocities and fields which depend only on velocity.
+
+   Xupd=TRUE, Vupd=TRUE, Fupd=TRUE means that positions, velocities and forces are updated and that no
+   field is already updated, so the function must update all fields.
+
+   Xupd=FALSE, Vupd=FALSE, Fupd=TRUE means that positions, velocities and forces are updated and that
+   all force-independent fields are already updated, so the function must update the remaining fields.
+*/
+void _fmd_turies_update(fmd_t *md, fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd)
 {
     for (int ti=0; ti < md->turies_num; ti++)
     {
@@ -1624,20 +1642,20 @@ void _fmd_turies_update(fmd_t *md, int time_iteration, fmd_real_t time,
             {
                 field_t *f = &t->fields[fi];
 
-                if (f->timestep == time_iteration) continue; /* see if the field is already updated */
+                if (f->timestep == md->time_iteration) continue; /* see if the field is already updated */
 
                 if (f->allhave_now)
-                    update_field(md, f, t, FMD_TRUE, time_iteration, time, Xupd, Vupd, Fupd);
+                    update_field(md, f, t, FMD_TRUE, Xupd, Vupd, Fupd);
                 else
                 {
                     if (IsTTM) /* fields on a TTM turi must be updated every time step */
-                        update_field(md, f, t, FMD_FALSE, time_iteration, time, Xupd, Vupd, Fupd);
+                        update_field(md, f, t, FMD_FALSE, Xupd, Vupd, Fupd);
                     else
                     {
                         for (int j=0; j < f->intervals_num; j++)
                             if (_fmd_timer_is_its_time(md->time, md->timestep/2.0, t->starttime, f->intervals[j]))
                             {
-                                update_field(md, f, t, FMD_FALSE, time_iteration, time, Xupd, Vupd, Fupd);
+                                update_field(md, f, t, FMD_FALSE, Xupd, Vupd, Fupd);
                                 break;
                             }
                     }
