@@ -40,6 +40,12 @@ void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
                 // report some quantities if the event is caused by timer1
                 fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
                                               fmd_matt_getTotalEnergy(md));
+
+                fmd_rtuple_t p;
+
+                fmd_matt_getMomentum(md, p);
+
+                fmd_io_printf(md, "%f\t%f\t%f\n", p[0], p[1], p[2]);
             }
             else if (timer == timer2)
             {

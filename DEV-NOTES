@@ -37,6 +37,6 @@ Remarks:
 
   #1[CLOSED]  Since MPI_BYTE is used to transmit structs, currently the code may not be portable to heterogeneous machines.
   
-  #2          In base.c, the function _fmd_compute_GroupTemperature_etc_localgrid() computes GroupMomentum, but the function
+  #2[CLOSED]  In matter.c, the function _fmd_compute_GroupTemperature_etc_localgrid() computes GroupMomentum, but the function
               calculate_GroupTemperature_etc() doesn't. This is not a problem at the moment, because there is no function in the
-              library interface reporting the momemntum.
+              library interface reporting the momentum.

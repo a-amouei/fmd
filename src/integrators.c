@@ -91,7 +91,7 @@ void updateGroupProperties(fmd_t *md, fmd_rtuple_t MomentumSum, int ParticlesNum
 {
     fmd_real_t m_vSqd_SumSum;
 
-    MPI_Reduce(MomentumSum, md->GroupMomentum, DIM, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
+    MPI_Allreduce(MomentumSum, md->GroupMomentum, DIM, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 
     MPI_Allreduce(&ParticlesNum, &md->GroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
 

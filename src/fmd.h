@@ -172,6 +172,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTemperature(fmd_t *md);
+void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out);
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
 void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);

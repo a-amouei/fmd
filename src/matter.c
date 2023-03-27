@@ -56,7 +56,7 @@ void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md)
                                    sqrr(VEL(c, i, 2)) );
         }
 
-    MPI_Reduce(MomentumSum, md->GroupMomentum, DIM, FMD_MPI_REAL, MPI_SUM, RANK0, md->MD_comm);
+    MPI_Allreduce(MomentumSum, md->GroupMomentum, DIM, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 
     MPI_Allreduce(&ParticlesNum, &md->GroupParticlesNum, 1, MPI_INT, MPI_SUM, md->MD_comm);
 
@@ -77,6 +77,7 @@ static void calculate_GroupTemperature_etc(fmd_t *md)
         int i;
 
         md->GroupParticlesNum = 0;
+        md->GroupMomentum[0] = md->GroupMomentum[1] = md->GroupMomentum[2] = 0.0;
 
         LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
             for (c=&ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
@@ -89,7 +90,10 @@ static void calculate_GroupTemperature_etc(fmd_t *md)
                 fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
 
                 for (int d=0; d<DIM; d++)
+                {
                     m_vSqd_Sum += mass * sqrr(VEL(c, i, d));
+                    md->GroupMomentum[d] += mass * VEL(c, i, d);
+                }
             }
 
         md->GroupTemperature = m_vSqd_Sum / (3.0 * md->GroupParticlesNum * K_BOLTZMANN);
@@ -97,6 +101,7 @@ static void calculate_GroupTemperature_etc(fmd_t *md)
 
     MPI_Bcast(&md->GroupParticlesNum, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
     MPI_Bcast(&md->GroupTemperature, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
+    MPI_Bcast(md->GroupMomentum, DIM, FMD_MPI_REAL, RANK0, md->MD_comm);
 
     md->GroupKineticEnergy = 3.0/2.0 * md->GroupParticlesNum * K_BOLTZMANN * md->GroupTemperature;
 }
@@ -610,6 +615,12 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
 fmd_real_t fmd_matt_getTemperature(fmd_t *md)
 {
     return md->GroupTemperature;
+}
+
+void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out)
+{
+    for (int d=0; d<DIM; d++)
+        out[d] = md->GroupMomentum[d];
 }
 
 static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)
