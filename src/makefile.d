@@ -46,3 +46,4 @@ turi-ghost.o: turi-ghost.c turi-ghost.h config.h types.h fmd-private.h \
  turi.h
 turi.o: turi.c turi.h config.h types.h array.h fmd-private.h subdomain.h \
  potential.h cell.h events.h h5.h misc.h timer.h general.h ttm.h
+version.o: version.c types.h config.h general.h

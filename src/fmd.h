@@ -232,4 +232,10 @@ void fmd_ttm_setLaserSource(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
 
 void fmd_array3s_free(fmd_array3s_t *array);
 
+int fmd_version_getMajor();
+int fmd_version_getMinor();
+int fmd_version_getRevision();
+char fmd_version_getType();
+fmd_string_t fmd_version_getString();
+
 #endif /* FMD_H */
