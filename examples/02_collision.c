@@ -1,16 +1,7 @@
 /*
    02_collision.c - an example showing how to use FMD in practice
 
-   Written in 2019 by the authors of FMD
-
-   To the extent possible under law, the author(s) have dedicated all
-   copyright and related and neighboring rights to the current file to
-   the public domain worldwide. This file is distributed without
-   any warranty.
-
-   You should have received a copy of the CC0 Public Domain Dedication
-   along with this file. If not,
-   see <http://creativecommons.org/publicdomain/zero/1.0/>.
+   This program simulates a collision between two systems of atoms (Cu and Ar)
 */
 
 /* Assuming that FMD is already installed, this example can be compiled by
