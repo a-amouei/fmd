@@ -1,18 +1,11 @@
 FMD - a classical molecular dynamics library
 
-Copyright (C) 2019 The FMD authors
-
-Copying and distribution of this file, with or without modification,
-are permitted in any medium without royalty provided the copyright
-notice and this notice are preserved.  This file is offered as-is,
-without warranty of any kind.
-
 1) About FMD
 ============
 
 Free Molecular Dynamics (FMD) is a library for performing classical
 molecular dynamics (MD) simulations on different kinds of computers,
-from laptops to computer clusters. It is written in C.
+from personal computers to computer clusters. It is written in C.
 
 FMD is a growing project. At the moment, its features and capabilities
 include:
@@ -26,14 +19,16 @@ supercomputers
 - provides Berendsen thermostat
 - provides microcanonical NVE ensemble
 - can save checkpoints for continuing a simulation
+- ...
 
 2) Installation
 ===============
 
 FMD depends on
 
-- MPI (e.g. OpenMPI or MPICH)
+- an MPI implementation (e.g. OpenMPI or MPICH)
 - GNU Scientific Library
+- HDF5
 
 To install FMD on Linux, open a terminal and change the current directory
 to "src". Then simply enter the following command:
