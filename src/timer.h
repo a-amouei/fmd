@@ -31,7 +31,7 @@ typedef enum
 typedef struct _fmd_timer
 {
     timercat_t cat;
-    fmd_bool_t enabled;
+    bool enabled;
     fmd_real_t start;
     fmd_real_t stop;
     fmd_real_t interval;
@@ -41,6 +41,6 @@ typedef struct _fmd fmd_t;
 
 void fmd_timer_free(fmd_t *md);
 void _fmd_timer_sendTimerTickEvents(fmd_t *md);
-fmd_bool_t _fmd_timer_is_its_time(fmd_real_t t, fmd_real_t dt_half, fmd_real_t starttime, fmd_real_t interval);
+bool _fmd_timer_is_its_time(fmd_real_t t, fmd_real_t dt_half, fmd_real_t starttime, fmd_real_t interval);
 
 #endif /* TIMER_H */

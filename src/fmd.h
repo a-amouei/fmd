@@ -20,8 +20,7 @@
 #ifndef FMD_H
 #define FMD_H
 
-#define FMD_TRUE 1
-#define FMD_FALSE 0
+#include <stdbool.h>
 
 #define FMD_GROUP_ALL -1
 
@@ -90,8 +89,6 @@ typedef void ***fmd_array3_t;
 typedef int fmd_handle_t;
 
 typedef char *fmd_string_t;
-
-typedef int fmd_bool_t;
 
 typedef struct _fmd_params fmd_params_t;
 
@@ -178,7 +175,7 @@ void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[
 void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 
-void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz);
+void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz);
 void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz);
 void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz);
 void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
@@ -186,7 +183,7 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...);
-void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, fmd_bool_t UseTime);
+void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, bool UseTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 
 fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t FilePath);
@@ -202,8 +199,8 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
 fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop);
 
 fmd_real_t fmd_proc_getWallTime(fmd_t *md);
-fmd_bool_t fmd_proc_isMD(fmd_t *md);
-fmd_bool_t fmd_proc_isRoot(fmd_t *md);
+bool fmd_proc_isMD(fmd_t *md);
+bool fmd_proc_isRoot(fmd_t *md);
 
 fmd_t *fmd_create();
 void fmd_free(fmd_t *md);

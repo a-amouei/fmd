@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     fmd_box_setSize(md, 10*LatticeParameter, 10*LatticeParameter, 10*LatticeParameter);
 
     // set periodic boundary conditions in three dimensions
-    fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+    fmd_box_setPBC(md, true, true, true);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
     fmd_box_setSubdomains(md, 1, 2, 1);

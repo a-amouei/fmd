@@ -52,7 +52,7 @@ fmd_real_t fmd_dync_getTime(fmd_t *md)
     return md->time;
 }
 
-static void VelocityVerlet_startStep(fmd_t *md, fmd_bool_t UseThermostat)
+static void VelocityVerlet_startStep(fmd_t *md, bool UseThermostat)
 {
     fmd_ituple_t ic;
     fmd_real_t VelocityScale, mass;
@@ -195,14 +195,14 @@ static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 
     /* update force-independent fields */
     if (md->turies_num > 0)
-        _fmd_turies_update(md, FMD_TRUE, FMD_TRUE, FMD_FALSE);
+        _fmd_turies_update(md, true, true, false);
 
     /* compute forces for the first time */
     _fmd_dync_updateForces(md);
 
     /* update force-dependent fields */
     if (md->turies_num > 0)
-        _fmd_turies_update(md, FMD_FALSE, FMD_FALSE, FMD_TRUE);
+        _fmd_turies_update(md, false, false, true);
 
     /* make a timer-tick event */
     if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
@@ -218,14 +218,14 @@ static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 
         /* update force-independent fields */
         if (md->turies_num > 0)
-            _fmd_turies_update(md, FMD_TRUE, FMD_TRUE, FMD_FALSE);
+            _fmd_turies_update(md, true, true, false);
 
         /* compute forces */
         _fmd_dync_updateForces(md);
 
         /* update force-dependent fields */
         if (md->turies_num > 0)
-            _fmd_turies_update(md, FMD_FALSE, FMD_FALSE, FMD_TRUE);
+            _fmd_turies_update(md, false, false, true);
 
         /* make a timer-tick event */
         if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
@@ -233,7 +233,7 @@ static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
     /* end of the time loop */
 }
 
-static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, fmd_bool_t UseThermostat)
+static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, bool UseThermostat)
 {
     fmd_real_t start = md->time;
 
@@ -242,7 +242,7 @@ static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, fmd_bool_t 
 
     /* update fields */
     if (md->turies_num > 0)
-        _fmd_turies_update(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+        _fmd_turies_update(md, true, true, true);
 
     /* make a timer-tick event */
     if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
@@ -264,7 +264,7 @@ static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, fmd_bool_t 
 
         /* update fields */
         if (md->turies_num > 0)
-            _fmd_turies_update(md, FMD_TRUE, FMD_TRUE, FMD_TRUE);
+            _fmd_turies_update(md, true, true, true);
 
         /* make a timer-tick event */
         if (md->EventHandler != NULL) _fmd_timer_sendTimerTickEvents(md);
@@ -294,7 +294,7 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
     if (md->active_ttm_turi != NULL)
         SymplecticEuler_integrate(md, duration);
     else
-        VelocityVerlet_integrate(md, duration, FMD_FALSE);
+        VelocityVerlet_integrate(md, duration, false);
 }
 
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
@@ -315,7 +315,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
 
     setActiveGroup(md, GroupID);
 
-    VelocityVerlet_integrate(md, duration, FMD_TRUE);
+    VelocityVerlet_integrate(md, duration, true);
 
     // restore backups
     md->time = bak_time;

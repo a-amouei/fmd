@@ -24,15 +24,15 @@
 #include "events.h"
 #include "general.h"
 
-fmd_bool_t _fmd_timer_is_its_time(fmd_real_t t, fmd_real_t dt_half, fmd_real_t starttime, fmd_real_t interval)
+bool _fmd_timer_is_its_time(fmd_real_t t, fmd_real_t dt_half, fmd_real_t starttime, fmd_real_t interval)
 {
     fmd_real_t tc = round((t - starttime) / interval) * interval + starttime;
     fmd_real_t d = t - tc;
 
     if (d >= -dt_half && d < dt_half)
-        return FMD_TRUE;
+        return true;
     else
-        return FMD_FALSE;
+        return false;
 }
 
 void fmd_timer_free(fmd_t *md)
@@ -51,7 +51,7 @@ fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interv
 
     md->timers = (fmd_timer_t *)re_alloc(md->timers, (i+1) * sizeof(fmd_timer_t));
 
-    md->timers[i].enabled = FMD_TRUE;
+    md->timers[i].enabled = true;
     md->timers[i].cat = TIMER_SIMPLE;
     md->timers[i].start = start;
     md->timers[i].interval = interval;

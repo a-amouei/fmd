@@ -241,12 +241,12 @@ static void identifyProcess(fmd_t *md)
     int mdnum = md->ns[0] * md->ns[1] * md->ns[2];
 
     if (md->world_rank < mdnum)
-        md->Is_MD_process = FMD_TRUE;
+        md->Is_MD_process = true;
     else
-        md->Is_MD_process = FMD_FALSE;
+        md->Is_MD_process = false;
 }
 
-void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
+void fmd_io_loadState(fmd_t *md, fmd_string_t file, bool UseTime)
 {
     FILE *fp;
     char name[3];
@@ -279,7 +279,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
         }
 
         MPI_Bcast(&md->l, 3, FMD_MPI_REAL, RANK0, md->MD_comm);
-        md->BoxSizeDetermined = FMD_TRUE;
+        md->BoxSizeDetermined = true;
     }
 
     if (!md->PBCdetermined)
@@ -292,7 +292,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, fmd_bool_t UseTime)
         }
 
         MPI_Bcast(&md->PBC, 3, MPI_INT, RANK0, md->MD_comm);
-        md->PBCdetermined = FMD_TRUE;
+        md->PBCdetermined = true;
     }
 
     if (!md->GlobalGridExists)
@@ -525,12 +525,12 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     }
 }
 
-void fmd_box_setPBC(fmd_t *md, fmd_bool_t PBCx, fmd_bool_t PBCy, fmd_bool_t PBCz)
+void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz)
 {
     md->PBC[0] = PBCx;
     md->PBC[1] = PBCy;
     md->PBC[2] = PBCz;
-    md->PBCdetermined = FMD_TRUE;
+    md->PBCdetermined = true;
 }
 
 void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz)
@@ -545,7 +545,7 @@ void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz)
         MPI_Comm_size(md->MD_comm, &md->Subdomain.numprocs);
         MPI_Comm_rank(md->MD_comm, &md->Subdomain.myrank);
         if (md->Subdomain.myrank == RANK0)
-            md->Is_MD_comm_root = FMD_TRUE;
+            md->Is_MD_comm_root = true;
     }
 }
 
@@ -600,7 +600,7 @@ fmd_t *fmd_create()
 {
     fmd_t *md = (fmd_t *)m_alloc(sizeof(fmd_t));
 
-    md->MPI_initialized_by_me = FMD_FALSE;
+    md->MPI_initialized_by_me = false;
 
     int isMPIInitialized;
 
@@ -609,7 +609,7 @@ fmd_t *fmd_create()
     if (!isMPIInitialized)
     {
         MPI_Init(NULL, NULL);
-        md->MPI_initialized_by_me = FMD_TRUE;
+        md->MPI_initialized_by_me = true;
     }
 
     omp_set_num_threads(1);
@@ -617,7 +617,7 @@ fmd_t *fmd_create()
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
     md->LOP_iteration = 0;
-    md->UseAutoStep = FMD_FALSE;
+    md->UseAutoStep = false;
     md->time = 0.0;
     md->time_iteration = 0;
     md->SaveDirectory[0] = '\0';
@@ -625,12 +625,12 @@ fmd_t *fmd_create()
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
     md->ActiveGroup = FMD_GROUP_ALL;             /* all groups are active by default */
-    md->ParticlesDistributed = FMD_FALSE;
-    md->GlobalGridExists = FMD_FALSE;
+    md->ParticlesDistributed = false;
+    md->GlobalGridExists = false;
     md->global_grid = NULL;
-    md->BoxSizeDetermined = FMD_FALSE;
-    md->PBCdetermined = FMD_FALSE;
-    md->Is_MD_comm_root = FMD_FALSE;
+    md->BoxSizeDetermined = false;
+    md->PBCdetermined = false;
+    md->Is_MD_comm_root = false;
     md->EventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
@@ -659,7 +659,7 @@ void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz)
         md->l[0] = sx;
         md->l[1] = sy;
         md->l[2] = sz;
-        md->BoxSizeDetermined = FMD_TRUE;
+        md->BoxSizeDetermined = true;
     }
 }
 
@@ -668,12 +668,12 @@ fmd_real_t fmd_proc_getWallTime(fmd_t *md)
     return (MPI_Wtime() - md->WallTimeOrigin);
 }
 
-fmd_bool_t fmd_proc_isMD(fmd_t *md)
+bool fmd_proc_isMD(fmd_t *md)
 {
     return md->Is_MD_process;
 }
 
-fmd_bool_t fmd_proc_isRoot(fmd_t *md)
+bool fmd_proc_isRoot(fmd_t *md)
 {
     return md->Is_MD_comm_root;
 }
@@ -702,7 +702,7 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
         _fmd_initialize_grid(md->global_grid, &md->cellinfo, md->nc[0], md->nc[1], md->nc[2]);
     }
 
-    md->GlobalGridExists = FMD_TRUE;
+    md->GlobalGridExists = true;
     md->CutoffRadius = cutoff;
 }
 

@@ -50,17 +50,17 @@ typedef struct _cell cell_t;
 
 struct _cellinfo
 {
-    fmd_bool_t x_active;
-    fmd_bool_t v_active;
-    fmd_bool_t F_active;
-    fmd_bool_t FembPrime_active;
-    fmd_bool_t GroupID_active;
-    fmd_bool_t AtomID_active;
-    fmd_bool_t atomkind_active;
-    fmd_bool_t molkind_active;
-    fmd_bool_t MolID_active;
-    fmd_bool_t AtomIDlocal_active;
-    fmd_bool_t neighbors_active;
+    bool x_active;
+    bool v_active;
+    bool F_active;
+    bool FembPrime_active;
+    bool GroupID_active;
+    bool AtomID_active;
+    bool atomkind_active;
+    bool molkind_active;
+    bool MolID_active;
+    bool AtomIDlocal_active;
+    bool neighbors_active;
 };
 
 typedef struct _cellinfo cellinfo_t;

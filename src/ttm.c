@@ -91,7 +91,7 @@ void _fmd_ttm_getReady(fmd_t *md)
     ttm->min_atoms_num = ttm->initial_atoms_num * ttm->CellActivFrac;
 }
 
-static void type1_1d_pack(fmd_t *md, turi_t *t, fmd_bool_t SendToUp, fmd_pointer_t sendbuf, int *pos)
+static void type1_1d_pack(fmd_t *md, turi_t *t, bool SendToUp, fmd_pointer_t sendbuf, int *pos)
 {
     ttm_t *ttm = t->ttm;
     *pos = 0;
@@ -102,7 +102,7 @@ static void type1_1d_pack(fmd_t *md, turi_t *t, fmd_bool_t SendToUp, fmd_pointer
     MPI_Pack(&ttm->Te_1d[i],  1, FMD_MPI_REAL, sendbuf, INT_MAX, pos, md->MD_comm);
 }
 
-static void type1_1d_unpack(fmd_t *md, turi_t *t, fmd_bool_t SendToUp, fmd_pointer_t recvbuf)
+static void type1_1d_unpack(fmd_t *md, turi_t *t, bool SendToUp, fmd_pointer_t recvbuf)
 {
     ttm_t *ttm = t->ttm;
     int pos = 0;
@@ -166,7 +166,7 @@ static void ttm_presolve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
 static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
-    fmd_bool_t CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? FMD_TRUE : FMD_FALSE;
+    bool CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? true : false;
 
     /* time loop */
     for (int j=0; j < ttm->timestep_ratio; j++)
@@ -229,11 +229,11 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
 static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
 {
-    int inum = _fmd_field_add(t, FMD_FIELD_NUMBER, md->timestep, FMD_FALSE);
-    int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, FMD_TRUE);
-    int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, FMD_FALSE);
-    ttm->iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, FMD_FALSE);
-    ttm->ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, FMD_TRUE);
+    int inum = _fmd_field_add(t, FMD_FIELD_NUMBER, md->timestep, false);
+    int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, true);
+    int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, false);
+    ttm->iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, false);
+    ttm->ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, true);
 
     _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
     assert(ttm->Te_aux.data != NULL);

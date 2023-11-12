@@ -67,9 +67,9 @@ struct _fmd
     unsigned turies_num;
     turi_t *turies;
     turi_t *active_ttm_turi;
-    fmd_bool_t GlobalGridExists;
-    fmd_bool_t BoxSizeDetermined;
-    fmd_bool_t PBCdetermined;
+    bool GlobalGridExists;
+    bool BoxSizeDetermined;
+    bool PBCdetermined;
     fmd_real_t CutoffRadius;
     fmd_real_t time;
     int time_iteration;
@@ -77,8 +77,8 @@ struct _fmd
     unsigned TotalNoOfParticles;
     unsigned TotalNoOfMolecules;
     fmd_real_t GroupTemperature;          /* for the "active group" only */
-    fmd_bool_t Is_MD_process;
-    fmd_bool_t Is_MD_comm_root;
+    bool Is_MD_process;
+    bool Is_MD_comm_root;
     int LOP_iteration;                    /* must be initialized with zero */
     int LOP_period;
     MPI_Comm MD_comm;
@@ -92,7 +92,7 @@ struct _fmd
     fmd_rtuple_t l;                       // size of the simulation box
     fmd_ituple_t nc;                      // number of grid cells in the simulation box
     fmd_rtuple_t cellh;                   // size of one single grid cell
-    fmd_bool_t UseAutoStep;
+    bool UseAutoStep;
     fmd_real_t AutoStepSensitivity;
     char SaveDirectory[MAX_PATH_LENGTH];
     fmd_real_t BerendsenThermostatParam;
@@ -102,8 +102,8 @@ struct _fmd
     int ActiveGroup;
     unsigned GroupParticlesNum;
     fmd_rtuple_t GroupMomentum;
-    fmd_bool_t ParticlesDistributed;
-    fmd_bool_t MPI_initialized_by_me;
+    bool ParticlesDistributed;
+    bool MPI_initialized_by_me;
     h5_dataspaces_t h5_dataspaces;
     int cell_increment;
     int _OldNumberOfParticles;

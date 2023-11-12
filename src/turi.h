@@ -46,7 +46,7 @@ typedef struct
     unsigned *dependcs;              /* indexes of the dependency fields */
     unsigned intervals_allhave_num;
     fmd_real_t *intervals_allhave;   /* at these intervals a field update and "all-have" MPI communication are done */
-    fmd_bool_t allhave_now;
+    bool allhave_now;
     unsigned intervals_num;
     fmd_real_t *intervals;           /* intervals determine when to update the field and perform MPI communication */
     fmd_array3s_t data;
@@ -120,10 +120,10 @@ typedef struct _turi
 
 typedef struct _fmd fmd_t;
 
-int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, fmd_bool_t allhave);
+int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, bool allhave);
 void _fmd_field_call_update_event_handler(fmd_t *md, int field_index, int turi_index);
-void _fmd_turies_update(fmd_t *md, fmd_bool_t Xupd, fmd_bool_t Vupd, fmd_bool_t Fupd);
-fmd_bool_t _is_time_within_turi_start_stop_times(fmd_t *md, turi_t *t);
+void _fmd_turies_update(fmd_t *md, bool Xupd, bool Vupd, bool Fupd);
+bool _is_time_within_turi_start_stop_times(fmd_t *md, turi_t *t);
 void fmd_turi_free(fmd_t *md);
 
 #endif /* TURI_H */

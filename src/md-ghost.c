@@ -29,7 +29,7 @@
 
 /* *size is the size of the data in bytes, not the size of the buffer. The buffer can be larger. */
 typedef void (*packer_t)(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
-                         int *size, fmd_pointer_t *out, fmd_bool_t nodest);
+                         int *size, fmd_pointer_t *out, bool nodest);
  /* insize is the size of the buffer; dir is the direction of transfer (+1 or -1) */
 typedef void (*unpacker_t)(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
                            int insize, fmd_pointer_t in, int dim, int dir);
@@ -63,7 +63,7 @@ static void *create_packbuffer_for_Fembpack(fmd_t *md, fmd_ituple_t ic_start, fm
 }
 
 static void Femb_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
-                      int *size, fmd_pointer_t *out, fmd_bool_t nodest)
+                      int *size, fmd_pointer_t *out, bool nodest)
 {
     fmd_ituple_t ic;
     cell_t *c;
@@ -153,7 +153,7 @@ static void *create_packbuffer_for_ghostinit(fmd_t *md, fmd_ituple_t ic_start, f
 }
 
 static void ghostinit_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
-                           int *size, fmd_pointer_t *out, fmd_bool_t nodest)
+                           int *size, fmd_pointer_t *out, bool nodest)
 {
     fmd_ituple_t ic;
     cell_t *c;
@@ -183,13 +183,13 @@ static void ghostinit_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
     }
 }
 
-static inline void init_trans_and_dis(fmd_t *md, int dim, int dir, fmd_bool_t *trans, fmd_real_t *dis)
+static inline void init_trans_and_dis(fmd_t *md, int dim, int dir, bool *trans, fmd_real_t *dis)
 {
     if (md->Subdomain.is[dim] == 0)
     {
         if (dir == +1)
         {
-            *trans = FMD_TRUE;
+            *trans = true;
             *dis = -md->l[dim];
         }
     }
@@ -197,7 +197,7 @@ static inline void init_trans_and_dis(fmd_t *md, int dim, int dir, fmd_bool_t *t
     {
         if (dir == -1)
         {
-            *trans = FMD_TRUE;
+            *trans = true;
             *dis = md->l[dim];
         }
     }
@@ -207,7 +207,7 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
                              int insize, fmd_pointer_t in, int dim, int dir)
 {
     fmd_ituple_t ic;
-    fmd_bool_t trans = FMD_FALSE;
+    bool trans = false;
     fmd_real_t dis;
     int byte = 0;
 
@@ -298,7 +298,7 @@ static void *create_packbuffer_for_migrate(fmd_t *md, fmd_ituple_t ic_start, fmd
 }
 
 static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
-                         int *size, fmd_pointer_t *out, fmd_bool_t nodest)
+                         int *size, fmd_pointer_t *out, bool nodest)
 {
     fmd_ituple_t ic;
     cell_t *c;
@@ -362,7 +362,7 @@ static void migrate_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
                            int insize, fmd_pointer_t in, int dim, int dir)
 {
     fmd_ituple_t ic;
-    fmd_bool_t trans = FMD_FALSE;
+    bool trans = false;
     fmd_real_t dis;
     int byte = 0;
 

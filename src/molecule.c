@@ -163,25 +163,25 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
             (jc)[(d)] = (kc)[(d)] + md->nc[(d)];                            \
-            map_done = FMD_TRUE;                                            \
+            map_done = true;                                            \
         }                                                                   \
         else                                                                \
-            map_done = FMD_FALSE;                                           \
+            map_done = false;                                           \
     }                                                                       \
     else if ((kc)[(d)] >= md->Subdomain.ic_stop[(d)])                       \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
             (jc)[(d)] = (kc)[(d)] - md->nc[(d)];                            \
-            map_done = FMD_TRUE;                                            \
+            map_done = true;                                            \
         }                                                                   \
         else                                                                \
-            map_done = FMD_FALSE;                                           \
+            map_done = false;                                           \
     }                                                                       \
     else                                                                    \
     {                                                                       \
         (jc)[(d)] = (kc)[(d)];                                              \
-        map_done = FMD_TRUE;                                                \
+        map_done = true;                                                \
     }
 
 #define MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, d)                                 \
@@ -252,7 +252,7 @@ static void find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned MolID, unsigned n
     for (int dist=1; dist <= max_dist; dist++)
     {
         fmd_ituple_t jc, kc;
-        fmd_bool_t map_done;
+        bool map_done;
 
         /* segment 1 out of 6 */
         kc[0] = ic[0] + dist;

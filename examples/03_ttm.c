@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     // set size of the simulation box (in Angstrom)
     fmd_box_setSize(md, 10 * 10, 25 * lp, 40 * lp);
 
-    fmd_box_setPBC(md, FMD_TRUE, FMD_TRUE, FMD_FALSE);
+    fmd_box_setPBC(md, true, true, false);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
     fmd_box_setSubdomains(md, 1, 1, 2);

@@ -470,8 +470,8 @@ void _fmd_matt_distribute(fmd_t *md)
 
     if (md->TotalNoOfMolecules > 0) _fmd_matt_updateAtomNeighbors(md);
 
-    md->GlobalGridExists = FMD_FALSE;
-    md->ParticlesDistributed = FMD_TRUE;
+    md->GlobalGridExists = false;
+    md->ParticlesDistributed = true;
 }
 
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new)

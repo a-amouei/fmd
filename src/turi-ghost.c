@@ -32,7 +32,7 @@ void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p)
     /* sending to lower process, receiving from upper process */
 
     if (t->rank_of_lower_owner[d] != MPI_PROC_NULL)
-        p->pack._1D(md, t, FMD_FALSE, p->sendbuf, &count);
+        p->pack._1D(md, t, false, p->sendbuf, &count);
     else
         count = 0;
 
@@ -41,12 +41,12 @@ void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p)
                  md->MD_comm, &status);
 
     if (t->rank_of_upper_owner[d] != MPI_PROC_NULL)
-        p->unpack._1D(md, t, FMD_FALSE, p->recvbuf);
+        p->unpack._1D(md, t, false, p->recvbuf);
 
     /* sending to upper process, receiving from lower process */
 
     if (t->rank_of_upper_owner[d] != MPI_PROC_NULL)
-        p->pack._1D(md, t, FMD_TRUE, p->sendbuf, &count);
+        p->pack._1D(md, t, true, p->sendbuf, &count);
     else
         count = 0;
 
@@ -55,7 +55,7 @@ void _fmd_turi_update_ghosts_1d(fmd_t *md, turi_t *t, int d, tghost_pack_t *p)
                  md->MD_comm, &status);
 
     if (t->rank_of_lower_owner[d] != MPI_PROC_NULL)
-        p->unpack._1D(md, t, FMD_TRUE, p->recvbuf);
+        p->unpack._1D(md, t, true, p->recvbuf);
 }
 
 static void communicate_in_direction_d(

@@ -251,19 +251,19 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
 
             for (j=0; j < mk->atoms_num; j++)  /* iteration on number of atoms in a molecule */
             {
-                fmd_bool_t broke = FMD_FALSE;
+                bool broke = false;
 
                 for (int d=0; d<3; d++)
                 {
                     coords[j][d] = xo[d] + mk->atoms[j].position[d];
                     if (coords[j][d] <= x1[d])
                     {
-                        broke = FMD_TRUE;
+                        broke = true;
                         break;
                     }
                     else if (coords[j][d] >= x2[d])
                     {
-                        broke = FMD_TRUE;
+                        broke = true;
                         break;
                     }
                 }
