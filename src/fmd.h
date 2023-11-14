@@ -209,7 +209,7 @@ void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
 fmd_real_t fmd_dync_getTimeStep(fmd_t *md);
 fmd_real_t fmd_dync_getTime(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
-  fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature);
+  fmd_real_t timestep, fmd_real_t tau, fmd_real_t temperature);
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep);
 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);

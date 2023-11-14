@@ -298,7 +298,7 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
 }
 
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
-  fmd_real_t timestep, fmd_real_t strength, fmd_real_t temperature)
+  fmd_real_t timestep, fmd_real_t tau, fmd_real_t temperature)
 {
     fmd_real_t bak_time;
 
@@ -311,7 +311,7 @@ void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
     md->time = 0.0;
     md->timestep = timestep;
     md->DesiredTemperature = temperature;
-    md->BerendsenThermostatParam = strength;
+    md->BerendsenThermostatParam = tau;
 
     setActiveGroup(md, GroupID);
 
