@@ -42,11 +42,6 @@ typedef enum
 
 typedef enum
 {
-    FMD_BOND_HARMONIC
-} fmd_bond_t;
-
-typedef enum
-{
     FMD_TURI_CUSTOM,
     FMD_TURI_TTM_TYPE1
 } fmd_turi_t;
@@ -141,13 +136,6 @@ typedef struct
 
 /* functions */
 
-fmd_handle_t fmd_bond_addKind(fmd_t *md, fmd_bond_t cat, fmd_real_t coeffs[]);
-void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
-  unsigned atom1, unsigned atom2);
-
-fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNum,
-  unsigned AtomKinds[], fmd_rtuple_t AtomPositions[]);
-
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz);
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz);
 void fmd_matt_setDesiredTemperature(fmd_t *md, fmd_real_t DesiredTemperature);
@@ -163,9 +151,6 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
-void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
-  fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
-  int GroupID);
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTemperature(fmd_t *md);
