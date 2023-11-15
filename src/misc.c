@@ -620,7 +620,10 @@ fmd_t *fmd_create()
     md->UseAutoStep = false;
     md->time = 0.0;
     md->time_iteration = 0;
+
+    md->SaveDirectory = (char *)m_alloc(1);
     md->SaveDirectory[0] = '\0';
+
     md->Subdomain.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
@@ -708,6 +711,7 @@ void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory)
 {
+    md->SaveDirectory = re_alloc(md->SaveDirectory, strlen(directory)+1);
     strcpy(md->SaveDirectory, directory);
 }
 
@@ -730,6 +734,7 @@ void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 
 void fmd_free(fmd_t *md)
 {
+    free(md->SaveDirectory);
     _fmd_subd_free(md);
     fmd_potsys_free(md);
     fmd_timer_free(md);

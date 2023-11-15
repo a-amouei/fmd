@@ -94,7 +94,7 @@ struct _fmd
     fmd_rtuple_t cellh;                   // size of one single grid cell
     bool UseAutoStep;
     fmd_real_t AutoStepSensitivity;
-    char SaveDirectory[MAX_PATH_LENGTH];
+    fmd_string_t SaveDirectory;
     fmd_real_t BerendsenThermostatParam;
     fmd_SaveConfigMode_t SaveConfigMode;
     FILE *ConfigFilep;
