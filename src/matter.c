@@ -512,7 +512,7 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
     }                                                                          \
     do {} while (0)
 
-void fmd_matt_displace(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
+void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
 {
     assert(!md->ParticlesDistributed);
 
