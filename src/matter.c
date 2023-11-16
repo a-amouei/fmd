@@ -764,7 +764,7 @@ void fmd_matt_saveConfiguration(fmd_t *md)
 
     switch (md->SaveConfigMode)
     {
-        case FMD_SCM_XYZ_PARTICLESNUM:
+        case FMD_SCM_XYZ_ATOMSNUM:
             if (md->TotalNoOfParticles != md->_OldNumberOfParticles)
             {
                 if (md->_OldNumberOfParticles != -1) fclose(md->ConfigFilep);

@@ -641,7 +641,7 @@ fmd_t *fmd_create()
     md->turies_num = 0;
     md->active_ttm_turi = NULL;
     md->DesiredTemperature = 300.0;
-    md->SaveConfigMode = FMD_SCM_XYZ_PARTICLESNUM;
+    md->SaveConfigMode = FMD_SCM_XYZ_ATOMSNUM;
     md->cell_increment = 10;
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
