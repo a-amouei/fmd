@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     //fmd_io_setSaveDirectory(md, "output/");
 
     // save configurations as XYZ files
-    fmd_io_setSaveConfigMode(md, FMD_SCM_XYZ_PARTICLESNUM);
+    fmd_io_setSaveConfigMode(md, FMD_SCM_XYZ_ATOMSNUM);
 
     // equilibrate the two colliding objects
     fmd_io_printf(md, "equilibrating the copper object...\n");
