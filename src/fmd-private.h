@@ -61,6 +61,7 @@ struct _fmd
     cell_t ***global_grid;
     cellinfo_t cellinfo;
     fmd_EventHandler_t EventHandler;
+    fmd_pointer_t userobject;
     mpi_types_t mpi_types;
     unsigned timers_num;
     fmd_timer_t *timers;

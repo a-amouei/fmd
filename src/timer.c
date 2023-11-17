@@ -76,7 +76,7 @@ void _fmd_timer_sendTimerTickEvents(fmd_t *md)
                     fmd_event_params_timer_tick_t params;
 
                     params.timer = i;
-                    md->EventHandler(md, FMD_EVENT_TIMER_TICK, (fmd_params_t *)&params);
+                    md->EventHandler(md, FMD_EVENT_TIMER_TICK, md->userobject, (fmd_params_t *)&params);
                 }
             }
         }

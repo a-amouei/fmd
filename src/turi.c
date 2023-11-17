@@ -248,7 +248,7 @@ void _fmd_field_call_update_event_handler(fmd_t *md, int field_index, int turi_i
     params.field = field_index;
     params.turi = turi_index;
 
-    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, (fmd_params_t *)&params);
+    md->EventHandler(md, FMD_EVENT_FIELD_UPDATE, md->userobject, (fmd_params_t *)&params);
 }
 
 /* If the argument x is extremely close to an integer,

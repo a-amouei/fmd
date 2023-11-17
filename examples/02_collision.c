@@ -16,17 +16,18 @@
 #include <math.h>
 #include <fmd.h>
 
-fmd_handle_t timer1, timer2;
+typedef struct {fmd_handle_t timer1, timer2;} handles_t;
 
-void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
+void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
 {
     switch (event)
     {
         case FMD_EVENT_TIMER_TICK: ;
 
+            handles_t *handles = (handles_t *)usp;
             fmd_handle_t timer = ((fmd_event_params_timer_tick_t *)params)->timer;
 
-            if (timer == timer1)
+            if (timer == handles->timer1)
             {
                 // report some quantities if the event is caused by timer1
                 fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
@@ -38,7 +39,7 @@ void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
 
                 fmd_io_printf(md, "%f\t%f\t%f\n", p[0], p[1], p[2]);
             }
-            else if (timer == timer2)
+            else if (timer == handles->timer2)
             {
                 // save configuration if the event is caused by timer2
                 fmd_matt_saveConfiguration(md);
@@ -128,12 +129,14 @@ int main(int argc, char *argv[])
     fmd_matt_addVelocity(md, 0, +8., 0., 0.);
     fmd_matt_addVelocity(md, 1, -8., 0., 0.);
 
+    handles_t handles;
+
     // assign an event handler to the FMD instance
-    fmd_setEventHandler(md, handleEvents);
+    fmd_setEventHandler(md, &handles, handleEvents);
 
     // make two simple timers
-    timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
-    timer2 = fmd_timer_makeSimple(md, 0.0, 0.06, -1.0);
+    handles.timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
+    handles.timer2 = fmd_timer_makeSimple(md, 0.0, 0.06, -1.0);
 
     // simulate for 6.5 picoseconds, with timesteps of 2 fs
     fmd_dync_integrate(md, FMD_GROUP_ALL, 6.5, 2e-3);

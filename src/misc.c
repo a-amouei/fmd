@@ -751,7 +751,8 @@ void fmd_free(fmd_t *md)
     }
 }
 
-void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func)
+void fmd_setEventHandler(fmd_t *md, void *usp, fmd_EventHandler_t func)
 {
     md->EventHandler = func;
+    md->userobject = usp;
 }

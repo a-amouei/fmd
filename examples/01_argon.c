@@ -15,24 +15,25 @@
 
 #include <fmd.h>
 
-fmd_handle_t timer1, timer2;
+typedef struct {fmd_handle_t timer1, timer2;} handles_t;
 
-void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
+void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
 {
     switch (event)
     {
         case FMD_EVENT_TIMER_TICK: ;
 
+            handles_t *handles = (handles_t *)usp;
             fmd_handle_t timer = ((fmd_event_params_timer_tick_t *)params)->timer;
 
-            if (timer == timer1)
+            if (timer == handles->timer1)
             {
                 // report some quantities if the event is caused by timer1
                 fmd_io_printf(md, "%f\t%f\t%e\n", fmd_dync_getTime(md),
                                                   fmd_matt_getTemperature(md),
                                                   fmd_matt_getTotalEnergy(md));
             }
-            else if (timer == timer2)
+            else if (timer == handles->timer2)
             {
                 // save configuration if the event is caused by timer2
                 fmd_matt_saveConfiguration(md);
@@ -45,16 +46,17 @@ void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
 int main(int argc, char *argv[])
 {
     fmd_t *md;
+    handles_t handles;
 
     // create an fmd instance
     md = fmd_create();
 
     // assign an event handler to the instance
-    fmd_setEventHandler(md, handleEvents);
+    fmd_setEventHandler(md, &handles, handleEvents);
 
     // make two simple timers
-    timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
-    timer2 = fmd_timer_makeSimple(md, 0.0, 0.04, -1.0);
+    handles.timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
+    handles.timer2 = fmd_timer_makeSimple(md, 0.0, 0.04, -1.0);
 
     // set size of the simulation box (in Angstrom)
     double LatticeParameter = 5.26;

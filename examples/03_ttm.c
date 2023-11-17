@@ -40,7 +40,7 @@ void saveUnsignedArray(FILE *fp, fmd_utriple_t ut, fmd_array3_t a3)
     fflush(fp);
 }
 
-void handleEvents(fmd_t *md, fmd_event_t event, fmd_params_t *params)
+void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
 {
     switch (event)
     {
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     fmd_dync_equilibrate(md, FMD_GROUP_ALL, .1, 2e-3, 2e-2, 300.0);
 
     // assign an event handler to the FMD instance
-    fmd_setEventHandler(md, handleEvents);
+    fmd_setEventHandler(md, NULL, handleEvents);
 
     timer1 = fmd_timer_makeSimple(md, 0.0, 0.002, -1.0);
 

@@ -29,7 +29,7 @@ typedef enum
     FMD_EVENT_FIELD_UPDATE
 } fmd_event_t;
 
-typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_params_t *params);
+typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params);
 
 typedef struct
 {

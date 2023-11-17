@@ -87,7 +87,7 @@ typedef char *fmd_string_t;
 
 typedef struct _fmd_params fmd_params_t;
 
-typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, fmd_params_t *params);
+typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params);
 
 typedef struct
 {
@@ -189,7 +189,7 @@ bool fmd_proc_isRoot(fmd_t *md);
 
 fmd_t *fmd_create();
 void fmd_free(fmd_t *md);
-void fmd_setEventHandler(fmd_t *md, fmd_EventHandler_t func);
+void fmd_setEventHandler(fmd_t *md, void *usp, fmd_EventHandler_t func);
 
 fmd_real_t fmd_dync_getTimeStep(fmd_t *md);
 fmd_real_t fmd_dync_getTime(fmd_t *md);
