@@ -412,7 +412,7 @@ fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot)
     return sqrt(((eam_t *)pot->data)->cutoff_sqr);
 }
 
-void fmd_pot_eam_free(eam_t *eam)
+void _fmd_pot_eam_free(eam_t *eam)
 {
     int i, j;
 

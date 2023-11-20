@@ -62,7 +62,7 @@ static void potlist_free(fmd_t *md)
         switch (pot->cat)
         {
             case POT_EAM_ALLOY:
-                fmd_pot_eam_free((eam_t *)(pot->data));
+                _fmd_pot_eam_free((eam_t *)(pot->data));
                 break;
 
             default:
