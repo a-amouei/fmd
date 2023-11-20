@@ -80,7 +80,6 @@ void _fmd_array_3d_unsigned_clean(unsigned ***array, fmd_utriple_t dims)
         ARRAY_ELEMENT(array, iv) = 0;
 }
 
-
 void ***_fmd_array_neat3d_create(fmd_utriple_t dims, unsigned elsize)
 {
     size_t s_ptrs1 = dims[0] * sizeof(void **);
@@ -124,6 +123,9 @@ void ***_fmd_array_semineat3d_create(fmd_utriple_t dims, unsigned elsize)
             {
                 for (unsigned j=0; j<i; j++)
                     _fmd_array_neat2d_free(arr[i]);
+
+                free(arr);
+
                 return NULL;
             }
         }
@@ -256,7 +258,7 @@ float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3s_t *array
             break;
 
         default:
-            assert(0);
+            assert(0);  /* TO-DO */
     }
 
     return f;
@@ -279,7 +281,7 @@ float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3s_t *array)
             break;
 
         default:
-            assert(0);
+            assert(0); /* TO-DO */
     }
 
     return f;
