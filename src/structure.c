@@ -50,8 +50,9 @@ static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *Momentum
             }
 }
 
-static void makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID)
+static void makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y,
+  fmd_real_t z, int dimx, int dimy, int dimz, fmd_real_t LatticeParameter,
+  fmd_real_t *proportions, int GroupID, fmd_real_t temp)
 {
     const fmd_rtuple_t r_fcc[4] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
                                    {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
@@ -117,7 +118,7 @@ static void makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y
             if (c->molkind != NULL) c->molkind[pi] = 0;
 
             fmd_real_t mass = md->potsys.atomkinds[j].mass;
-            fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
+            fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * temp / mass);
 
             c->GroupID[pi] = RESERVED_GROUP;
             c->AtomID[pi] = md->TotalNoOfParticles++;
@@ -138,7 +139,8 @@ static void makeCuboid_alloy(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y
 }
 
 void fmd_matt_makeCuboidSC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID)
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -146,11 +148,12 @@ void fmd_matt_makeCuboidSC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real
     assert(GroupID >= 0); /* TO-DO: handle error */
 
     makeCuboid_alloy(md, LATTICE_SC, x, y, z, dimx, dimy, dimz,
-      LatticeParameter, proportions, GroupID);
+      LatticeParameter, proportions, GroupID, temp);
 }
 
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID)
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -160,13 +163,15 @@ void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
     fmd_real_t *proportions = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
     proportions[atomkind] = 1.0;
 
-    makeCuboid_alloy(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
+    makeCuboid_alloy(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, LatticeParameter,
+                     proportions, GroupID, temp);
 
     free(proportions);
 }
 
 void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID)
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -174,11 +179,12 @@ void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_rea
     assert(GroupID >= 0); /* TO-DO: handle error */
 
     makeCuboid_alloy(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz,
-      LatticeParameter, proportions, GroupID);
+      LatticeParameter, proportions, GroupID, temp);
 }
 
 void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID)
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -188,13 +194,15 @@ void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
     fmd_real_t *proportions = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
     proportions[atomkind] = 1.0;
 
-    makeCuboid_alloy(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
+    makeCuboid_alloy(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, LatticeParameter,
+                     proportions, GroupID, temp);
 
     free(proportions);
 }
 
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID)
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -202,11 +210,12 @@ void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_rea
     assert(GroupID >= 0); /* TO-DO: handle error */
 
     makeCuboid_alloy(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz,
-      LatticeParameter, proportions, GroupID);
+      LatticeParameter, proportions, GroupID, temp);
 }
 
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID)
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -216,14 +225,15 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
     fmd_real_t *proportions = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
     proportions[atomkind] = 1.0;
 
-    makeCuboid_alloy(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, LatticeParameter, proportions, GroupID);
+    makeCuboid_alloy(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, LatticeParameter,
+                     proportions, GroupID, temp);
 
     free(proportions);
 }
 
 void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
   fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
-  int GroupID)
+  int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -306,7 +316,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
             c->GroupID[pi] = RESERVED_GROUP;
 
             fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
-            fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
+            fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * temp / mass);
 
             for (int d=0; d<3; d++)
             {

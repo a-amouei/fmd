@@ -567,7 +567,7 @@ fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
     return md->GroupKineticEnergy + md->GroupPotentialEnergy;
 }
 
-void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
+void fmd_matt_giveTemperature(fmd_t *md, int GroupID, fmd_real_t temp)
 {
     cell_t ***grid;
     const int *start, *stop;
@@ -603,7 +603,7 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID)
             if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[pi])
             {
                 fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
-                fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * md->DesiredTemperature / mass);
+                fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * temp / mass);
 
                 for (int d=0; d<DIM; d++)
                     VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
@@ -803,9 +803,4 @@ void fmd_matt_saveConfiguration(fmd_t *md)
     }
 
     free(globaldata);
-}
-
-void fmd_matt_setDesiredTemperature(fmd_t *md, fmd_real_t DesiredTemperature)
-{
-    md->DesiredTemperature = DesiredTemperature;
 }

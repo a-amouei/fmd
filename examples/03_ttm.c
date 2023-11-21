@@ -117,11 +117,8 @@ int main(int argc, char *argv[])
     // apply the EAM potential
     fmd_pot_apply(md, 0, 0, pot);
 
-    // set the desired temperature (in Kelvin)
-    fmd_matt_setDesiredTemperature(md, 300.0);
-
     // make an fcc Cu cuboid at a given position and with a given size
-    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 5.0*lp, 10, 10, 30, lp, 0, 0);
+    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 5.0*lp, 10, 10, 30, lp, 0, 0, 300.0);
 
     fmd_io_printf(md, "equilibrating the object...\n");
     fmd_dync_equilibrate(md, FMD_GROUP_ALL, .1, 2e-3, 2e-2, 300.0);

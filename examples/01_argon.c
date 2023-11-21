@@ -80,11 +80,8 @@ int main(int argc, char *argv[])
     //double D0 = 0.010177, alpha = 1.253, r0 = 4.13, cutoff = 8.5;
     //fmd_pot_morse_apply(md, 0, 0, D0, alpha, r0, cutoff);
 
-    // set the desired temperature (in Kelvin)
-    fmd_matt_setDesiredTemperature(md, 100.0);
-
     // make an fcc cuboid at a given position and with a given size
-    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, LatticeParameter, 0, 0);
+    fmd_matt_makeCuboidFCC(md, 0.0, 0.0, 0.0, 10, 10, 10, LatticeParameter, 0, 0, 100.0);
 
     // equilibrate for 1.0 picoseconds with a time step of 2 femtoseconds
     // to reach a temperature of 100 Kelvins

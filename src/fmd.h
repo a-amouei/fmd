@@ -138,24 +138,29 @@ typedef struct
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz);
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz);
-void fmd_matt_setDesiredTemperature(fmd_t *md, fmd_real_t DesiredTemperature);
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
+  int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidSC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+  int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
+  int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+  int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind, int GroupID);
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
+  int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions, int GroupID);
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+  int GroupID, fmd_real_t temp);
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTemperature(fmd_t *md);
 void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out);
-void fmd_matt_giveTemperature(fmd_t *md, int GroupID);
+void fmd_matt_giveTemperature(fmd_t *md, int GroupID, fmd_real_t temp);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
 void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new);

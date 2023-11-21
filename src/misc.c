@@ -421,23 +421,6 @@ void _fmd_refreshGrid(fmd_t *md)
     _fmd_particles_migrate(md);
 }
 
-/*static void rescaleVelocities(fmd_t *md)
-{
-    fmd_ituple_t ic;
-
-    fmd_real_t scale = sqrt(md->DesiredTemperature / md->GroupTemperature);
-
-    cell_t *cell;
-    int i;
-
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
-            for (int d=0; d<3; d++)
-                VEL(cell, i, d) *= scale;
-
-    md->GroupTemperature = md->DesiredTemperature;
-}*/
-
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 {
     unsigned *nums;
@@ -666,7 +649,6 @@ fmd_t *fmd_create()
     md->turies = NULL;
     md->turies_num = 0;
     md->active_ttm_turi = NULL;
-    md->DesiredTemperature = 300.0;
     md->SaveConfigMode = FMD_SCM_XYZ_ATOMSNUM;
     md->cell_increment = 10;
     md->_OldNumberOfParticles = -1;
