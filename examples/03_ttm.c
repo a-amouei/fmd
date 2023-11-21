@@ -117,9 +117,6 @@ int main(int argc, char *argv[])
     // apply the EAM potential
     fmd_pot_apply(md, 0, 0, pot);
 
-    // create the box grid
-    fmd_box_createGrid(md, 5.506786);
-
     // set the desired temperature (in Kelvin)
     fmd_matt_setDesiredTemperature(md, 300.0);
 

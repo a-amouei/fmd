@@ -18,6 +18,7 @@
 */
 
 #include <string.h>
+#include <tgmath.h>
 #include "potential.h"
 #include "fmd-private.h"
 #include "misc.h"
@@ -26,11 +27,8 @@
 #include "eam.h"
 #include "molecule.h"
 #include "general.h"
-
-void fmd_pot_setCutoffRadius(fmd_t *md, fmd_real_t cutoff)
-{
-    md->CutoffRadius = cutoff;
-}
+#include "morse.h"
+#include "lj.h"
 
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[])
 {
@@ -84,7 +82,7 @@ static void atomkinds_free(fmd_t *md)
     md->potsys.atomkinds_num = 0;
 }
 
-void fmd_potsys_free(fmd_t *md)
+void _fmd_potsys_free(fmd_t *md)
 {
     if (md->potsys.molkinds != NULL)
     {
@@ -123,7 +121,7 @@ void fmd_potsys_free(fmd_t *md)
     }
 }
 
-void fmd_potsys_init(fmd_t *md)
+void _fmd_potsys_init(fmd_t *md)
 {
     md->potsys.atomkinds = NULL;
     md->potsys.potlist = NULL;
@@ -218,7 +216,7 @@ static int potcat_compare(const void *a, const void *b)
 }
 
 // TO-DO?: first, clean the potcats list
-void fmd_pot_prepareForForceComp(fmd_t *md)
+void _fmd_pot_prepareForForceComp(fmd_t *md)
 {
     // TO-DO: error should be handled here
     assert(md->potsys.pottable != NULL);
@@ -242,4 +240,41 @@ void fmd_pot_prepareForForceComp(fmd_t *md)
         }
 
     pot_hybridpasses_update(md);
+}
+
+fmd_real_t _fmd_pot_get_largest_cutoff(potsys_t *ps)
+{
+    // TO-DO: error should be handled here
+    assert(ps->pottable != NULL);
+
+    fmd_real_t max = 0.0;
+
+    for (unsigned i=0; i < ps->atomkinds_num; i++)
+        for (unsigned j=0; j <= i; j++)
+        {
+            potpair_t *pair = &ps->pottable[i][j];
+            fmd_real_t r;
+
+            switch (pair->cat)
+            {
+                case POT_MORSE:
+                    r = ((morse_t *)pair->data)->cutoff_sqr;
+                    break;
+
+                case POT_LJ_6_12:
+                    r = ((LJ_6_12_t *)pair->data)->cutoff_sqr;
+                    break;
+
+                case POT_EAM_ALLOY:
+                    r = ((eam_t *)pair->data)->cutoff_sqr;
+                    break;
+
+                default:
+                    assert(0);  /* handle error */
+            }
+
+            if (r > max) max = r;
+        }
+
+    return sqrt(max);
 }

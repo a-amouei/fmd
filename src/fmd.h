@@ -163,7 +163,6 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz);
 void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz);
 void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz);
-void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);
@@ -174,7 +173,6 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t FilePath);
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
 fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
-void fmd_pot_setCutoffRadius(fmd_t *md, fmd_real_t cutoff);
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
   fmd_real_t sigma, fmd_real_t epsilon, fmd_real_t cutoff);
 fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,

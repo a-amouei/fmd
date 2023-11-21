@@ -32,7 +32,7 @@ morse.o: morse.c morse.h config.h types.h fmd-private.h subdomain.h \
  general.h
 potential.o: potential.c potential.h config.h types.h fmd-private.h \
  subdomain.h array.h cell.h events.h h5.h misc.h list.h eam.h forces.h \
- cspline.h molecule.h general.h
+ cspline.h molecule.h general.h morse.h lj.h
 structure.o: structure.c fmd-private.h config.h types.h subdomain.h \
  array.h potential.h cell.h events.h h5.h misc.h molecule.h general.h
 subdomain.o: subdomain.c subdomain.h config.h types.h array.h \

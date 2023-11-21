@@ -248,7 +248,7 @@ static void add_ttm_term_to_forces(fmd_t *md)
 void _fmd_dync_updateForces(fmd_t *md)
 {
     if (md->potsys.potcats == NULL)  // just for one time
-        fmd_pot_prepareForForceComp(md);
+        _fmd_pot_prepareForForceComp(md);
 
     _fmd_ghostparticles_init(md);
 

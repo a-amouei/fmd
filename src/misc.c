@@ -38,7 +38,34 @@ typedef struct
 
 static char formatstr_3xpoint16e[] = "%.16e\t%.16e\t%.16e\n";
 
-void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff);
+void _fmd_createGlobalGrid(fmd_t *md)
+{
+    fmd_real_t cutoff = _fmd_pot_get_largest_cutoff(&md->potsys);
+
+    for (int d=0; d<DIM; d++)
+    {
+        md->nc[d] = (int)(md->l[d] / cutoff);
+        if ((md->nc[d] < 3) && md->PBC[d])
+        {
+            fprintf(stderr, "ERROR: nc[%d] = %d. Under PBC, this must be greater than 2!\n", d, md->nc[d]);
+            MPI_Abort(MPI_COMM_WORLD, ERROR_NCELL_TOO_SMALL);
+        }
+        md->cellh[d] = md->l[d] / md->nc[d];
+    }
+
+    _fmd_cellinfo_init(&md->cellinfo);
+
+    if (md->Is_MD_comm_root)
+    {
+        md->global_grid = (cell_t ***)_fmd_array_ordinary3d_create(md->nc, sizeof(cell_t));
+        assert(md->global_grid != NULL);
+        /* TO-DO: handle memory error */
+
+        _fmd_initialize_grid(md->global_grid, &md->cellinfo, md->nc[0], md->nc[1], md->nc[2]);
+    }
+
+    md->GlobalGridExists = true;
+}
 
 void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3)
 {
@@ -295,8 +322,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, bool UseTime)
         md->PBCdetermined = true;
     }
 
-    if (!md->GlobalGridExists)
-        fmd_box_createGrid(md, md->CutoffRadius);
+    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
 
     if (UseTime)
         MPI_Bcast(&md->time, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
@@ -645,7 +671,7 @@ fmd_t *fmd_create()
     md->cell_increment = 10;
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
-    fmd_potsys_init(md);
+    _fmd_potsys_init(md);
     create_mpi_types(md);
     _fmd_h5_ds_init(&md->h5_dataspaces);
 
@@ -681,34 +707,6 @@ bool fmd_proc_isRoot(fmd_t *md)
     return md->Is_MD_comm_root;
 }
 
-void fmd_box_createGrid(fmd_t *md, fmd_real_t cutoff)
-{
-    for (int d=0; d<3; d++)
-    {
-        md->nc[d] = (int)(md->l[d] / cutoff);
-        if ((md->nc[d] < 3) && md->PBC[d])
-        {
-            fprintf(stderr, "ERROR: nc[%d] = %d. Under PBC, this must be greater than 2!\n", d, md->nc[d]);
-            MPI_Abort(MPI_COMM_WORLD, ERROR_NCELL_TOO_SMALL);
-        }
-        md->cellh[d] = md->l[d] / md->nc[d];
-    }
-
-    _fmd_cellinfo_init(&md->cellinfo);
-
-    if (md->Is_MD_comm_root)
-    {
-        md->global_grid = (cell_t ***)_fmd_array_ordinary3d_create(md->nc, sizeof(cell_t));
-        assert(md->global_grid != NULL);
-        /* TO-DO: handle memory error */
-
-        _fmd_initialize_grid(md->global_grid, &md->cellinfo, md->nc[0], md->nc[1], md->nc[2]);
-    }
-
-    md->GlobalGridExists = true;
-    md->CutoffRadius = cutoff;
-}
-
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory)
 {
     md->SaveDirectory = re_alloc(md->SaveDirectory, strlen(directory)+1);
@@ -736,7 +734,7 @@ void fmd_free(fmd_t *md)
 {
     free(md->SaveDirectory);
     _fmd_subd_free(md);
-    fmd_potsys_free(md);
+    _fmd_potsys_free(md);
     fmd_timer_free(md);
     free_mpi_types(md);
     _fmd_h5_ds_free(&md->h5_dataspaces);

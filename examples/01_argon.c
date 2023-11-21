@@ -80,9 +80,6 @@ int main(int argc, char *argv[])
     //double D0 = 0.010177, alpha = 1.253, r0 = 4.13, cutoff = 8.5;
     //fmd_pot_morse_apply(md, 0, 0, D0, alpha, r0, cutoff);
 
-    // create the box grid
-    fmd_box_createGrid(md, cutoff);
-
     // set the desired temperature (in Kelvin)
     fmd_matt_setDesiredTemperature(md, 100.0);
 

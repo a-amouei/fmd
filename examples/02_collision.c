@@ -89,9 +89,6 @@ int main(int argc, char *argv[])
     fmd_pot_lj_apply(md, 1, 1, 3.40, 0.0104, 2.5*3.40);
     fmd_pot_lj_apply(md, 0, 1, 2.87, 0.0652, 2.5*2.87);
 
-    // create the grid
-    fmd_box_createGrid(md, 2.5*3.40);
-
     // prepare some parameters
     double dc = 30.0;     // the initial distance between the colliding objects
     int cusize = 7;       // cusize x cusize x cusize = number of unit cells in each object

@@ -71,7 +71,6 @@ struct _fmd
     bool GlobalGridExists;
     bool BoxSizeDetermined;
     bool PBCdetermined;
-    fmd_real_t CutoffRadius;
     fmd_real_t time;
     int time_iteration;
     fmd_real_t timestep;
