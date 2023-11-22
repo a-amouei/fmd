@@ -141,20 +141,20 @@ void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fm
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
   int GroupID, fmd_real_t temp);
-void fmd_matt_makeCuboidSC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
   int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
   int GroupID, fmd_real_t temp);
-void fmd_matt_makeCuboidBCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
   int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
   int GroupID, fmd_real_t temp);
-void fmd_matt_makeCuboidFCC_alloy(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportions,
+void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
   int GroupID, fmd_real_t temp);
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
@@ -175,7 +175,7 @@ void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...);
 void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, bool UseTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 
-fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t FilePath);
+fmd_pot_t *fmd_pot_eam_mix_load(fmd_t *md, fmd_string_t FilePath);
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
 fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
