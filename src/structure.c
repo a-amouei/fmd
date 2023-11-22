@@ -50,9 +50,8 @@ static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *Momentum
             }
 }
 
-static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y,
-  fmd_real_t z, int dimx, int dimy, int dimz, fmd_real_t LatticeParameter,
-  fmd_real_t *proportion, int GroupID, fmd_real_t temp)
+static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, fmd_real_t z,
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
 {
     const fmd_rtuple_t r_fcc[4] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
                                    {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
@@ -87,7 +86,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y,
     fmd_real_t prps_sum = 0.0;
 
     for (int i=0; i < md->potsys.atomkinds_num; i++)
-        prps_cumult[i] = (prps_sum += proportion[i]);
+        prps_cumult[i] = (prps_sum += ratio[i]);
 
     gsl_rng *rng;
     rng = gsl_rng_alloc(gsl_rng_mt19937);
@@ -100,7 +99,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y,
 
             for (int d=0; d<3; d++)
             {
-                x[d] = r0[d] + (CrystalCell[d] + .25 + rp[i*3+d]) * LatticeParameter;
+                x[d] = r0[d] + (CrystalCell[d] + .25 + rp[i*3+d]) * lp;
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
             }
 
@@ -139,96 +138,84 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y,
 }
 
 void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
-  int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
 
-    makeCuboid_mix(md, LATTICE_SC, x, y, z, dimx, dimy, dimz,
-      LatticeParameter, proportion, GroupID, temp);
+    makeCuboid_mix(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 }
 
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
-  int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
 
-    fmd_real_t *proportion = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
-    proportion[atomkind] = 1.0;
+    fmd_real_t *ratio = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
+    ratio[atomkind] = 1.0;
 
-    makeCuboid_mix(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, LatticeParameter,
-                       proportion, GroupID, temp);
+    makeCuboid_mix(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 
-    free(proportion);
+    free(ratio);
 }
 
 void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
-  int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
 
-    makeCuboid_mix(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz,
-      LatticeParameter, proportion, GroupID, temp);
+    makeCuboid_mix(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 }
 
 void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
-  int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
 
-    fmd_real_t *proportion = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
-    proportion[atomkind] = 1.0;
+    fmd_real_t *ratio = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
+    ratio[atomkind] = 1.0;
 
-    makeCuboid_mix(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, LatticeParameter,
-                       proportion, GroupID, temp);
+    makeCuboid_mix(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 
-    free(proportion);
+    free(ratio);
 }
 
 void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
-  int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
 
-    makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz,
-      LatticeParameter, proportion, GroupID, temp);
+    makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 }
 
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
-  int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
 
-    fmd_real_t *proportion = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
-    proportion[atomkind] = 1.0;
+    fmd_real_t *ratio = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
+    ratio[atomkind] = 1.0;
 
-    makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, LatticeParameter,
-                       proportion, GroupID, temp);
+    makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 
-    free(proportion);
+    free(ratio);
 }
 
 void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,

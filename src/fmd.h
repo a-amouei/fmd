@@ -139,23 +139,17 @@ typedef struct
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz);
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz);
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
-  int GroupID, fmd_real_t temp);
+  int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
-  int GroupID, fmd_real_t temp);
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
-  int GroupID, fmd_real_t temp);
+  int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
-  int GroupID, fmd_real_t temp);
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, unsigned atomkind,
-  int GroupID, fmd_real_t temp);
+  int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp);
 void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t LatticeParameter, fmd_real_t *proportion,
-  int GroupID, fmd_real_t temp);
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp);
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTemperature(fmd_t *md);
