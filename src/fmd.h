@@ -169,7 +169,7 @@ void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...);
 void fmd_io_loadState(fmd_t *md, fmd_string_t filepath, bool UseTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
 
-fmd_pot_t *fmd_pot_eam_mix_load(fmd_t *md, fmd_string_t FilePath);
+fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t FilePath);
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);
 fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot);
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
