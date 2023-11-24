@@ -31,7 +31,7 @@
 
 typedef enum {LATTICE_FCC, LATTICE_BCC, LATTICE_SC} lattice_t;
 
-static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *MomentumSum, unsigned AtomsNum)
+static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t MomentumSum[], unsigned AtomsNum)
 {
     fmd_ituple_t ic;
     cell_t *cell;
@@ -51,7 +51,7 @@ static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t *Momentum
 }
 
 static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     const fmd_rtuple_t r_fcc[4] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
                                    {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
@@ -138,7 +138,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
 }
 
 void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -165,7 +165,7 @@ void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 }
 
 void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
@@ -192,7 +192,7 @@ void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 }
 
 void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
-  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t *ratio, int GroupID, fmd_real_t temp)
+  int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
     if (!md->Is_MD_comm_root) return;
