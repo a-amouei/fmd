@@ -75,7 +75,7 @@ typedef struct _fmd_pot fmd_pot_t;
 
 typedef double fmd_real_t;
 
-typedef fmd_real_t fmd_rtuple_t[3];
+typedef fmd_real_t fmd_rtriple_t[3];
 
 typedef unsigned fmd_utriple_t[3];
 
@@ -153,10 +153,10 @@ void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
 void fmd_matt_saveConfiguration(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTemperature(fmd_t *md);
-void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out);
+void fmd_matt_getMomentum(fmd_t *md, fmd_rtriple_t out);
 void fmd_matt_giveTemperature(fmd_t *md, int GroupID, fmd_real_t temp);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
-void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
+void fmd_matt_findLimits(fmd_t *md, fmd_rtriple_t LowerLimit, fmd_rtriple_t UpperLimit);
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 
 void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz);

@@ -33,7 +33,7 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
                 fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
                                               fmd_matt_getTotalEnergy(md));
 
-                fmd_rtuple_t p;
+                fmd_rtriple_t p;
 
                 fmd_matt_getMomentum(md, p);
 
