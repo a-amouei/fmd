@@ -274,13 +274,11 @@ static void VelocityVerlet_integrate(fmd_t *md, fmd_real_t duration, bool UseThe
 
 static void setActiveGroup(fmd_t *md, int GroupID)
 {
-    if (GroupID != md->ActiveGroup && md->ActiveGroup != FMD_GROUP_ALL)
+    if (GroupID != md->ActiveGroup)
     {
         md->ActiveGroup = GroupID;
         _fmd_compute_GroupTemperature_etc_localgrid(md);
     }
-    else
-        md->ActiveGroup = GroupID;
 }
 
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep)
