@@ -60,8 +60,12 @@ static void VelocityVerlet_startStep(fmd_t *md, bool UseThermostat)
     unsigned i;
 
     if (UseThermostat)
+    {
+        if (!md->KineticEnergyUpdated) _fmd_compute_GroupTemperature_etc_localgrid(md);
+
         VelocityScale = sqrt(1 + md->timestep / md->BerendsenThermostatParam *
                         (md->DesiredTemperature / md->GroupTemperature - 1));
+    }
 
     LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
         for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
@@ -99,6 +103,8 @@ void updateGroupProperties(fmd_t *md, fmd_rtuple_t MomentumSum, int ParticlesNum
     md->GroupKineticEnergy = 0.5 * m_vSqd_SumSum;
 
     md->GroupTemperature = m_vSqd_SumSum / (3.0 * md->GroupParticlesNum * K_BOLTZMANN);
+
+    md->KineticEnergyUpdated = true;
 }
 
 static void VelocityVerlet_finishStep(fmd_t *md)
@@ -277,7 +283,7 @@ static void setActiveGroup(fmd_t *md, int GroupID)
     if (GroupID != md->ActiveGroup)
     {
         md->ActiveGroup = GroupID;
-        _fmd_compute_GroupTemperature_etc_localgrid(md);
+        md->KineticEnergyUpdated = false;
     }
 }
 

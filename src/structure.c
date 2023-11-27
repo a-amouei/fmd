@@ -141,6 +141,10 @@ void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
@@ -152,6 +156,10 @@ void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
@@ -168,6 +176,10 @@ void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
@@ -179,6 +191,10 @@ void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
@@ -195,6 +211,10 @@ void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
@@ -206,6 +226,10 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */
@@ -223,6 +247,10 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
   int GroupID, fmd_real_t temp)
 {
     if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+
+    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
+        md->KineticEnergyUpdated = false;
+
     if (!md->Is_MD_comm_root) return;
 
     assert(GroupID >= 0); /* TO-DO: handle error */

@@ -84,6 +84,7 @@ struct _fmd
     MPI_Comm MD_comm;
     fmd_real_t GroupKineticEnergy;
     fmd_real_t GroupPotentialEnergy;
+    bool KineticEnergyUpdated;            /* for active group */
     int world_rank;
     int world_numprocs;
     fmd_real_t DesiredTemperature;        /* to be used only in thermostats */

@@ -376,6 +376,8 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, bool UseTime)
 
         fclose(fp);
     }
+
+    md->KineticEnergyUpdated = false;
 }
 
 void _fmd_refreshGrid(fmd_t *md)
@@ -653,6 +655,7 @@ fmd_t *fmd_create()
     md->cell_increment = 10;
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
+    md->KineticEnergyUpdated = false;
     _fmd_potsys_init(md);
     create_mpi_types(md);
     _fmd_h5_ds_init(&md->h5_dataspaces);

@@ -151,10 +151,11 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp);
 void fmd_matt_saveConfiguration(fmd_t *md);
+fmd_real_t fmd_matt_getKineticEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md);
 fmd_real_t fmd_matt_getTemperature(fmd_t *md);
 void fmd_matt_getMomentum(fmd_t *md, fmd_rtriple_t out);
-void fmd_matt_giveTemperature(fmd_t *md, int GroupID, fmd_real_t temp);
+void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
 void fmd_matt_findLimits(fmd_t *md, fmd_rtriple_t LowerLimit, fmd_rtriple_t UpperLimit);
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new);

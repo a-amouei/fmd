@@ -27,7 +27,8 @@
 #include "general.h"
 #include "molecule.h"
 
-/* calculate GroupTemperature, GroupParticlesNum and GroupKineticEnergy from "local grid" */
+/* calculate GroupTemperature, GroupParticlesNum, GroupMomentum and
+   GroupKineticEnergy from "local grid" */
 void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md)
 {
     fmd_ituple_t ic;
@@ -64,10 +65,13 @@ void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md)
     md->GroupKineticEnergy = 0.5 * m_vSqd_SumSum;
 
     md->GroupTemperature = m_vSqd_SumSum / (3.0 * md->GroupParticlesNum * K_BOLTZMANN);
+
+    md->KineticEnergyUpdated = true;
 }
 
-/* calculate GroupTemperature, GroupParticlesNum and GroupKineticEnergy from "global grid" */
-static void calculate_GroupTemperature_etc(fmd_t *md)
+/* calculate GroupTemperature, GroupParticlesNum, GroupMomentum and
+   GroupKineticEnergy from "global grid" */
+static void compute_GroupTemperature_etc_globalgrid(fmd_t *md)
 {
     if (md->Is_MD_comm_root)
     {
@@ -104,6 +108,8 @@ static void calculate_GroupTemperature_etc(fmd_t *md)
     MPI_Bcast(md->GroupMomentum, DIM, FMD_MPI_REAL, RANK0, md->MD_comm);
 
     md->GroupKineticEnergy = 3.0/2.0 * md->GroupParticlesNum * K_BOLTZMANN * md->GroupTemperature;
+
+    md->KineticEnergyUpdated = true;
 }
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
@@ -142,10 +148,10 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
                 VEL(c, i, 2) += vz;
             }
 
-    if (md->ParticlesDistributed)
-        _fmd_compute_GroupTemperature_etc_localgrid(md);
-    else
-        calculate_GroupTemperature_etc(md);
+    if (md->ActiveGroup == FMD_GROUP_ALL ||
+                GroupID == FMD_GROUP_ALL ||
+        md->ActiveGroup == GroupID)
+            md->KineticEnergyUpdated = false;
 }
 
 void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
@@ -423,8 +429,6 @@ void _fmd_matt_distribute(fmd_t *md)
 {
     if (md->Subdomain.grid == NULL) _fmd_subd_init(md);
 
-    calculate_GroupTemperature_etc(md);
-
     if (md->Is_MD_comm_root)
     {
         for (int i=1; i < md->Subdomain.numprocs; i++)  /* for all processes execpt the root */
@@ -480,6 +484,8 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
     cell_t *c;
     fmd_ituple_t ic;
 
+    assert(new >= 0);   /* TO-DO: handle error */
+
     if (md->ParticlesDistributed)
     {
         LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
@@ -495,6 +501,10 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
                     if (old == FMD_GROUP_ALL || c->GroupID[i] == old) c->GroupID[i] = new;
         }
     }
+
+    if ((md->ActiveGroup != FMD_GROUP_ALL) &&
+        (md->ActiveGroup == old || md->ActiveGroup == new))
+            md->KineticEnergyUpdated = false;
 }
 
 #define WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX_2(md, c, i, d, x)                \
@@ -515,6 +525,14 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
 {
     assert(!md->ParticlesDistributed);
+
+    if (md->ActiveGroup == FMD_GROUP_ALL ||
+                GroupID == FMD_GROUP_ALL ||
+        md->ActiveGroup == GroupID)
+            if ((!md->PBC[0] && dx != 0.) ||
+                (!md->PBC[1] && dy != 0.) ||
+                (!md->PBC[2] && dz != 0.))
+                    md->KineticEnergyUpdated = false; /* some atoms may leave the box */
 
     if (!md->Is_MD_comm_root) return;
 
@@ -562,12 +580,27 @@ void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fm
             }
 }
 
-fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
+static void compute_GroupTemperature_etc(fmd_t *md)
 {
-    return md->GroupKineticEnergy + md->GroupPotentialEnergy;
+    if (md->ParticlesDistributed)
+        _fmd_compute_GroupTemperature_etc_localgrid(md);
+    else
+        compute_GroupTemperature_etc_globalgrid(md);
 }
 
-void fmd_matt_giveTemperature(fmd_t *md, int GroupID, fmd_real_t temp)
+fmd_real_t fmd_matt_getKineticEnergy(fmd_t *md)
+{
+    if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
+
+    return md->GroupKineticEnergy;
+}
+
+fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
+{
+    return fmd_matt_getKineticEnergy(md) + md->GroupPotentialEnergy;
+}
+
+void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp)
 {
     cell_t ***grid;
     const int *start, *stop;
@@ -610,15 +643,24 @@ void fmd_matt_giveTemperature(fmd_t *md, int GroupID, fmd_real_t temp)
             }
 
     gsl_rng_free(rng);
+
+    if (md->ActiveGroup == FMD_GROUP_ALL ||
+                GroupID == FMD_GROUP_ALL ||
+        md->ActiveGroup == GroupID)
+            md->KineticEnergyUpdated = false;
 }
 
 fmd_real_t fmd_matt_getTemperature(fmd_t *md)
 {
+    if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
+
     return md->GroupTemperature;
 }
 
 void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out)
 {
+    if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
+
     for (int d=0; d<DIM; d++)
         out[d] = md->GroupMomentum[d];
 }
