@@ -656,6 +656,7 @@ fmd_t *fmd_create()
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
     md->KineticEnergyUpdated = false;
+    md->random_seed_aux = (int)md;
     _fmd_potsys_init(md);
     create_mpi_types(md);
     _fmd_h5_ds_init(&md->h5_dataspaces);

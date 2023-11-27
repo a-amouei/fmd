@@ -626,7 +626,7 @@ void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp)
 
     gsl_rng *rng;
     rng = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng, time(NULL));
+    gsl_rng_set(rng, time(NULL) + md->random_seed_aux++);
 
     cell_t *c;
     int pi;

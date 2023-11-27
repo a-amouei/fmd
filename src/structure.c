@@ -90,7 +90,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
 
     gsl_rng *rng;
     rng = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng, time(NULL));
+    gsl_rng_set(rng, time(NULL) + md->random_seed_aux++);
 
     LOOP3D(CrystalCell, _fmd_ThreeZeros_int, dims)
         for (int i=0; i<points_per_cell; i++)
@@ -263,7 +263,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
         X[d] = x2[d] - x1[d];
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng, time(NULL));
+    gsl_rng_set(rng, time(NULL) + md->random_seed_aux++);
 
     molkind_t *mk = &md->potsys.molkinds[molkind];
     fmd_real_t **coords = (fmd_real_t **)_fmd_array_neat2d_create(mk->atoms_num, 3, sizeof(fmd_real_t));

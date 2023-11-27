@@ -107,6 +107,7 @@ struct _fmd
     bool MPI_initialized_by_me;
     h5_dataspaces_t h5_dataspaces;
     int cell_increment;
+    int random_seed_aux;
     int _OldNumberOfParticles;
     int _FileIndex;
 };
