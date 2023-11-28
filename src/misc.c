@@ -645,6 +645,7 @@ fmd_t *fmd_create()
     md->BoxSizeDetermined = false;
     md->PBCdetermined = false;
     md->Is_MD_comm_root = false;
+    md->Is_MD_process = false;
     md->EventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
@@ -683,7 +684,7 @@ fmd_real_t fmd_proc_getWallTime(fmd_t *md)
     return (MPI_Wtime() - md->WallTimeOrigin);
 }
 
-bool fmd_proc_isMD(fmd_t *md)
+bool fmd_proc_hasSubdomain(fmd_t *md)
 {
     return md->Is_MD_process;
 }
