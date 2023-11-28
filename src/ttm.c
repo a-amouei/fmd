@@ -79,7 +79,7 @@ void _fmd_ttm_getReady(fmd_t *md)
 
     fmd_rtuple_t ll, ul;
 
-    fmd_matt_findLimits(md, ll, ul);
+    fmd_matt_findLimits(md, md->ActiveGroup, ll, ul);
     ttm->frontsurf = ll[DIM-1];
 
     fmd_real_t vol = 1.0;

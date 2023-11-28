@@ -157,7 +157,7 @@ fmd_real_t fmd_matt_getTemperature(fmd_t *md);
 void fmd_matt_getMomentum(fmd_t *md, fmd_rtriple_t out);
 void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp);
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[]);
-void fmd_matt_findLimits(fmd_t *md, fmd_rtriple_t LowerLimit, fmd_rtriple_t UpperLimit);
+void fmd_matt_findLimits(fmd_t *md, int GroupID, fmd_rtriple_t LowerLimit, fmd_rtriple_t UpperLimit);
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 
 void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz);

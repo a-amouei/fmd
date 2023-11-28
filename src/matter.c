@@ -154,7 +154,7 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
             md->KineticEnergyUpdated = false;
 }
 
-void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
+void fmd_matt_findLimits(fmd_t *md, int GroupID, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
 {
     cell_t ***grid;
     const int *start, *stop;
@@ -191,13 +191,14 @@ void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperL
 
     LOOP3D(ic, start, stop)
         for (c = &ARRAY_ELEMENT(grid, ic), i=0; i < c->parts_num; i++)
-            for (int d=0; d<DIM; d++)
-            {
-                if (POS(c, i, d) < L[d])
-                    L[d] = POS(c, i, d);
-                if (POS(c, i, d) > U[d])
-                    U[d] = POS(c, i, d);
-            }
+            if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
+                for (int d=0; d<DIM; d++)
+                {
+                    if (POS(c, i, d) < L[d])
+                        L[d] = POS(c, i, d);
+                    if (POS(c, i, d) > U[d])
+                        U[d] = POS(c, i, d);
+                }
 
     if (md->ParticlesDistributed)
     {

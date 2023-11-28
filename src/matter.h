@@ -33,7 +33,7 @@ typedef struct
     unsigned atomkind;
 } config_atom_t;
 
-void fmd_matt_findLimits(fmd_t *md, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
+void fmd_matt_findLimits(fmd_t *md, int GroupID, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit);
 void _fmd_matt_distribute(fmd_t *md);
 void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md);
 
