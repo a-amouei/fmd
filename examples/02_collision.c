@@ -15,6 +15,7 @@
 
 #include <math.h>
 #include <fmd.h>
+#include <stdio.h>
 
 typedef struct {fmd_handle_t timer1, timer2;} handles_t;
 
@@ -64,11 +65,8 @@ int main(int argc, char *argv[])
     fmd_box_setPBC(md, false, false, false);
 
     // partition the simulation box into subdomains for MPI-based parallel computation
-    fmd_box_setSubdomains(md, 1, 2, 1);
-
-    /* sometimes the user launches more processes than the chosen number of subdomains; they're not needed here! */
-    if (!fmd_proc_hasSubdomain(md))
-    {
+    if (!fmd_box_setSubdomains(md, 1, 2, 1))
+    { // sometimes the user launches more processes than the number of subdomains; they're not needed here!
         fmd_free(md);
         return 0;
     }

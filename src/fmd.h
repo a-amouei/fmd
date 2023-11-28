@@ -162,7 +162,7 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new);
 
 void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz);
 void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz);
-void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz);
+bool fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz);
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory);
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);

@@ -544,13 +544,15 @@ void fmd_box_setPBC(fmd_t *md, bool PBCx, bool PBCy, bool PBCz)
     md->PBCdetermined = true;
 }
 
-void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz)
+bool fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz)
 {
     md->ns[0] = dimx;
     md->ns[1] = dimy;
     md->ns[2] = dimz;
+
     identifyProcess(md);
     createCommunicators(md);
+
     if (md->Is_MD_process)
     {
         MPI_Comm_size(md->MD_comm, &md->Subdomain.numprocs);
@@ -558,6 +560,8 @@ void fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz)
         if (md->Subdomain.myrank == RANK0)
             md->Is_MD_comm_root = true;
     }
+
+    return md->Is_MD_process;
 }
 
 static void create_mpi_types(fmd_t *md)
