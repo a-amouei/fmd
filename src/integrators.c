@@ -42,7 +42,7 @@
     }                                                                          \
     do {} while (0)
 
-fmd_real_t fmd_dync_getTimeStep(fmd_t *md)
+fmd_real_t fmd_dync_getTimestep(fmd_t *md)
 {
     return md->timestep;
 }

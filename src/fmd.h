@@ -189,7 +189,7 @@ fmd_t *fmd_create();
 void fmd_free(fmd_t *md);
 void fmd_setEventHandler(fmd_t *md, void *usp, fmd_EventHandler_t func);
 
-fmd_real_t fmd_dync_getTimeStep(fmd_t *md);
+fmd_real_t fmd_dync_getTimestep(fmd_t *md);
 fmd_real_t fmd_dync_getTime(fmd_t *md);
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t tau, fmd_real_t temperature);
