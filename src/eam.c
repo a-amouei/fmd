@@ -391,9 +391,9 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
     return eam;
 }
 
-fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t FilePath)
+fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
 {
-    eam_t *eam = load_DYNAMOsetfl(md, FilePath);
+    eam_t *eam = load_DYNAMOsetfl(md, path);
 
     fmd_pot_t *pot = (fmd_pot_t *)m_alloc(sizeof(fmd_pot_t));
     pot->cat = POT_EAM_ALLOY;

@@ -273,7 +273,7 @@ static void identifyProcess(fmd_t *md)
         md->Is_MD_process = false;
 }
 
-void fmd_io_loadState(fmd_t *md, fmd_string_t file, bool UseTime)
+void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
 {
     FILE *fp;
     char name[3];
@@ -285,7 +285,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t file, bool UseTime)
 
     if (md->Is_MD_comm_root)
     {
-        fp = f_open(file, "r");
+        fp = f_open(path, "r");
 
         assert( fscanf(fp, "%lf", &StateFileTime) == 1 ); /* TO-DO: handle error */
 
