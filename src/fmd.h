@@ -198,7 +198,7 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime);
 fmd_handle_t fmd_field_find(fmd_t *md, fmd_handle_t turi, fmd_field_t cat);
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval);
-void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path);
+void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t filename);
 fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t field,
   fmd_array3_t *array, fmd_utriple_t dims);
 

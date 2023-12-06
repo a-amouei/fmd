@@ -1721,8 +1721,12 @@ fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t fie
     return p;
 }
 
-void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t path)
+void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fmd_string_t filename)
 {
+    char path[MAX_PATH_LENGTH];
+
+    sprintf(path, "%s%s", md->SaveDirectory, filename);
+
     turi_t *t = &md->turies[turi];
     field_t *f = &t->fields[field];
 
