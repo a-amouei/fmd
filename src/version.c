@@ -48,10 +48,9 @@ fmd_string_t fmd_version_getString()
 {
     char str[16];
 
-    sprintf(str, "%d.%d.%d%c", fmd_version_getMajor(),
-                               fmd_version_getMinor(),
-                               fmd_version_getRevision(),
-                               fmd_version_getType());
+    sprintf(str, "%d.%d.%d", fmd_version_getMajor(),
+                             fmd_version_getMinor(),
+                             fmd_version_getRevision());
 
     fmd_string_t out = m_alloc(strlen(str) + 1);
 
