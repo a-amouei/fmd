@@ -648,6 +648,7 @@ fmd_t *fmd_create()
     md->global_grid = NULL;
     md->BoxSizeDetermined = false;
     md->PBCdetermined = false;
+    md->PBC[0] = md->PBC[1] = md->PBC[2] = false;
     md->Is_MD_comm_root = false;
     md->Is_MD_process = false;
     md->EventHandler = NULL;

@@ -61,9 +61,6 @@ int main(int argc, char *argv[])
     double lx, ly, lz;
     fmd_box_setSize(md, lx=250.0, ly=250.0, lz=250.0);
 
-    // no periodic boundary conditions in three dimensions
-    fmd_box_setPBC(md, false, false, false);
-
     // partition the simulation box into subdomains for MPI-based parallel computation
     if (!fmd_box_setSubdomains(md, 1, 2, 1))
     { // sometimes the user launches more processes than the number of subdomains; they're not needed here!
