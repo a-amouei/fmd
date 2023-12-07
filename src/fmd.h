@@ -69,7 +69,7 @@ typedef enum
 
 typedef struct _fmd fmd_t;
 
-typedef struct _fmd_array3d fmd_array3s_t;
+typedef struct _fmd_array3s fmd_array3s_t;
 
 typedef struct _fmd_pot fmd_pot_t;
 
