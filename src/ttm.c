@@ -369,9 +369,13 @@ void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_ti
 
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value)
 {
+    turi_t *t = &md->turies[turi];
+
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
     assert(value >= 0 && value <= 1); /* TO-DO: handle error */
 
-    ttm_t *ttm = md->turies[turi].ttm;
+    ttm_t *ttm = t->ttm;
 
     ttm->CellActivFrac = value;
 }
