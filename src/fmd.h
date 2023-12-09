@@ -57,16 +57,6 @@ typedef enum
     FMD_FIELD_TTM_XI
 } fmd_field_t;
 
-typedef enum
-{
-    FMD_TTM_TIMESTEP_RATIO_CONSTANT
-} fmd_ttm_timestep_ratio_t;
-
-typedef enum
-{
-    FMD_TTM_TE_CONSTANT
-} fmd_ttm_Te_t;
-
 typedef struct _fmd fmd_t;
 
 typedef struct _fmd_array3s fmd_array3s_t;
@@ -103,27 +93,27 @@ typedef struct
 typedef struct
 {
     fmd_real_t value;
-} fmd_ttm_params_Te_constant_t;
+} fmd_ttm_Te_constant_t;
 
 typedef struct
 {
     fmd_real_t gamma;
-} fmd_ttm_params_heat_capacity_linear_t;
+} fmd_ttm_heat_capacity_linear_t;
 
 typedef struct
 {
     fmd_real_t value;
-} fmd_ttm_params_heat_conductivity_constant_t;
+} fmd_ttm_heat_conductivity_constant_t;
 
 typedef struct
 {
     fmd_real_t value;
-} fmd_ttm_params_coupling_factor_constant_t;
+} fmd_ttm_coupling_factor_constant_t;
 
 typedef struct
 {
     unsigned value;
-} fmd_ttm_params_timestep_ratio_constant_t;
+} fmd_ttm_timestep_ratio_constant_t;
 
 typedef struct
 {
@@ -132,7 +122,7 @@ typedef struct
     fmd_real_t t0;
     fmd_real_t duration;
     fmd_real_t AbsorptionDepth;
-} fmd_ttm_params_laser_simple_t;
+} fmd_ttm_laser_simple_t;
 
 /* functions */
 
@@ -202,13 +192,31 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
 fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t field,
   fmd_array3_t *array, fmd_utriple_t dims);
 
-void fmd_ttm_setHeatCapacity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
-void fmd_ttm_setHeatConductivity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
-void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
-void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params);
-void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params);
+void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_capacity_linear_t c);
+void _fmd_ttm_setHeatConductivity_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k);
+void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g);
+void _fmd_ttm_setElectronTemperature_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_constant_t Te);
+void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_constant_t ratio);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
-void fmd_ttm_setLaserSource(fmd_t *md, fmd_handle_t turi, fmd_params_t *params);
+void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_simple_t laser);
+
+#define fmd_ttm_setHeatCapacity(md, turi, c) \
+  _Generic((c), fmd_ttm_heat_capacity_linear_t: _fmd_ttm_setHeatCapacity_linear)(md, turi, c)
+
+#define fmd_ttm_setHeatConductivity(md, turi, k) \
+  _Generic((k), fmd_ttm_heat_conductivity_constant_t: _fmd_ttm_setHeatConductivity_constant)(md, turi, k)
+
+#define fmd_ttm_setCouplingFactor(md, turi, g) \
+  _Generic((g), fmd_ttm_coupling_factor_constant_t: _fmd_ttm_setCouplingFactor_constant)(md, turi, g)
+
+#define fmd_ttm_setElectronTemperature(md, turi, Te) \
+  _Generic((Te), fmd_ttm_Te_constant_t: _fmd_ttm_setElectronTemperature_constant)(md, turi, Te)
+
+#define fmd_ttm_setTimestepRatio(md, turi, ratio) \
+  _Generic((ratio), fmd_ttm_timestep_ratio_constant_t: _fmd_ttm_setTimestepRatio_constant)(md, turi, ratio)
+
+#define fmd_ttm_setLaserSource(md, turi, laser) \
+  _Generic((laser), fmd_ttm_laser_simple_t: _fmd_ttm_setLaserSource_simple)(md, turi, laser)
 
 void fmd_array3s_free(fmd_array3s_t *array);
 

@@ -88,15 +88,12 @@ int main(int argc, char *argv[])
     fmd_t *md;
     double lp = 3.6316;       /* lattice parameter of copper */
 
-    // create an fmd instance
     md = fmd_create();
 
-    // set size of the simulation box (in Angstrom)
     fmd_box_setSize(md, 10 * 10, 25 * lp, 40 * lp);
 
     fmd_box_setPBC(md, true, true, false);
 
-    // partition the simulation box into subdomains for MPI-based parallel computation
     fmd_box_setSubdomains(md, 1, 1, 2);
 
     if (fmd_proc_isRoot(md))
@@ -123,7 +120,6 @@ int main(int argc, char *argv[])
     fmd_io_printf(md, "equilibrating the object...\n");
     fmd_dync_equilibrate(md, FMD_GROUP_ALL, .1, 2e-3, 2e-2, 300.0);
 
-    // assign an event handler to the FMD instance
     fmd_setEventHandler(md, NULL, handleEvents);
 
     timer1 = fmd_timer_makeSimple(md, 0.0, 0.002, -1.0);
@@ -135,35 +131,35 @@ int main(int argc, char *argv[])
 
     // set the parameters and quantities for TTM solver of type 1
     // the values are in SI unit system
-    fmd_ttm_params_heat_capacity_linear_t C;
+    fmd_ttm_heat_capacity_linear_t C;
     C.gamma = 96.6;
-    fmd_ttm_setHeatCapacity(md, turi, (fmd_params_t *)&C);
+    fmd_ttm_setHeatCapacity(md, turi, C);
 
-    fmd_ttm_params_heat_conductivity_constant_t K;
+    fmd_ttm_heat_conductivity_constant_t K;
     K.value = 400;
-    fmd_ttm_setHeatConductivity(md, turi, (fmd_params_t *)&K);
+    fmd_ttm_setHeatConductivity(md, turi, K);
 
-    fmd_ttm_params_coupling_factor_constant_t G;
+    fmd_ttm_coupling_factor_constant_t G;
     G.value = 1e17;
-    fmd_ttm_setCouplingFactor(md, turi, (fmd_params_t *)&G);
+    fmd_ttm_setCouplingFactor(md, turi, G);
 
-    fmd_ttm_params_Te_constant_t Te;
+    fmd_ttm_Te_constant_t Te;
     Te.value = 300;
-    fmd_ttm_setElectronTemperature(md, turi, FMD_TTM_TE_CONSTANT, (fmd_params_t *)&Te);
+    fmd_ttm_setElectronTemperature(md, turi, Te);
 
-    fmd_ttm_params_timestep_ratio_constant_t trc;
+    fmd_ttm_timestep_ratio_constant_t trc;
     trc.value = 200;
-    fmd_ttm_setTimestepRatio(md, turi, FMD_TTM_TIMESTEP_RATIO_CONSTANT, (fmd_params_t *)&trc);
+    fmd_ttm_setTimestepRatio(md, turi, trc);
 
     fmd_ttm_setCellActivationFraction(md, turi, 0.1);
 
-    fmd_ttm_params_laser_simple_t laser;
+    fmd_ttm_laser_simple_t laser;
     laser.fluence = 4e4;
     laser.reflectance = 0.85;
     laser.duration = 100e-15;
     laser.t0 = 1e-12;
     laser.AbsorptionDepth = 14e-9;
-    fmd_ttm_setLaserSource(md, turi, (fmd_params_t *)&laser);
+    fmd_ttm_setLaserSource(md, turi, laser);
 
     fmd_io_printf(md, "start...\n");
 
@@ -176,7 +172,6 @@ int main(int argc, char *argv[])
         fclose(fp_n);
     }
 
-    // release memory taken for the fmd instance (including subdomain and all particles)
     fmd_free(md);
 
     return 0;

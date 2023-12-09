@@ -26,27 +26,26 @@
 #include "turi.h"
 #include "turi-ghost.h"
 #include "types.h"
-//#include "misc.h"
 
 typedef struct
 {
     fmd_real_t gamma;
-} fmd_ttm_params_heat_capacity_linear_t;
+} fmd_ttm_heat_capacity_linear_t;
 
 typedef struct
 {
     fmd_real_t value;
-} fmd_ttm_params_heat_conductivity_constant_t;
+} fmd_ttm_heat_conductivity_constant_t;
 
 typedef struct
 {
     fmd_real_t value;
-} fmd_ttm_params_coupling_factor_constant_t;
+} fmd_ttm_coupling_factor_constant_t;
 
 typedef struct
 {
     unsigned value;
-} fmd_ttm_params_timestep_ratio_constant_t;
+} fmd_ttm_timestep_ratio_constant_t;
 
 typedef struct
 {
@@ -55,22 +54,12 @@ typedef struct
     fmd_real_t t0;
     fmd_real_t duration;
     fmd_real_t AbsorptionDepth;
-} fmd_ttm_params_laser_simple_t;
-
-typedef enum
-{
-    FMD_TTM_TE_CONSTANT
-} fmd_ttm_Te_t;
-
-typedef enum
-{
-    FMD_TTM_TIMESTEP_RATIO_CONSTANT
-} fmd_ttm_timestep_ratio_t;
+} fmd_ttm_laser_simple_t;
 
 typedef struct
 {
     fmd_real_t value;
-} fmd_ttm_params_Te_constant_t;
+} fmd_ttm_Te_constant_t;
 
 void _fmd_ttm_getReady(fmd_t *md)
 {
@@ -319,58 +308,40 @@ void _fmd_ttm_destruct(ttm_t **ttm)
     *ttm = NULL;
 }
 
-void fmd_ttm_setHeatCapacity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params)
+void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_capacity_linear_t c)
 {
     turi_t *t = &md->turies[turi];
 
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
     ttm_t *ttm = t->ttm;
 
-    switch (t->cat)
-    {
-        case FMD_TURI_TTM_TYPE1:
-            ttm->C_gamma = ((fmd_ttm_params_heat_capacity_linear_t *)params)->gamma * JOULE_PER_METER3_KELVIN2;
-            break;
-
-        default:
-            assert(0); /* TO-DO: handle error */
-    }
+    ttm->C_gamma = c.gamma * JOULE_PER_METER3_KELVIN2;
 }
 
-void fmd_ttm_setHeatConductivity(fmd_t *md, fmd_handle_t turi, fmd_params_t *params)
+void _fmd_ttm_setHeatConductivity_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k)
 {
     turi_t *t = &md->turies[turi];
 
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
     ttm_t *ttm = t->ttm;
 
-    switch (t->cat)
-    {
-        case FMD_TURI_TTM_TYPE1:
-            ttm->K = ((fmd_ttm_params_heat_conductivity_constant_t *)params)->value * WATT_PER_METER_KELVIN;
-            break;
-
-        default:
-            assert(0); /* TO-DO: handle error */
-    }
+    ttm->K = k.value * WATT_PER_METER_KELVIN;
 }
 
-void fmd_ttm_setCouplingFactor(fmd_t *md, fmd_handle_t turi, fmd_params_t *params)
+void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g)
 {
     turi_t *t = &md->turies[turi];
 
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
     ttm_t *ttm = t->ttm;
 
-    switch (t->cat)
-    {
-        case FMD_TURI_TTM_TYPE1:
-            ttm->G = ((fmd_ttm_params_coupling_factor_constant_t *)params)->value * WATT_PER_METER3_KELVIN;
-            break;
-
-        default:
-            assert(0); /* TO-DO: handle error */
-    }
+    ttm->G = g.value * WATT_PER_METER3_KELVIN;
 }
 
-void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t cat, fmd_params_t *params)
+void _fmd_ttm_setElectronTemperature_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_constant_t Te)
 {
     turi_t *t = &md->turies[turi];
 
@@ -380,21 +351,11 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_t c
 
     fmd_ituple_t itc;
 
-    switch (cat)
-    {
-        case FMD_TTM_TE_CONSTANT:
-            LOOP3D(itc, t->itc_start, t->itc_stop)
-                ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) =
-                  ((fmd_ttm_params_Te_constant_t *)params)->value;
-
-            break;
-
-        default:
-            assert(0); /* TO-DO: handle error */
-    }
+    LOOP3D(itc, t->itc_start, t->itc_stop)
+        ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = Te.value;
 }
 
-void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_t cat, fmd_params_t *params)
+void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_constant_t ratio)
 {
     turi_t *t = &md->turies[turi];
 
@@ -402,16 +363,8 @@ void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_rat
 
     ttm_t *ttm = t->ttm;
 
-    switch (cat)
-    {
-        case FMD_TTM_TIMESTEP_RATIO_CONSTANT:
-            ttm->timestep_ratio = ((fmd_ttm_params_timestep_ratio_constant_t *)params)->value;
-            ttm->timestep = md->timestep / ttm->timestep_ratio;
-            break;
-
-        default:
-            assert(0); /* TO-DO: handle error */
-    }
+    ttm->timestep_ratio = ratio.value;
+    ttm->timestep = md->timestep / ttm->timestep_ratio;
 }
 
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value)
@@ -423,32 +376,22 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t 
     ttm->CellActivFrac = value;
 }
 
-void fmd_ttm_setLaserSource(fmd_t *md, fmd_handle_t turi, fmd_params_t *params)
+void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_simple_t laser)
 {
     turi_t *t = &md->turies[turi];
 
+    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+
     ttm_t *ttm = t->ttm;
 
-    switch (t->cat)
-    {
-        case FMD_TURI_TTM_TYPE1: ;
-            fmd_real_t Lp = ((fmd_ttm_params_laser_simple_t *)params)->AbsorptionDepth * METER;
+    fmd_real_t Lp = laser.AbsorptionDepth * METER;
+    fmd_real_t R = laser.reflectance;
+    fmd_real_t I0 = sqrt(4*log(2)/M_PI) * laser.fluence / laser.duration * WATT_PER_METER2;
+    fmd_real_t sigma = laser.duration / sqrt(8*log(2)) * SECOND;
 
-            fmd_real_t R = ((fmd_ttm_params_laser_simple_t *)params)->reflectance;
-
-            fmd_real_t I0 = sqrt(4*log(2)/M_PI) * ((fmd_ttm_params_laser_simple_t *)params)->fluence /
-                            ((fmd_ttm_params_laser_simple_t *)params)->duration * WATT_PER_METER2;
-
-            fmd_real_t sigma = ((fmd_ttm_params_laser_simple_t *)params)->duration / sqrt(8*log(2)) * SECOND;
-
-            ttm->laser_t0 = ((fmd_ttm_params_laser_simple_t *)params)->t0 * SECOND;
-            ttm->laser_tdiff = 4*sqrt(2) * sigma;
-            ttm->laser_m_2sig2_inv = -0.5 / sqrr(sigma);
-            ttm->laser_m_absdepth_inv = -1. / Lp;
-            ttm->laser_factor_constant = I0 * (1 - R) / Lp;
-            break;
-
-        default:
-            assert(0); /* TO-DO: handle error */
-    }
+    ttm->laser_t0 = laser.t0 * SECOND;
+    ttm->laser_tdiff = 4*sqrt(2) * sigma;
+    ttm->laser_m_2sig2_inv = -0.5 / sqrr(sigma);
+    ttm->laser_m_absdepth_inv = -1. / Lp;
+    ttm->laser_factor_constant = I0 * (1 - R) / Lp;
 }
