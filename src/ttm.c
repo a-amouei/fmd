@@ -56,11 +56,6 @@ typedef struct
     fmd_real_t AbsorptionDepth;
 } fmd_ttm_laser_simple_t;
 
-typedef struct
-{
-    fmd_real_t value;
-} fmd_ttm_Te_constant_t;
-
 void _fmd_ttm_getReady(fmd_t *md)
 {
     turi_t *t = md->active_ttm_turi;
@@ -341,7 +336,7 @@ void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_c
     ttm->G = g.value * WATT_PER_METER3_KELVIN;
 }
 
-void _fmd_ttm_setElectronTemperature_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_constant_t Te)
+void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
 {
     turi_t *t = &md->turies[turi];
 
@@ -352,7 +347,7 @@ void _fmd_ttm_setElectronTemperature_constant(fmd_t *md, fmd_handle_t turi, fmd_
     fmd_ituple_t itc;
 
     LOOP3D(itc, t->itc_start, t->itc_stop)
-        ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = Te.value;
+        ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = Te;
 }
 
 void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_constant_t ratio)

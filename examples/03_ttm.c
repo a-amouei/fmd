@@ -143,9 +143,7 @@ int main(int argc, char *argv[])
     G.value = 1e17;
     fmd_ttm_setCouplingFactor(md, turi, G);
 
-    fmd_ttm_Te_constant_t Te;
-    Te.value = 300;
-    fmd_ttm_setElectronTemperature(md, turi, Te);
+    fmd_ttm_setElectronTemperature(md, turi, 300.0);
 
     fmd_ttm_timestep_ratio_constant_t trc;
     trc.value = 200;

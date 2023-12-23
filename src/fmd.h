@@ -92,11 +92,6 @@ typedef struct
 
 typedef struct
 {
-    fmd_real_t value;
-} fmd_ttm_Te_constant_t;
-
-typedef struct
-{
     fmd_real_t gamma;
 } fmd_ttm_heat_capacity_linear_t;
 
@@ -195,7 +190,7 @@ fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t fie
 void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_capacity_linear_t c);
 void _fmd_ttm_setHeatConductivity_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k);
 void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g);
-void _fmd_ttm_setElectronTemperature_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_Te_constant_t Te);
+void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te);
 void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_constant_t ratio);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
 void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_simple_t laser);
@@ -208,9 +203,6 @@ void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_
 
 #define fmd_ttm_setCouplingFactor(md, turi, g) \
   _Generic((g), fmd_ttm_coupling_factor_constant_t: _fmd_ttm_setCouplingFactor_constant)(md, turi, g)
-
-#define fmd_ttm_setElectronTemperature(md, turi, Te) \
-  _Generic((Te), fmd_ttm_Te_constant_t: _fmd_ttm_setElectronTemperature_constant)(md, turi, Te)
 
 #define fmd_ttm_setTimestepRatio(md, turi, ratio) \
   _Generic((ratio), fmd_ttm_timestep_ratio_constant_t: _fmd_ttm_setTimestepRatio_constant)(md, turi, ratio)
