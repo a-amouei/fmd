@@ -112,7 +112,7 @@ typedef struct
     fmd_real_t t0;
     fmd_real_t duration;
     fmd_real_t AbsorptionDepth;
-} fmd_ttm_laser_simple_t;
+} fmd_ttm_laser_gaussian_t;
 
 /* functions */
 
@@ -188,7 +188,7 @@ void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_c
 void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te);
 void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
-void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_simple_t laser);
+void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_gaussian_t laser);
 
 #define fmd_ttm_setHeatCapacity(md, turi, c) \
   _Generic((c), fmd_ttm_heat_capacity_linear_t: _fmd_ttm_setHeatCapacity_linear)(md, turi, c)
@@ -200,7 +200,7 @@ void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_
   _Generic((g), fmd_ttm_coupling_factor_constant_t: _fmd_ttm_setCouplingFactor_constant)(md, turi, g)
 
 #define fmd_ttm_setLaserSource(md, turi, laser) \
-  _Generic((laser), fmd_ttm_laser_simple_t: _fmd_ttm_setLaserSource_simple)(md, turi, laser)
+  _Generic((laser), fmd_ttm_laser_gaussian_t: _fmd_ttm_setLaserSource_gaussian)(md, turi, laser)
 
 void fmd_array3s_free(fmd_array3s_t *array);
 

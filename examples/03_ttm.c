@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 
     fmd_ttm_setCellActivationFraction(md, turi, 0.1);
 
-    fmd_ttm_laser_simple_t laser;
+    fmd_ttm_laser_gaussian_t laser;
     laser.fluence = 4e4;
     laser.reflectance = 0.85;
     laser.duration = 100e-15;

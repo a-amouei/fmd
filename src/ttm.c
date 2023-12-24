@@ -49,7 +49,7 @@ typedef struct
     fmd_real_t t0;
     fmd_real_t duration;
     fmd_real_t AbsorptionDepth;
-} fmd_ttm_laser_simple_t;
+} fmd_ttm_laser_gaussian_t;
 
 void _fmd_ttm_getReady(fmd_t *md)
 {
@@ -370,7 +370,7 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t 
     ttm->CellActivFrac = value;
 }
 
-void _fmd_ttm_setLaserSource_simple(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_simple_t laser)
+void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_gaussian_t laser)
 {
     turi_t *t = &md->turies[turi];
 
