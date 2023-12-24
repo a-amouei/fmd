@@ -54,7 +54,6 @@ typedef struct _ttm
     fmd_real_t *Te2_1d;
     fmd_real_t *xi_1d;
     unsigned timestep_ratio;    /* the ratio of MD timestep to TTM timestep */
-    fmd_real_t timestep;
     fmd_real_t frontsurf;       /* position of front surface */
     fmd_real_t CellActivFrac;   /* "cell activation fraction" */
     unsigned initial_atoms_num;

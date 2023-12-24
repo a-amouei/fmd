@@ -1,8 +1,9 @@
 *.so
 *.o
-*.x
-*.xyz
-*.stt
-*.vtf
-*.h5
+examples/*.x
+examples/*.xyz
+examples/*.stt
+examples/*.vtf
+examples/*.h5
+examples/*.dat
 

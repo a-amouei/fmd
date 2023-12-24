@@ -145,9 +145,7 @@ int main(int argc, char *argv[])
 
     fmd_ttm_setElectronTemperature(md, turi, 300.0);
 
-    fmd_ttm_timestep_ratio_constant_t trc;
-    trc.value = 200;
-    fmd_ttm_setTimestepRatio(md, turi, trc);
+    fmd_ttm_setTimestepRatio(md, turi, 200);
 
     fmd_ttm_setCellActivationFraction(md, turi, 0.1);
 

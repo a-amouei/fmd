@@ -44,11 +44,6 @@ typedef struct
 
 typedef struct
 {
-    unsigned value;
-} fmd_ttm_timestep_ratio_constant_t;
-
-typedef struct
-{
     fmd_real_t fluence;
     fmd_real_t reflectance;
     fmd_real_t t0;
@@ -151,6 +146,7 @@ static void ttm_presolve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
     bool CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? true : false;
+    fmd_real_t dt = md->timestep / ttm->timestep_ratio;
 
     /* time loop */
     for (int j=0; j < ttm->timestep_ratio; j++)
@@ -159,7 +155,7 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
         if (CalcSource)
             source_spcind = ttm->laser_factor_constant *
-                            exp(ttm->laser_m_2sig2_inv * sqrr(md->time + j * ttm->timestep - ttm->laser_t0));
+                            exp(ttm->laser_m_2sig2_inv * sqrr(md->time + j * dt - ttm->laser_t0));
 
         /* spatial loop */
         for (int i = t->itc_start_owned[2]; i < t->itc_stop[2]; i++)
@@ -180,7 +176,7 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
             int ilo = (ttm->num_1d[im1] < ttm->min_atoms_num) ? i : im1;
             int ihi = (ttm->num_1d[i+1] < ttm->min_atoms_num) ? i : i+1;
 
-            ttm->Te2_1d[i] = ttm->Te_1d[i] + ttm->timestep/(ttm->C_gamma * ttm->Te_1d[i]) * (
+            ttm->Te2_1d[i] = ttm->Te_1d[i] + dt/(ttm->C_gamma * ttm->Te_1d[i]) * (
               ttm->K * (ttm->Te_1d[ihi]-2*ttm->Te_1d[i]+ttm->Te_1d[ilo])/ttm->dz2
               - ttm->G * (ttm->Te_1d[i] - ttm->Ti_1d[i]) + source );
 
@@ -350,7 +346,7 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
         ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = Te;
 }
 
-void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_timestep_ratio_constant_t ratio)
+void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio)
 {
     turi_t *t = &md->turies[turi];
 
@@ -358,8 +354,7 @@ void _fmd_ttm_setTimestepRatio_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_ti
 
     ttm_t *ttm = t->ttm;
 
-    ttm->timestep_ratio = ratio.value;
-    ttm->timestep = md->timestep / ttm->timestep_ratio;
+    ttm->timestep_ratio = ratio;
 }
 
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value)
