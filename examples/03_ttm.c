@@ -135,13 +135,9 @@ int main(int argc, char *argv[])
     C.gamma = 96.6;
     fmd_ttm_setHeatCapacity(md, turi, C);
 
-    fmd_ttm_heat_conductivity_constant_t K;
-    K.value = 400;
-    fmd_ttm_setHeatConductivity(md, turi, K);
+    fmd_ttm_setHeatConductivity(md, turi, 400.);
 
-    fmd_ttm_coupling_factor_constant_t G;
-    G.value = 1e17;
-    fmd_ttm_setCouplingFactor(md, turi, G);
+    fmd_ttm_setCouplingFactor(md, turi, 1e17);
 
     fmd_ttm_setElectronTemperature(md, turi, 300.0);
 

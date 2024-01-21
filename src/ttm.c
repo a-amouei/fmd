@@ -310,7 +310,7 @@ void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_
     ttm->C_gamma = c.gamma * JOULE_PER_METER3_KELVIN2;
 }
 
-void _fmd_ttm_setHeatConductivity_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k)
+void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_handle_t turi, fmd_real_t k)
 {
     turi_t *t = &md->turies[turi];
 
@@ -318,10 +318,15 @@ void _fmd_ttm_setHeatConductivity_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm
 
     ttm_t *ttm = t->ttm;
 
-    ttm->K = k.value * WATT_PER_METER_KELVIN;
+    ttm->K = k * WATT_PER_METER_KELVIN;
 }
 
-void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g)
+void _fmd_ttm_setHeatConductivity_constant2(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k)
+{
+    _fmd_ttm_setHeatConductivity_constant1(md, turi, k.value);
+}
+
+void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_handle_t turi, fmd_real_t g)
 {
     turi_t *t = &md->turies[turi];
 
@@ -329,7 +334,12 @@ void _fmd_ttm_setCouplingFactor_constant(fmd_t *md, fmd_handle_t turi, fmd_ttm_c
 
     ttm_t *ttm = t->ttm;
 
-    ttm->G = g.value * WATT_PER_METER3_KELVIN;
+    ttm->G = g * WATT_PER_METER3_KELVIN;
+}
+
+void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g)
+{
+    _fmd_ttm_setCouplingFactor_constant1(md, turi, g.value);
 }
 
 void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
