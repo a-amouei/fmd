@@ -6,7 +6,7 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc 01_argon.c -lfmd -O3 -o 01_argon.x
+   $ gcc 01_argon.c -lfmd -o 01_argon.x
 
    and can be executed by
 

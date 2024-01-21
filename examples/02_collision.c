@@ -6,7 +6,7 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc 02_collision.c -lfmd -O3 -o 02_collision.x
+   $ gcc 02_collision.c -lfmd -o 02_collision.x
 
    and executed by
 

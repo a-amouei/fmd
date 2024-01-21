@@ -8,7 +8,7 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc 03_ttm.c -lfmd -O3 -o 03_ttm.x
+   $ gcc 03_ttm.c -lfmd -o 03_ttm.x
 
    and can be executed by
 
