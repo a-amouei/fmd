@@ -23,9 +23,16 @@
 #include "config.h"
 #include "types.h"
 
-#define MORSE_PAIR_UPDATE_FORCE_AND_POTENERGY                                               \
+#define MORSE_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2, c2,     \
+                                              i2, PotEn, pottable)                          \
+    do                                                                                      \
     {                                                                                       \
-        COMPUTE_rv_AND_r2;                                                                  \
+        fmd_real_t r2;                                                                      \
+        fmd_rtuple_t rv;                                                                    \
+                                                                                            \
+        fmd_real_t *x2 = &POS(c2, i2, 0);                                                   \
+                                                                                            \
+        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                              \
                                                                                             \
         morse_t *morse = (morse_t *)pottable[atomkind1][atomkind2].data;                    \
                                                                                             \
@@ -38,13 +45,13 @@
             fmd_real_t exp2 = sqrr(exp1);                                                   \
             fmd_real_t factor = 2.0 * morse->alpha * morse->D0 * inv_r * (exp2 - exp1);     \
                                                                                             \
-            for (int d=0; d<3; d++)                                                         \
+            for (int d=0; d<DIM; d++)                                                       \
                 FRC(c1, i1, d) += factor * rv[d];                                           \
                                                                                             \
             /* potential energy, U = D0 * ( exp(-2*alpha*(r-r0)) - 2*exp(-alpha*(r-r0)) ) */\
-            PotEnergy += morse->D0 * (exp2 - 2.0 * exp1);                                   \
+            PotEn += morse->D0 * (exp2 - 2.0 * exp1);                                       \
         }                                                                                   \
-    }
+    } while (0)
 
 typedef struct
 {

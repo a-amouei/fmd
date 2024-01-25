@@ -163,25 +163,25 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
             (jc)[(d)] = (kc)[(d)] + md->nc[(d)];                            \
-            map_done = true;                                            \
+            map_done = true;                                                \
         }                                                                   \
         else                                                                \
-            map_done = false;                                           \
+            map_done = false;                                               \
     }                                                                       \
     else if ((kc)[(d)] >= md->Subdomain.ic_stop[(d)])                       \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
             (jc)[(d)] = (kc)[(d)] - md->nc[(d)];                            \
-            map_done = true;                                            \
+            map_done = true;                                                \
         }                                                                   \
         else                                                                \
-            map_done = false;                                           \
+            map_done = false;                                               \
     }                                                                       \
     else                                                                    \
     {                                                                       \
         (jc)[(d)] = (kc)[(d)];                                              \
-        map_done = true;                                                \
+        map_done = true;                                                    \
     }
 
 #define MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, d)                                 \
@@ -432,66 +432,73 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
         }
 }
 
-#define _COMPUTE_rv_AND_r2(c1, i1, c2, i2, r0)                               \
-    for (d=0; d<3; d++)                                                      \
-    {                                                                        \
-        rv[d] = POS(c1, i1, d) - POS(c2, i2, d);                             \
-        if (md->ns[d] == 1)                                                  \
-        {                                                                    \
-            if (rv[d] > 2*(r0))                                              \
-                rv[d] -= md->l[d];                                           \
-            else if (rv[d] < -2*(r0))                                        \
-                rv[d] += md->l[d];                                           \
-        }                                                                    \
-    }                                                                        \
-    r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);
+#define _COMPUTE_rv_AND_r2(c1, i1, c2, i2, r0, r2, rv)                      \
+    do                                                                      \
+    {                                                                       \
+        r2 = 0.0;                                                           \
+        for (int d=0; d<DIM; d++)                                           \
+        {                                                                   \
+            rv[d] = POS(c1, i1, d) - POS(c2, i2, d);                        \
+            if (md->ns[d] == 1)                                             \
+            {                                                               \
+                if (rv[d] > 2*(r0))                                         \
+                    rv[d] -= md->l[d];                                      \
+                else if (rv[d] < -2*(r0))                                   \
+                    rv[d] += md->l[d];                                      \
+            }                                                               \
+            r2 += sqrr(rv[d]);                                              \
+        }                                                                   \
+    } while (0)
 
 void fmd_dync_computeBondForce(fmd_t *md)
 {
-    int ic0, ic1, ic2;
     fmd_real_t PotEnergy = 0.0;
 
     /* iterate over all cells(lists) */
-    #pragma omp parallel for private(ic0,ic1,ic2) \
-      shared(md) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
-    for (ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
-        for (ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
-            for (ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+
+    #pragma omp parallel for shared(md) default(none) collapse(DIM) reduction(+:PotEnergy) schedule(static,1)
+
+    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+    for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+    for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+    {
+        cell_t *ca = &md->Subdomain.grid[ic0][ic1][ic2];
+
+        /* iterate over all atoms in cell a */
+
+        for (int ia=0; ia < ca->parts_num; ia++)
+        {
+            if (ca->molkind[ia] != 0)
             {
-                cell_t *ca;
-                int ia;
+                int ib = ((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->index;
+                cell_t *cb = ((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->cell;
 
-                /* iterate over all atoms in cell ic */
-                for (ca = &md->Subdomain.grid[ic0][ic1][ic2], ia=0; ia < ca->parts_num; ia++)
+                if (ca->AtomIDlocal[ia] > cb->AtomIDlocal[ib])
                 {
-                    if (ca->molkind[ia] != 0)
+                    fmd_real_t r2;
+                    fmd_rtuple_t rv;
+
+                    bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->bond;
+                    fmd_real_t r0 = bond->r0;
+
+                    _COMPUTE_rv_AND_r2(ca, ia, cb, ib, r0, r2, rv);
+
+                    fmd_real_t k = bond->k;
+                    fmd_real_t r = sqrt(r2);
+                    fmd_rtuple_t vek;
+
+                    for (int d=0; d<DIM; d++)
                     {
-                        int ib = ((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->index;
-                        cell_t *cb = ((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->cell;
-
-                        if (ca->AtomIDlocal[ia] > cb->AtomIDlocal[ib])
-                        {
-                            fmd_real_t r2;
-                            fmd_rtuple_t rv;
-                            int d;
-
-                            bondkind_harmonic_t *bond = (bondkind_harmonic_t *)((mol_atom_neighbor_t *)(ca->neighbors[ia]->data))->bond;
-                            fmd_real_t r0 = bond->r0;
-                            _COMPUTE_rv_AND_r2(ca, ia, cb, ib, r0);
-                            fmd_real_t k = bond->k;
-                            fmd_real_t r = sqrt(r2);
-                            fmd_rtuple_t vek;
-                            for (d=0; d<3; d++)
-                            {
-                                vek[d] = -2*k*(r-r0)*rv[d]/r;
-                                FRC(ca, ia, d) += vek[d];
-                                FRC(cb, ib, d) -= vek[d];
-                            }
-                            PotEnergy += k*(r-r0)*(r-r0);
-                        }
+                        vek[d] = -2*k*(r-r0)*rv[d]/r;
+                        FRC(ca, ia, d) += vek[d];
+                        FRC(cb, ib, d) -= vek[d];
                     }
+
+                    PotEnergy += k*(r-r0)*(r-r0);
                 }
             }
+        }
+    }
 
     md->GroupPotentialEnergy += PotEnergy;
 }

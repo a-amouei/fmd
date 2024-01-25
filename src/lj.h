@@ -23,30 +23,35 @@
 #include "config.h"
 #include "types.h"
 
-#define LJ_PAIR_UPDATE_FORCE_AND_POTENERGY                                          \
+#define LJ_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,    \
+                                           c2, i2, PotEn, pottable)                 \
+    do                                                                              \
     {                                                                               \
-        COMPUTE_rv_AND_r2;                                                          \
+        fmd_real_t r2;                                                              \
+        fmd_rtuple_t rv;                                                            \
+                                                                                    \
+        fmd_real_t *x2 = &POS(c2, i2, 0);                                           \
+                                                                                    \
+        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                      \
                                                                                     \
         LJ_6_12_t *lj = (LJ_6_12_t *)pottable[atomkind1][atomkind2].data;           \
                                                                                     \
         if (r2 < lj->cutoff_sqr)                                                    \
         {                                                                           \
-            fmd_real_t inv_r2, inv_rs2, inv_rs6, inv_rs12;                          \
-                                                                                    \
             /* force, F = -(d/dr)U */                                               \
-            inv_r2 = 1.0/r2;                                                        \
-            inv_rs2 = sqrr(lj->sig) * inv_r2;                                       \
-            inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;                                  \
-            inv_rs12 = sqrr(inv_rs6);                                               \
+            fmd_real_t inv_r2 = 1.0/r2;                                             \
+            fmd_real_t inv_rs2 = sqrr(lj->sig) * inv_r2;                            \
+            fmd_real_t inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;                       \
+            fmd_real_t inv_rs12 = sqrr(inv_rs6);                                    \
             fmd_real_t factor = 48.0 * lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6); \
                                                                                     \
-            for (int d=0; d<3; d++)                                                 \
+            for (int d=0; d<DIM; d++)                                               \
                 FRC(c1, i1, d) += rv[d] * factor;                                   \
                                                                                     \
             /* potential energy, U = 4*eps*( (sig/r)^12 - (sig/r)^6 ) */            \
-            PotEnergy += 4.0 * lj->eps * (inv_rs12 - inv_rs6);                      \
+            PotEn += 4.0 * lj->eps * (inv_rs12 - inv_rs6);                          \
         }                                                                           \
-    }
+    } while (0)
 
 typedef struct
 {

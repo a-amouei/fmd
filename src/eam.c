@@ -28,46 +28,35 @@
 
 void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 {
-    fmd_ituple_t jc, kc;
-    int ir2, ir2_h;
-    fmd_real_t r2;
-    fmd_rtuple_t rv;
-    fmd_real_t *rho_i, *rho_j, *phi;
-    fmd_real_t *rho_iDD, *rho_jDD, *phiDD;
-    fmd_real_t rho_ip, rho_jp;
-    fmd_real_t mag;
-    fmd_real_t phi_deriv;
-    fmd_real_t a, b, h;
-    int ic0, ic1, ic2;
     potpair_t **pottable = md->potsys.pottable;
     fmd_real_t PotEnergy = 0.0;
 
     /* iterate over all cells */
-#pragma omp parallel for private(ic0,ic1,ic2,rho_i,rho_iDD,kc,jc,rv,r2,h,ir2, \
-    ir2_h,phi,phiDD,a,b,phi_deriv,rho_ip,rho_jp,rho_jDD,rho_j,mag) \
-    shared(md,pottable) default(none) collapse(3) reduction(+:PotEnergy) schedule(static,1)
-    for (ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
-    for (ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
-    for (ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+
+    #pragma omp parallel for shared(md,pottable) default(none) collapse(DIM) reduction(+:PotEnergy) schedule(static,1)
+
+    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+    for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+    for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
     {
-        /* iterate over all particles in cell ic */
+        cell_t *c1 = &md->Subdomain.grid[ic0][ic1][ic2];
 
-        cell_t *c1;
-        unsigned i1;
+        /* iterate over all particles in cell c1 */
 
-        for (c1 = &md->Subdomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
+        for (int i1=0; i1 < c1->parts_num; i1++)
         {
-            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
-                continue;
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup) continue;
 
             for (int d=0; d<DIM; d++)
                 FRC(c1, i1, d) = 0.0;
 
-            eam_t *eam;
             unsigned atomkind1 = c1->atomkind[i1];
             fmd_real_t *x1 = &POS(c1, i1, 0);
 
-            /* iterate over neighbor cells of cell ic */
+            /* iterate over neighbor cells of cell c1 */
+
+            fmd_ituple_t jc, kc;
+
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
             {
                 SET_jc_IN_DIRECTION(0);
@@ -78,22 +67,20 @@ void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
                     {
                         SET_jc_IN_DIRECTION(2);
 
-                        /* iterate over all particles in cell jc */
+                        cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
 
-                        cell_t *c2;
-                        unsigned i2;
+                        /* iterate over all particles in cell c2 */
 
-                        for (c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
+                        for (int i2=0; i2 < c2->parts_num; i2++)
                         {
-                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
-                                continue;
+                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
 
                             if ( (c1 != c2) || (i1 != i2) )
                             {
                                 unsigned atomkind2 = c2->atomkind[i2];
-                                fmd_real_t *x2 = &POS(c2, i2, 0);
 
-                                EAM_PAIR_UPDATE_FORCE_AND_POTENERGY;
+                                EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,
+                                                                    c2, i2, PotEnergy, pottable);
                             }
                         }
                     }
@@ -108,41 +95,35 @@ void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
 
 void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 {
-    fmd_ituple_t jc, kc;
-    int ir2, irho, ir2_h, irho_h;
-    fmd_real_t r2;
-    fmd_rtuple_t rv;
-    fmd_real_t *rho, *rhoDD, *F, *F_DD;
-    fmd_real_t a, b, h;
-    int ic0, ic1, ic2;
-    fmd_real_t Femb_sum=0;
+    fmd_real_t Femb_sum = 0.0;
     potpair_t **pottable = md->potsys.pottable;
     atomkind_t *atomkinds = md->potsys.atomkinds;
 
     /* iterate over all cells */
-    #pragma omp parallel for private(ic0,ic1,ic2,kc,jc,rv,r2,h,ir2,ir2_h,a,b,rho, \
-      rhoDD,F,F_DD,irho,irho_h) shared(md,pottable,atomkinds) default(none) collapse(3) reduction(+:Femb_sum) \
+
+    #pragma omp parallel for shared(md,pottable,atomkinds) default(none) collapse(DIM) reduction(+:Femb_sum) \
       schedule(static,1)
-    for (ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
-    for (ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
-    for (ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+
+    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
+    for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
+    for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
     {
-        /* iterate over all particles in cell ic */
+        cell_t *c1 = &md->Subdomain.grid[ic0][ic1][ic2];
 
-        cell_t *c1;
-        unsigned i1;
+        /* iterate over all particles in cell c1 */
 
-        for (c1 = &md->Subdomain.grid[ic0][ic1][ic2], i1=0; i1 < c1->parts_num; i1++)
+        for (int i1=0; i1 < c1->parts_num; i1++)
         {
-            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup)
-                continue;
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup) continue;
 
-            eam_t *eam;
             unsigned atomkind1 = c1->atomkind[i1];
             fmd_real_t *x1 = &POS(c1, i1, 0);
             fmd_real_t rho_host = 0.0;
 
-            /* iterate over neighbor cells of cell ic */
+            fmd_ituple_t jc, kc;
+
+            /* iterate over neighbor cells of cell c1 */
+
             for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
             {
                 SET_jc_IN_DIRECTION(0);
@@ -153,33 +134,31 @@ void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
                     {
                         SET_jc_IN_DIRECTION(2);
 
-                        /* iterate over particles in cell jc */
+                        cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
 
-                        cell_t *c2;
-                        unsigned i2;
+                        /* iterate over particles in cell c2 */
 
-                        for (c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc), i2=0; i2 < c2->parts_num; i2++)
+                        for (int i2=0; i2 < c2->parts_num; i2++)
                         {
-                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup)
-                                continue;
+                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
 
                             if ( (c1 != c2) || (i1 != i2) )
                             {
                                 unsigned atomkind2 = c2->atomkind[i2];
-                                fmd_real_t *x2 = &POS(c2, i2, 0);
 
-                                EAM_PAIR_UPDATE_rho_host;
+                                EAM_PAIR_UPDATE_rho_host(x1, atomkind1, kc, c1, i1, atomkind2,
+                                                         c2, i2, rho_host, pottable);
                             }
                         }
                     }
                 }
             }
 
-            EAM_COMPUTE_FembPrime_AND_UPDATE_Femb_sum;
+            EAM_COMPUTE_FembPrime_AND_UPDATE_Femb_sum(c1, i1, atomkind1, rho_host, atomkinds, Femb_sum);
         }
     }
 
-    *FembSum_p=Femb_sum;
+    *FembSum_p = Femb_sum;
 }
 
 static void EAM_convert_r_to_r2(eam_t *eam, fmd_real_t *source, fmd_real_t *dest)

@@ -22,9 +22,10 @@
 
 #include "config.h"
 
-#define COMPUTE_rv_AND_r2                                                    \
+#define COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2)                                \
     do                                                                       \
     {                                                                        \
+        r2 = 0.0;                                                            \
         for (int d=0; d<DIM; d++)                                            \
         {                                                                    \
             if (md->ns[d] == 1)                                              \
@@ -39,8 +40,8 @@
             }                                                                \
             else                                                             \
                 rv[d] = x1[d] - x2[d];                                       \
+            r2 += sqrr(rv[d]);                                               \
         }                                                                    \
-        r2 = sqrr(rv[0])+sqrr(rv[1])+sqrr(rv[2]);                            \
     } while (0)
 
 typedef struct _fmd fmd_t;
