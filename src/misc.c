@@ -627,7 +627,7 @@ fmd_t *fmd_create()
         md->MPI_initialized_by_me = true;
     }
 
-    omp_set_num_threads(1);
+    md->numthreads = 1;
 
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
@@ -697,6 +697,11 @@ bool fmd_proc_hasSubdomain(fmd_t *md)
 bool fmd_proc_isRoot(fmd_t *md)
 {
     return md->Is_MD_comm_root;
+}
+
+void fmd_proc_setNumThreads(fmd_t *md, int num)
+{
+    md->numthreads = num;
 }
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory)

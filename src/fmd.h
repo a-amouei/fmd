@@ -164,6 +164,7 @@ fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interv
 fmd_real_t fmd_proc_getWallTime(fmd_t *md);
 bool fmd_proc_hasSubdomain(fmd_t *md);
 bool fmd_proc_isRoot(fmd_t *md);
+void fmd_proc_setNumThreads(fmd_t *md, int num);
 
 fmd_t *fmd_create();
 void fmd_free(fmd_t *md);

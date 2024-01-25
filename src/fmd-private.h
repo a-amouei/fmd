@@ -87,6 +87,7 @@ struct _fmd
     bool KineticEnergyUpdated;            /* for active group */
     int world_rank;
     int world_numprocs;
+    int numthreads;
     fmd_real_t DesiredTemperature;        /* to be used only in thermostats */
     fmd_ituple_t PBC;
     fmd_ituple_t ns;                      // number of subdomains = ns[0] x ns[1] x ns[2]
