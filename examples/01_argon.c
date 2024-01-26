@@ -28,9 +28,14 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
             if (timer == timer1)
             {
                 // report some quantities if the event is caused by timer1
-                fmd_io_printf(md, "%f\t%f\t%e\n", fmd_dync_getTime(md),
-                                                  fmd_matt_getTemperature(md),
-                                                  fmd_matt_getTotalEnergy(md));
+
+                fmd_real_t t = fmd_dync_getTime(md);
+
+                if (t == 0.) fmd_io_printf(md, "time (ps)\ttemperature (K)\ttotal energy (eV)\n");
+
+                fmd_io_printf(md, "%f\t%f\t%e\n", t, fmd_matt_getTemperature(md),
+                              fmd_matt_getTotalEnergy(md));
+
             }
             else if (timer == timer2)
             {
@@ -42,7 +47,7 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
     }
 }
 
-int main(int argc, char *argv[])
+int main()
 {
     fmd_t *md;
 
@@ -85,7 +90,7 @@ int main(int argc, char *argv[])
 
     // equilibrate for 1.0 picoseconds with a time step of 2 femtoseconds
     // to reach a temperature of 100 Kelvins
-    fmd_dync_equilibrate(md, 0, 1.001, 2e-3, 2e-2, 100.0);
+    fmd_dync_equilibrate(md, 0, 1.0, 2e-3, 2e-2, 100.0);
 
     // save system's final state in a file
     fmd_io_saveState(md, "state0.stt");

@@ -31,14 +31,15 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
             if (timer == handles->timer1)
             {
                 // report some quantities if the event is caused by timer1
-                fmd_io_printf(md, "%f\t%e\n", fmd_dync_getTime(md),
-                                              fmd_matt_getTotalEnergy(md));
+                fmd_io_printf(md, "time (ps), total energy (eV):\t%f\t%e\n",
+                              fmd_dync_getTime(md), fmd_matt_getTotalEnergy(md));
 
                 fmd_rtriple_t p;
 
                 fmd_matt_getMomentum(md, p);
 
-                fmd_io_printf(md, "%f\t%f\t%f\n", p[0], p[1], p[2]);
+                fmd_io_printf(md, "momentum (kDa.\u00C5/ps):\t\t%f\t%f\t%f\n",
+                              p[0]/1e3, p[1]/1e3, p[2]/1e3);
             }
             else if (timer == handles->timer2)
             {
@@ -50,7 +51,7 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
     }
 }
 
-int main(int argc, char *argv[])
+int main()
 {
     fmd_t *md;
 
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
     double masses[2] = {63.546, 39.948};
     fmd_matt_setAtomKinds(md, 2, names, masses);
 
-    // load the EAM file into memory; can be called only after fmd_box_setSubDomains()
+    // load the EAM file into memory
     fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "../potentials/Cu01.eam.alloy");
 
     // apply the EAM potential for Cu
@@ -123,7 +124,7 @@ int main(int argc, char *argv[])
     fmd_setEventHandler(md, &handles, handleEvents);
 
     // make two simple timers
-    handles.timer1 = fmd_timer_makeSimple(md, 0.0, 0.05, -1.0);
+    handles.timer1 = fmd_timer_makeSimple(md, 0.0, 0.5, -1.0);
     handles.timer2 = fmd_timer_makeSimple(md, 0.0, 0.06, -1.0);
 
     // simulate for 6.5 picoseconds, with timesteps of 2 fs

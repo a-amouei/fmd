@@ -51,8 +51,12 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
             if (timer == timer1)
             {
                 // report some quantities if the event is caused by timer1
-                fmd_io_printf(md, "%f\t%f\n", fmd_dync_getTime(md),
-                                              fmd_matt_getTotalEnergy(md));
+
+                fmd_real_t t = fmd_dync_getTime(md);
+
+                if (t == 0.) fmd_io_printf(md, "time (ps)\ttotal energy (eV)\n");
+
+                fmd_io_printf(md, "%f\t%f\n", t, fmd_matt_getTotalEnergy(md));
             }
 
             break;
@@ -83,14 +87,14 @@ void handleEvents(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params)
     }
 }
 
-int main(int argc, char *argv[])
+int main()
 {
     fmd_t *md;
     double lp = 3.6316;       /* lattice parameter of copper */
 
     md = fmd_create();
 
-    fmd_box_setSize(md, 10 * 10, 25 * lp, 40 * lp);
+    fmd_box_setSize(md, 10 * lp, 10 * lp, 40 * lp);
 
     fmd_box_setPBC(md, true, true, false);
 
@@ -108,7 +112,7 @@ int main(int argc, char *argv[])
     double mass[1] = {63.546};
     fmd_matt_setAtomKinds(md, 1, name, mass);
 
-    // load the EAM file into memory; can be called only after fmd_box_setSubDomains()
+    // load the EAM file into memory; can be called only after fmd_box_setSubdomains()
     fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "../potentials/Cu01.eam.alloy");
 
     // apply the EAM potential
@@ -122,8 +126,9 @@ int main(int argc, char *argv[])
 
     fmd_setEventHandler(md, NULL, handleEvents);
 
-    timer1 = fmd_timer_makeSimple(md, 0.0, 0.002, -1.0);
+    timer1 = fmd_timer_makeSimple(md, 0.0, 0.1, -1.0);
 
+    // add a TTM turi of type 1
     turi = fmd_turi_add(md, FMD_TURI_TTM_TYPE1, 1, 1, 20, 0.0, -1.);
     field_Te = fmd_field_find(md, turi, FMD_FIELD_TTM_TE);
     field_Tl = fmd_field_find(md, turi, FMD_FIELD_TEMPERATURE);
