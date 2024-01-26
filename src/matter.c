@@ -663,7 +663,7 @@ void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out)
     if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
 
     for (int d=0; d<DIM; d++)
-        out[d] = md->GroupMomentum[d];
+        out[d] = md->GroupMomentum[d] * MD_MASS_UNIT;
 }
 
 static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)

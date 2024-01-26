@@ -39,6 +39,7 @@
 #define ERROR_UNSUITABLE_FILE                   4
 
 /* unit conversion factors */
+#define MD_MASS_UNIT                9.6485332907e+03   /* Da */
 #define METER                       1e10               /* Ang */
 #define SECOND                      1e12               /* ps */
 #define JOULE_PER_METER3_KELVIN2    6.2415091259e-12   /* (eV / Ang^3 Kelvin^2)  */
