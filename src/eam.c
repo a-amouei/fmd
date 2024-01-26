@@ -34,7 +34,7 @@ void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
     /* iterate over all cells */
 
     #pragma omp parallel for shared(md,pottable) default(none) collapse(DIM) reduction(+:PotEnergy) \
-      schedule(static,1) num_threads(md->numthreads)
+      schedule(dynamic,1) num_threads(md->numthreads)
 
     for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
     for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
@@ -103,7 +103,7 @@ void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
     /* iterate over all cells */
 
     #pragma omp parallel for shared(md,pottable,atomkinds) default(none) collapse(DIM) reduction(+:Femb_sum) \
-      schedule(static,1) num_threads(md->numthreads)
+      schedule(dynamic,1) num_threads(md->numthreads)
 
     for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
     for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
