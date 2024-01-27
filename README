@@ -10,16 +10,27 @@ from personal computers to computer clusters. It is written in C.
 FMD is a growing project. At the moment, its features and capabilities
 include:
 
-- can be run on personal computers, workstations, clusters and
-supercomputers
-   * uses MPI for distributed-memory message-passing parallelism
-   * uses OpenMP for shared-memory parallelism
-- can save atomic coordinates in XYZ [1], VTF [2] and CSV [3] formats
-- supports EAM, Morse, and Lennard-Jones potentials
-- provides Berendsen thermostat
-- provides microcanonical NVE ensemble
-- can save checkpoints for continuing a simulation
-- ...
+- It can run on personal computers, workstations, clusters and
+  supercomputers;
+   * uses MPI for distributed-memory message-passing parallelism;
+   * uses OpenMP for shared-memory parallelism.
+- It provides tools for performing combined atomistic-continuum
+  simulations, where MD is combined with finite-difference-based
+  solvers of PDEs [1];
+   * An example is simulations which use TTM-MD model (see [2,3], for
+     instance).
+- It utilizes "events" and event-handlers to interact with calling
+  programs;
+   * Events are created when something significant occurs, e.g. when
+     a user-defined "timer" ticks;
+   * FMD calls the event-handler set by the calling program to handle
+     those events.
+- It can save atomic coordinates in XYZ [4], VTF [5] and CSV [6]
+  formats.
+- It supports EAM, Morse, and Lennard-Jones potentials.
+- It provides Berendsen thermostat.
+- It provides microcanonical NVE ensemble.
+- It can save "state files" for continuing simulations.
 
 2) Installation
 ===============
@@ -35,29 +46,24 @@ to "src". Then simply enter the following command:
 
 $ make install
 
-It can aslo be uninstalled by
+It can also be uninstalled by
 
 $ make uninstall
 
-3) The examples
-===============
-
-The example C programs in the "examples" directory show how to use FMD
-in practice. They could be seen as a good starting point for getting
-acquainted with FMD. The program files include the instructions needed
-for compiling and/or running the examples and contain good amount of
-comments to show what the purpose of each line is.
-
-4) Where to get more information
+3) Where to get more information
 ================================
 
-Documentation file(s) will gradually be developed in the "doc" directory.
+There is online documentation for this version at:
+https://fmd.readthedocs.io/en/0.2.0/
 
-We welcome questions and comments! If you would like to ask any question
-related to this project, see the file "AUTHORS" for contact information.
+We welcome questions and comments! If you would like to comment or ask
+any questions related to this project, write to arham.amouei@proton.me
 
-Endnotes:
+Endnotes and References:
 
-[1] https://en.wikipedia.org/wiki/XYZ_file_format
-[2] https://github.com/olenz/vtfplugin/wiki/VTF-format
-[3] https://en.wikipedia.org/wiki/Comma-separated_values
+[1] Partial Differential Equations
+[2] https://doi.org/10.1103/PhysRevB.68.064114
+[3] https://doi.org/10.1016/j.apsusc.2020.147775
+[4] https://en.wikipedia.org/wiki/XYZ_file_format
+[5] https://github.com/olenz/vtfplugin/wiki/VTF-format
+[6] https://en.wikipedia.org/wiki/Comma-separated_values
