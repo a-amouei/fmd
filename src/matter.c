@@ -432,7 +432,7 @@ void _fmd_matt_distribute(fmd_t *md)
 
     if (md->Is_MD_comm_root)
     {
-        for (int i=1; i < md->Subdomain.numprocs; i++)  /* for all processes execpt the root */
+        for (int i=1; i < md->Subdomain.numprocs; i++)  /* for all processes except the root */
         {
             fmd_ituple_t global_icstart, global_icstop;
             int bytecount;

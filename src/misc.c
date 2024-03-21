@@ -58,8 +58,6 @@ void _fmd_createGlobalGrid(fmd_t *md)
     if (md->Is_MD_comm_root)
     {
         md->global_grid = (cell_t ***)_fmd_array_ordinary3d_create(md->nc, sizeof(cell_t));
-        assert(md->global_grid != NULL);
-        /* TO-DO: handle memory error */
 
         _fmd_initialize_grid(md->global_grid, &md->cellinfo, md->nc[0], md->nc[1], md->nc[2]);
     }
