@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <mpi.h>
 #include "config.h"
 #include "types.h"
 
@@ -66,8 +67,6 @@
 
 extern const fmd_itriple_t _fmd_ThreeZeros_int;
 extern const fmd_ftriple_t _fmd_ThreeZeros_float;
-
-FILE *f_open(char *filename, char *modes);
 
 /* dest = A - B */
 static inline void diffrt(fmd_rtuple_t dest, fmd_rtuple_t A, fmd_rtuple_t B)
@@ -125,6 +124,19 @@ static inline void *c_alloc(size_t nmemb, size_t size)
     assert(res != NULL);   /* TO-DO: handle memory error */
 
     return res;
+}
+
+static inline FILE *f_open(char *filename, char *modes)
+{
+    FILE *fp = fopen(filename, modes);
+
+    if (fp == NULL)
+    {
+        fprintf(stderr, "ERROR: Unable to open %s!\n", filename);
+        MPI_Abort(MPI_COMM_WORLD, ERROR_UNABLE_OPEN_FILE);
+    }
+
+    return fp;
 }
 
 #endif /* GENERAL_H */
