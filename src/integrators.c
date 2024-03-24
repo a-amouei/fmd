@@ -287,9 +287,23 @@ static void setActiveGroup(fmd_t *md, int GroupID)
     }
 }
 
+static void create_force_arrays_of_cells(fmd_t *md)
+{
+    md->cellinfo.F_active = true;
+    md->cellinfo.FembPrime_active = md->potsys.eam_applied;
+
+    fmd_ituple_t ic;
+
+    LOOP3D(ic, _fmd_ThreeZeros_int, md->Subdomain.cell_num)
+        _fmd_cell_create_force_arrays(&ARRAY_ELEMENT(md->Subdomain.grid, ic),
+                                      &md->cellinfo);
+}
+
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep)
 {
     if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
+    _fmd_pot_update_and_process_potcats(md);
+    create_force_arrays_of_cells(md);
 
     setActiveGroup(md, GroupID);
 
@@ -304,12 +318,12 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t tau, fmd_real_t temperature)
 {
-    fmd_real_t bak_time;
-
     if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
+    _fmd_pot_update_and_process_potcats(md);
+    create_force_arrays_of_cells(md);
 
     // make backups
-    bak_time = md->time;
+    fmd_real_t bak_time = md->time;
 
     // initialize
     md->time = 0.0;

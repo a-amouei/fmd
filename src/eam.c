@@ -379,7 +379,7 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
     pot->cat = POT_EAM_ALLOY;
     pot->data = eam;
 
-    md->potsys.potlist = fmd_list_prepend(md->potsys.potlist, pot);
+    md->potsys.potlist = _fmd_list_prepend(md->potsys.potlist, pot);
 
     return pot;
 }

@@ -23,6 +23,22 @@
 #include "types.h"
 #include "general.h"
 
+void _fmd_cell_create_force_arrays(cell_t *c, cellinfo_t *cinfo)
+{
+    if (c->F == NULL) c->F = m_alloc(c->capacity * sizeof(fmd_rtuple_t));
+
+    if (cinfo->FembPrime_active)
+    {
+        if (c->FembPrime == NULL)
+            c->FembPrime = m_alloc(c->capacity * sizeof(fmd_real_t));
+    }
+    else
+    {
+        free(c->FembPrime);
+        c->FembPrime = NULL;
+    }
+}
+
 static inline void realloc_arrays(cell_t *c)
 {
     if (c->x != NULL) c->x = re_alloc(c->x, c->capacity * sizeof(fmd_rtuple_t));
@@ -62,8 +78,8 @@ void _fmd_cellinfo_init(cellinfo_t *cinfo)
 {
     cinfo->x_active = true;
     cinfo->v_active = true;
-    cinfo->F_active = true;
-    cinfo->FembPrime_active = true;
+    cinfo->F_active = false;
+    cinfo->FembPrime_active = false;
     cinfo->GroupID_active = true;
     cinfo->AtomID_active = true;
     cinfo->atomkind_active = true;

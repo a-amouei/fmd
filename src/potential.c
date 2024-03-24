@@ -70,7 +70,8 @@ static void potlist_free(fmd_t *md)
         potlist = potlist->next;
     }
 
-    fmd_list_free(md->potsys.potlist);
+    _fmd_list_free(md->potsys.potlist);
+    md->potsys.potlist = NULL;
 }
 
 static void atomkinds_free(fmd_t *md)
@@ -116,7 +117,7 @@ void _fmd_potsys_free(fmd_t *md)
 
     if (md->potsys.potcats != NULL)
     {
-        fmd_list_free(md->potsys.potcats);
+        _fmd_list_free(md->potsys.potcats);
         md->potsys.potcats = NULL;
     }
 }
@@ -177,10 +178,18 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
       md->potsys.pottable[atomkind2][atomkind1].cat = pot->cat;
     md->potsys.pottable[atomkind1][atomkind2].data =
       md->potsys.pottable[atomkind2][atomkind1].data = pot->data;
+
+    if (md->potsys.potcats != NULL)
+    {
+        _fmd_list_free(md->potsys.potcats);
+        md->potsys.potcats = NULL;
+    }
 }
 
-static void pot_hybridpasses_update(fmd_t *md)
+static void process_potcats(fmd_t *md)
 {
+    md->potsys.eam_applied = false;
+
     // fill hybridpasses with zeros ( = flase )
     memset(md->potsys.hybridpasses, 0, sizeof(md->potsys.hybridpasses));
 
@@ -200,6 +209,7 @@ static void pot_hybridpasses_update(fmd_t *md)
             case POT_EAM_ALLOY:
                 md->potsys.hybridpasses[0] = true;
                 md->potsys.hybridpasses[1] = true;
+                md->potsys.eam_applied = true;
                 break;
         }
 
@@ -215,11 +225,12 @@ static int potcat_compare(const void *a, const void *b)
         return 1;
 }
 
-// TO-DO?: first, clean the potcats list
-void _fmd_pot_prepareForForceComp(fmd_t *md)
+void _fmd_pot_update_and_process_potcats(fmd_t *md)
 {
     // TO-DO: error should be handled here
     assert(md->potsys.pottable != NULL);
+
+    if (md->potsys.potcats != NULL) return;  /* return if potcats is already updated */
 
     md->potsys.potcats_num = 0;
 
@@ -232,14 +243,14 @@ void _fmd_pot_prepareForForceComp(fmd_t *md)
             assert(potpair->cat != POT_NONE);
 
             // add the potcat to potcats list, if isn't already included there
-            if (fmd_list_find_custom(md->potsys.potcats, &potpair->cat, potcat_compare) == NULL)
+            if (_fmd_list_find_custom(md->potsys.potcats, &potpair->cat, potcat_compare) == NULL)
             {
                 md->potsys.potcats_num++;
-                md->potsys.potcats = fmd_list_prepend(md->potsys.potcats, &potpair->cat);
+                md->potsys.potcats = _fmd_list_prepend(md->potsys.potcats, &potpair->cat);
             }
         }
 
-    pot_hybridpasses_update(md);
+    process_potcats(md);
 }
 
 fmd_real_t _fmd_pot_get_largest_cutoff(potsys_t *ps)

@@ -67,6 +67,7 @@ typedef struct
     unsigned potcats_num;
     list_t *potlist;                // list of all pots, whether applied or not
     bool hybridpasses[2];
+    bool eam_applied;
     bondkindp_t *bondkinds;         // array of pointers to bondkinds that are defined
     unsigned bondkinds_num;         // size of 'bondkinds' array
     molkind_t *molkinds;
@@ -77,7 +78,7 @@ typedef struct _fmd fmd_t;
 
 void _fmd_potsys_free(fmd_t *md);
 void _fmd_potsys_init(fmd_t *md);
-void _fmd_pot_prepareForForceComp(fmd_t *md);
+void _fmd_pot_update_and_process_potcats(fmd_t *md);
 void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t *pot);
 fmd_real_t _fmd_pot_get_largest_cutoff(potsys_t *ps);
 

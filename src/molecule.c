@@ -77,7 +77,7 @@ void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
     list_t *ln2 = mk->atoms[atom2].neighbors;
 
     // check one of the two 'neighbors' lists to see if it already contains the other atom
-    list_t *item1 = fmd_list_find_custom(ln1, &atom2, compare_LocalID_in_mkln);
+    list_t *item1 = _fmd_list_find_custom(ln1, &atom2, compare_LocalID_in_mkln);
     list_t *item2;  // here in 'item1' & 'item2', '1' & '2' refer to list 1 & list 2
 
     if (item1 != NULL) // there is already a bond between the two atoms
@@ -85,7 +85,7 @@ void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
         // just find item2 as well and update the bond field of the
         // related molkind_atom_neighbor_t structures
 
-        item2 = fmd_list_find_custom(ln2, &atom1, compare_LocalID_in_mkln);
+        item2 = _fmd_list_find_custom(ln2, &atom1, compare_LocalID_in_mkln);
         assert(item2 != NULL);
 
         ((molkind_atom_neighbor_t *)(item1->data))->bond = md->potsys.bondkinds[bondkind];
@@ -102,13 +102,13 @@ void fmd_bond_apply(fmd_t *md, fmd_handle_t bondkind, fmd_handle_t molkind,
         data1 = (molkind_atom_neighbor_t *)m_alloc(sizeof(molkind_atom_neighbor_t));
         data1->atom = &mk->atoms[atom2];
         data1->bond = md->potsys.bondkinds[bondkind];
-        mk->atoms[atom1].neighbors = fmd_list_prepend(ln1, data1);
+        mk->atoms[atom1].neighbors = _fmd_list_prepend(ln1, data1);
 
         // for neighbor list 2
         data2 = (molkind_atom_neighbor_t *)m_alloc(sizeof(molkind_atom_neighbor_t));
         data2->atom = &mk->atoms[atom1];
         data2->bond = md->potsys.bondkinds[bondkind];
-        mk->atoms[atom2].neighbors = fmd_list_prepend(ln2, data2);
+        mk->atoms[atom2].neighbors = _fmd_list_prepend(ln2, data2);
     }
 }
 
@@ -370,7 +370,7 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                 unsigned nblocal = ((molkind_atom_neighbor_t *)mkln->data)->atom->LocalID;
 
                 /* does "neighbors" list of atom i contain an entry for a neighbor atom with local ID nblocal? */
-                list_t *res = fmd_list_find_custom(c->neighbors[i], &nblocal, compare_LocalID_in_ln);
+                list_t *res = _fmd_list_find_custom(c->neighbors[i], &nblocal, compare_LocalID_in_ln);
 
                 if (res == NULL) /* NO */
                 {
@@ -386,7 +386,7 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                     find_neighbor(md, ic, c->MolID[i], nblocal, &cnb, &index);
                     man->cell = cnb;
                     man->index = index;
-                    c->neighbors[i] = fmd_list_prepend(c->neighbors[i], man);
+                    c->neighbors[i] = _fmd_list_prepend(c->neighbors[i], man);
 
                     /* does a neighbor atom with local ID nblocal actually exist in current subdomain? */
                     if (index != -1)  /* neighbor atom was found indeed */
@@ -397,7 +397,7 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                         man->bond = ((molkind_atom_neighbor_t *)mkln->data)->bond;
                         man->index = i;
                         man->cell = c;
-                        cnb->neighbors[index] = fmd_list_prepend(cnb->neighbors[index], man);
+                        cnb->neighbors[index] = _fmd_list_prepend(cnb->neighbors[index], man);
                     }
                 }
                 else /* YES. It contains such entry. */
@@ -419,8 +419,8 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
                         if (index != -1)  /* neighbor atom was found */
                         {
                             /* also update the corresponding entry in the neighbors list of the neighbor atom */
-                            list_t *f = fmd_list_find_custom(cnb->neighbors[index], &c->AtomIDlocal[i],
-                                                             compare_LocalID_in_ln);
+                            list_t *f = _fmd_list_find_custom(cnb->neighbors[index], &c->AtomIDlocal[i],
+                                                              compare_LocalID_in_ln);
                             ((mol_atom_neighbor_t *)f->data)->cell = c;
                             ((mol_atom_neighbor_t *)f->data)->index = i;
                         }

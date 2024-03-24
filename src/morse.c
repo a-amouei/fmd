@@ -138,7 +138,7 @@ fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2
     pot->data = morse;
 
     // add the pot to potlist
-    md->potsys.potlist = fmd_list_prepend(md->potsys.potlist, pot);
+    md->potsys.potlist = _fmd_list_prepend(md->potsys.potlist, pot);
 
     // apply the pot
     fmd_pot_apply(md, atomkind1, atomkind2, pot);

@@ -23,7 +23,7 @@
 #include "list.h"
 #include "general.h"
 
-list_t *fmd_list_prepend(list_t *list, void *data)
+list_t *_fmd_list_prepend(list_t *list, void *data)
 {
     list_t *item = malloc(sizeof(list_t));
 
@@ -45,7 +45,7 @@ list_t *fmd_list_prepend(list_t *list, void *data)
     return item;
 }
 
-unsigned fmd_list_length(list_t *list)
+unsigned _fmd_list_length(list_t *list)
 {
     unsigned length = 0;
 
@@ -59,7 +59,7 @@ unsigned fmd_list_length(list_t *list)
 }
 
 /* returns NULL if not found */
-list_t *fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func)
+list_t *_fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func)
 {
     while (list != NULL)
     {
@@ -72,7 +72,7 @@ list_t *fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func)
 }
 
 // not needed at the moment
-/*list_t *fmd_list_find(list_t *list, const void *data)
+/*list_t *_fmd_list_find(list_t *list, const void *data)
 {
     while (list != NULL)
     {
@@ -84,7 +84,7 @@ list_t *fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func)
     return NULL;
 }*/
 
-void fmd_list_free(list_t *list)
+void _fmd_list_free(list_t *list)
 {
     while (list != NULL)
     {

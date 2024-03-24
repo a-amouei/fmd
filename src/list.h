@@ -33,9 +33,9 @@ struct _list
     list_t *prev;
 };
 
-list_t *fmd_list_prepend(list_t *list, void *data);
-unsigned fmd_list_length(list_t *list);
-list_t *fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func);
-void fmd_list_free(list_t *list);
+list_t *_fmd_list_prepend(list_t *list, void *data);
+unsigned _fmd_list_length(list_t *list);
+list_t *_fmd_list_find_custom(list_t *list, const void *data, comparefunc_t func);
+void _fmd_list_free(list_t *list);
 
 #endif /* LIST_H */
