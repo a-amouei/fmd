@@ -23,19 +23,19 @@
 #include "types.h"
 #include "general.h"
 
-void _fmd_cell_create_force_arrays(cell_t *c, cellinfo_t *cinfo)
+void _fmd_cell_create_force_arrays(cell_t *c, bool FembP_alter)
 {
     if (c->F == NULL) c->F = m_alloc(c->capacity * sizeof(fmd_rtuple_t));
 
-    if (cinfo->FembPrime_active)
+    if (FembP_alter)
     {
         if (c->FembPrime == NULL)
             c->FembPrime = m_alloc(c->capacity * sizeof(fmd_real_t));
-    }
-    else
-    {
-        free(c->FembPrime);
-        c->FembPrime = NULL;
+        else
+        {
+            free(c->FembPrime);
+            c->FembPrime = NULL;
+        }
     }
 }
 

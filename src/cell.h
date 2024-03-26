@@ -74,7 +74,7 @@ void _fmd_cell_init(cellinfo_t *cinfo, cell_t *c);
 void _fmd_cellinfo_init(cellinfo_t *cinfo);
 void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind);
 void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t *cto, unsigned ito);
-void _fmd_cell_create_force_arrays(cell_t *c, cellinfo_t *cinfo);
+void _fmd_cell_create_force_arrays(cell_t *c, bool FembP_alter);
 
 inline unsigned _fmd_cell_new_particle(fmd_t *md, cell_t *c)
 {

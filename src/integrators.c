@@ -289,14 +289,19 @@ static void setActiveGroup(fmd_t *md, int GroupID)
 
 static void create_force_arrays_of_cells(fmd_t *md)
 {
+    bool FembP_alter = md->cellinfo.FembPrime_active != md->potsys.eam_applied;
+
+    if (!md->cellinfo.F_active || FembP_alter)
+    {
+        fmd_ituple_t ic;
+
+        LOOP3D(ic, _fmd_ThreeZeros_int, md->Subdomain.cell_num)
+            _fmd_cell_create_force_arrays(&ARRAY_ELEMENT(md->Subdomain.grid, ic),
+                                          FembP_alter);
+    }
+
     md->cellinfo.F_active = true;
     md->cellinfo.FembPrime_active = md->potsys.eam_applied;
-
-    fmd_ituple_t ic;
-
-    LOOP3D(ic, _fmd_ThreeZeros_int, md->Subdomain.cell_num)
-        _fmd_cell_create_force_arrays(&ARRAY_ELEMENT(md->Subdomain.grid, ic),
-                                      &md->cellinfo);
 }
 
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep)
