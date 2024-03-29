@@ -102,7 +102,7 @@ void _fmd_subd_init(fmd_t *md)
     {
         int r, w;
 
-        if (md->ns[d] == 1) md->Subdomain.ic_start[d] = 0; else md->Subdomain.ic_start[d] = 1;
+        md->Subdomain.ic_start[d] = 1;
 
         md->Subdomain.r[d] = r = md->nc[d] % md->ns[d];
         md->Subdomain.w[d] = w = md->nc[d] / md->ns[d];

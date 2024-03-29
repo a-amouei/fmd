@@ -24,21 +24,10 @@
 #include "types.h"
 #include "array.h"
 
-#define SET_jc_IN_DIRECTION(dd)                                            \
-    {                                                                      \
-        if (md->ns[dd] == 1)                                               \
-        {                                                                  \
-            if ((kc[dd] == -1) || (kc[dd] == md->nc[dd]))                  \
-                if (md->PBC[dd])                                           \
-                    jc[dd] = (kc[dd] + md->nc[dd]) % md->nc[dd];           \
-                else                                                       \
-                    continue;                                              \
-            else                                                           \
-                jc[dd] = kc[dd];                                           \
-        }                                                                  \
-        else                                                               \
-            jc[dd] = kc[dd];                                               \
-    }
+#define LOOP3D_NEIGHBOURS(jc, ic0, ic1, ic2)                           \
+    for ((jc)[0]=(ic0)-1; (jc)[0]<=(ic0)+1; (jc)[0]++)                 \
+        for ((jc)[1]=(ic1)-1; (jc)[1]<=(ic1)+1; (jc)[1]++)             \
+            for ((jc)[2]=(ic2)-1; (jc)[2]<=(ic2)+1; (jc)[2]++)
 
 typedef struct _cell cell_t;
 

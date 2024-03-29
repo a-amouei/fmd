@@ -42,9 +42,7 @@ static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
     #pragma omp parallel for shared(md,pottable,atomkinds) default(none) collapse(DIM) reduction(+:Femb_sum) \
       schedule(dynamic,1) num_threads(md->numthreads)
 
-    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
-    for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
-    for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+    LOOP3D_OMP(ic0, ic1, ic2, md->Subdomain.ic_start, md->Subdomain.ic_stop)
     {
         cell_t *c1 = &md->Subdomain.grid[ic0][ic1][ic2];
 
@@ -63,35 +61,25 @@ static void compute_hybrid_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 
             /* iterate over neighbor cells of cell c1 */
 
-            fmd_ituple_t jc, kc;
+            fmd_ituple_t jc;
 
-            for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
+            LOOP3D_NEIGHBOURS(jc, ic0, ic1, ic2)
             {
-                SET_jc_IN_DIRECTION(0);
-                for (kc[1]=ic1-1; kc[1]<=ic1+1; kc[1]++)
+                cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
+
+                // iterate over all items in cell c2
+
+                for (int i2=0; i2 < c2->parts_num; i2++)
                 {
-                    SET_jc_IN_DIRECTION(1);
-                    for (kc[2]=ic2-1; kc[2]<=ic2+1; kc[2]++)
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                    if ( (c1 != c2) || (i1 != i2) )
                     {
-                        SET_jc_IN_DIRECTION(2);
+                        unsigned atomkind2 = c2->atomkind[i2];
 
-                        cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
-
-                        // iterate over all items in cell c2
-
-                        for (int i2=0; i2 < c2->parts_num; i2++)
-                        {
-                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
-
-                            if ( (c1 != c2) || (i1 != i2) )
-                            {
-                                unsigned atomkind2 = c2->atomkind[i2];
-
-                                if (pottable[atomkind1][atomkind2].cat == POT_EAM_ALLOY)
-                                    EAM_PAIR_UPDATE_rho_host(x1, atomkind1, kc, c1, i1, atomkind2,
-                                                             c2, i2, rho_host, pottable);
-                            }
-                        }
+                        if (pottable[atomkind1][atomkind2].cat == POT_EAM_ALLOY)
+                            EAM_PAIR_UPDATE_rho_host(x1, atomkind1, c1, i1, atomkind2,
+                                                     c2, i2, rho_host, pottable);
                     }
                 }
             }
@@ -113,9 +101,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
     #pragma omp parallel for shared(md,pottable) default(none) collapse(DIM) reduction(+:PotEnergy) \
       schedule(dynamic,1) num_threads(md->numthreads)
 
-    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
-    for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
-    for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+    LOOP3D_OMP(ic0, ic1, ic2, md->Subdomain.ic_start, md->Subdomain.ic_stop)
     {
         cell_t *c1 = &md->Subdomain.grid[ic0][ic1][ic2];
 
@@ -133,48 +119,38 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
 
             /* iterate over neighbor cells of cell c1 */
 
-            fmd_ituple_t jc, kc;
+            fmd_ituple_t jc;
 
-            for (kc[0]=ic0-1; kc[0]<=ic0+1; kc[0]++)
+            LOOP3D_NEIGHBOURS(jc, ic0, ic1, ic2)
             {
-                SET_jc_IN_DIRECTION(0);
-                for (kc[1]=ic1-1; kc[1]<=ic1+1; kc[1]++)
+                cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
+
+                /* iterate over all particles in cell c2 */
+
+                for (int i2=0; i2 < c2->parts_num; i2++)
                 {
-                    SET_jc_IN_DIRECTION(1);
-                    for (kc[2]=ic2-1; kc[2]<=ic2+1; kc[2]++)
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                    if ( (c1 != c2) || (i1 != i2) )
                     {
-                        SET_jc_IN_DIRECTION(2);
+                        unsigned atomkind2 = c2->atomkind[i2];
 
-                        cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
-
-                        /* iterate over all particles in cell c2 */
-
-                        for (int i2=0; i2 < c2->parts_num; i2++)
+                        switch (pottable[atomkind1][atomkind2].cat)
                         {
-                            if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+                            case POT_EAM_ALLOY:
+                                EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,
+                                                                    c2, i2, PotEnergy, pottable);
+                                break;
 
-                            if ( (c1 != c2) || (i1 != i2) )
-                            {
-                                unsigned atomkind2 = c2->atomkind[i2];
+                            case POT_LJ_6_12:
+                                LJ_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,
+                                                                   c2, i2, PotEnergy, pottable);
+                                break;
 
-                                switch (pottable[atomkind1][atomkind2].cat)
-                                {
-                                    case POT_EAM_ALLOY:
-                                        EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,
-                                                                            c2, i2, PotEnergy, pottable);
-                                        break;
-
-                                    case POT_LJ_6_12:
-                                        LJ_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,
-                                                                           c2, i2, PotEnergy, pottable);
-                                        break;
-
-                                    case POT_MORSE:
-                                        MORSE_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,
-                                                                              c2, i2, PotEnergy, pottable);
-                                        break;
-                                }
-                            }
+                            case POT_MORSE:
+                                MORSE_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,
+                                                                      c2, i2, PotEnergy, pottable);
+                                break;
                         }
                     }
                 }

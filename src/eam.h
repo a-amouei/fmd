@@ -61,7 +61,7 @@
 #endif
 
 #ifdef USE_CSPLINE
-#define EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,          \
+#define EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,              \
                                             c2, i2, PotEn, pottable)                       \
     do                                                                                     \
     {                                                                                      \
@@ -70,7 +70,7 @@
                                                                                            \
         fmd_real_t *x2 = &POS(c2, i2, 0);                                                  \
                                                                                            \
-        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                             \
+        COMPUTE_rv_AND_r2(x1, x2, rv, r2);                                                 \
                                                                                            \
         eam_t *eam = (eam_t *)pottable[atomkind1][atomkind2].data;                         \
                                                                                            \
@@ -112,7 +112,7 @@
         }                                                                                  \
     } while (0)
 #else
-#define EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,          \
+#define EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,              \
                                             c2, i2, PotEn, pottable)                       \
     do                                                                                     \
     {                                                                                      \
@@ -121,7 +121,7 @@
                                                                                            \
         fmd_real_t *x2 = &POS(c2, i2, 0);                                                  \
                                                                                            \
-        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                             \
+        COMPUTE_rv_AND_r2(x1, x2, rv, r2);                                                 \
                                                                                            \
         eam_t *eam = (eam_t *)pottable[atomkind1][atomkind2].data;                         \
                                                                                            \
@@ -148,7 +148,7 @@
 #endif
 
 #ifdef USE_CSPLINE
-#define EAM_PAIR_UPDATE_rho_host(x1, atomkind1, kc, c1, i1, atomkind2, c2, i2, rho_host,   \
+#define EAM_PAIR_UPDATE_rho_host(x1, atomkind1, c1, i1, atomkind2, c2, i2, rho_host,       \
                                  pottable)                                                 \
     do                                                                                     \
     {                                                                                      \
@@ -157,7 +157,7 @@
                                                                                            \
         fmd_real_t *x2 = &POS(c2, i2, 0);                                                  \
                                                                                            \
-        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                             \
+        COMPUTE_rv_AND_r2(x1, x2, rv, r2);                                                 \
                                                                                            \
         eam_t *eam = (eam_t *)pottable[atomkind1][atomkind2].data;                         \
                                                                                            \
@@ -176,7 +176,7 @@
         }                                                                                  \
     } while (0)
 #else
-#define EAM_PAIR_UPDATE_rho_host(x1, atomkind1, kc, c1, i1, atomkind2, c2, i2, rho_host,   \
+#define EAM_PAIR_UPDATE_rho_host(x1, atomkind1, c1, i1, atomkind2, c2, i2, rho_host,       \
                                  pottable)                                                 \
     do                                                                                     \
     {                                                                                      \
@@ -185,7 +185,7 @@
                                                                                            \
         fmd_real_t *x2 = &POS(c2, i2, 0);                                                  \
                                                                                            \
-        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                             \
+        COMPUTE_rv_AND_r2(x1, x2, rv, r2);                                                 \
                                                                                            \
         eam_t *eam = (eam_t *)pottable[atomkind1][atomkind2].data;                         \
                                                                                            \

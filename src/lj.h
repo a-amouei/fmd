@@ -23,7 +23,7 @@
 #include "config.h"
 #include "types.h"
 
-#define LJ_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, kc, c1, i1, atomkind2,    \
+#define LJ_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,        \
                                            c2, i2, PotEn, pottable)                 \
     do                                                                              \
     {                                                                               \
@@ -32,7 +32,7 @@
                                                                                     \
         fmd_real_t *x2 = &POS(c2, i2, 0);                                           \
                                                                                     \
-        COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2);                                      \
+        COMPUTE_rv_AND_r2(x1, x2, rv, r2);                                          \
                                                                                     \
         LJ_6_12_t *lj = (LJ_6_12_t *)pottable[atomkind1][atomkind2].data;           \
                                                                                     \

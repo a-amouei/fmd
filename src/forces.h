@@ -22,24 +22,13 @@
 
 #include "config.h"
 
-#define COMPUTE_rv_AND_r2(x1, x2, kc, rv, r2)                                \
+#define COMPUTE_rv_AND_r2(x1, x2, rv, r2)                                    \
     do                                                                       \
     {                                                                        \
         r2 = 0.0;                                                            \
         for (int d=0; d<DIM; d++)                                            \
         {                                                                    \
-            if (md->ns[d] == 1)                                              \
-            {                                                                \
-                if (kc[d]==-1)                                               \
-                    rv[d] = x1[d] - x2[d] + md->l[d];                        \
-                else                                                         \
-                    if (kc[d] == md->nc[d])                                  \
-                        rv[d] = x1[d] - x2[d] - md->l[d];                    \
-                    else                                                     \
-                        rv[d] = x1[d] - x2[d];                               \
-            }                                                                \
-            else                                                             \
-                rv[d] = x1[d] - x2[d];                                       \
+            rv[d] = x1[d] - x2[d];                                           \
             r2 += sqrr(rv[d]);                                               \
         }                                                                    \
     } while (0)

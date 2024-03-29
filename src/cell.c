@@ -96,6 +96,13 @@ void _fmd_cell_resize(fmd_t *md, cell_t *c)
     realloc_arrays(c);
 }
 
+void _fmd_cell_resize_exact(cell_t *c)
+{
+    c->capacity = c->parts_num;
+
+    realloc_arrays(c);
+}
+
 void _fmd_cell_minimize(fmd_t *md, cell_t *c)
 {
     c->parts_num = 0;

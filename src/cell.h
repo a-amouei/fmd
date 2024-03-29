@@ -68,6 +68,7 @@ typedef struct _cellinfo cellinfo_t;
 typedef struct _fmd fmd_t;
 
 void _fmd_cell_resize(fmd_t *md, cell_t *c);
+void _fmd_cell_resize_exact(cell_t *c);
 void _fmd_cell_minimize(fmd_t *md, cell_t *c);
 void _fmd_cell_free(cell_t *c);
 void _fmd_cell_init(cellinfo_t *cinfo, cell_t *c);

@@ -27,21 +27,6 @@
 #include "general.h"
 #include "ttm.h"
 
-#define WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, x)                  \
-    if ( ((md)->ns[(d)] == 1) && (((x) < 0.0) || ((x) >= (md)->l[(d)])) )      \
-    {                                                                          \
-        if (!(md)->PBC[(d)])                                                   \
-        {                                                                      \
-            _fmd_cell_remove_atom((md), (c), (i));                             \
-            (md)->Subdomain.NumberOfParticles--;                               \
-            (i)--;                                                             \
-            break;                                                             \
-        }                                                                      \
-        else                                                                   \
-            (x) += ((x) < 0.0 ? (md)->l[(d)] : -(md)->l[(d)]);                 \
-    }                                                                          \
-    do {} while (0)
-
 fmd_real_t fmd_dync_getTimestep(fmd_t *md)
 {
     return md->timestep;
@@ -81,8 +66,6 @@ static void VelocityVerlet_startStep(fmd_t *md, bool UseThermostat)
 
                 VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
                 POS(c, i, d) += md->timestep * VEL(c, i, d);
-
-                WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, POS(c, i, d));
             }
         }
 
@@ -146,10 +129,29 @@ static void VelocityVerlet_finishStep(fmd_t *md)
 static void SymplecticEuler_takeOneStep(fmd_t *md)
 {
     fmd_ituple_t ic;
-    int d;
-    fmd_real_t mass;
     cell_t *c;
     unsigned i;
+
+    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
+                continue;
+
+            fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+
+            for (int d=0; d<DIM; d++)
+            {
+                VEL(c, i, d) += md->timestep * FRC(c, i, d) / mass;
+                POS(c, i, d) += md->timestep * VEL(c, i, d);
+            }
+        }
+
+    /* check if the particles must be placed in other cells or subdomains */
+    _fmd_refreshGrid(md);
+
+    /* update GroupMomentum & GroupParticlesNum & GroupKineticEnergy & GroupTemperature */
+
     int ParticlesNum = 0;
     fmd_rtuple_t MomentumSum = {0., 0., 0.};
     fmd_real_t m_vSqd_Sum = 0;
@@ -160,37 +162,21 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
 
-            mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+            ParticlesNum++;
 
-            for (d=0; d<DIM; d++)
+            fmd_real_t mass = md->potsys.atomkinds[c->atomkind[i]].mass;
+            fmd_real_t temp = 0.0;
+
+            for (int d=0; d<DIM; d++)
             {
-                VEL(c, i, d) += md->timestep * FRC(c, i, d) / mass;
-                POS(c, i, d) += md->timestep * VEL(c, i, d);
-
-                WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX(md, c, i, d, POS(c, i, d));
+                temp += sqrr(VEL(c, i, d));
+                MomentumSum[d] += mass * VEL(c, i, d);
             }
 
-            if (d == DIM)  /* if particle is not removed */
-            {
-                ParticlesNum++;
-
-                fmd_real_t temp = 0.0;
-
-                for (d=0; d<DIM; d++)
-                {
-                    temp += sqrr(VEL(c, i, d));
-                    MomentumSum[d] += mass * VEL(c, i, d);
-                }
-
-                m_vSqd_Sum += mass * temp;
-            }
+            m_vSqd_Sum += mass * temp;
         }
 
-    /* update GroupMomentum & GroupParticlesNum & GroupKineticEnergy & GroupTemperature */
     updateGroupProperties(md, MomentumSum, ParticlesNum, m_vSqd_Sum);
-
-    /* check if the particles must be placed in other cells or subdomains */
-    _fmd_refreshGrid(md);
 }
 
 static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
