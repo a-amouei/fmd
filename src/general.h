@@ -34,10 +34,9 @@
 #endif
 
 /* error codes */
-#define ERROR_NCELL_TOO_SMALL                   1
-#define ERROR_UNEXPECTED_PARTICLE_POSITION      2
-#define ERROR_UNABLE_OPEN_FILE                  3
-#define ERROR_UNSUITABLE_FILE                   4
+#define ERROR_UNEXPECTED_PARTICLE_POSITION      1
+#define ERROR_UNABLE_OPEN_FILE                  2
+#define ERROR_UNSUITABLE_FILE                   3
 
 /* unit conversion factors */
 #define MD_MASS_UNIT                9.6485332907e+03   /* Da */

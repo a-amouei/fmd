@@ -45,11 +45,6 @@ void _fmd_createGlobalGrid(fmd_t *md)
     for (int d=0; d<DIM; d++)
     {
         md->nc[d] = (int)(md->l[d] / cutoff);
-        if ((md->nc[d] < 3) && md->PBC[d])
-        {
-            fprintf(stderr, "ERROR: nc[%d] = %d. Under PBC, this must be greater than 2!\n", d, md->nc[d]);
-            MPI_Abort(MPI_COMM_WORLD, ERROR_NCELL_TOO_SMALL);
-        }
         md->cellh[d] = md->l[d] / md->nc[d];
     }
 
