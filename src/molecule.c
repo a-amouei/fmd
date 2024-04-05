@@ -140,7 +140,7 @@ fmd_handle_t fmd_molecule_addKind(fmd_t *md, fmd_string_t name, unsigned AtomsNu
         mk->atoms[j].LocalID = j;
         mk->atoms[j].atomkind = AtomKinds[j];
         mk->atoms[j].neighbors = NULL;
-        for (int d=0; d<3; d++)
+        for (int d=0; d<DIM; d++)
             mk->atoms[j].position[d] = AtomPositions[j][d];
     }
 
@@ -158,7 +158,7 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
 }
 
 #define MAP_kc_TO_jc(kc, jc, d)                                             \
-    if ((kc)[(d)] < md->Subdomain.ic_start[(d)])                            \
+    if ((kc)[(d)] < md->subd.ic_start[(d)])                                 \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
@@ -168,7 +168,7 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
         else                                                                \
             map_done = false;                                               \
     }                                                                       \
-    else if ((kc)[(d)] >= md->Subdomain.ic_stop[(d)])                       \
+    else if ((kc)[(d)] >= md->subd.ic_stop[(d)])                            \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
         {                                                                   \
@@ -185,14 +185,14 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
     }
 
 #define MAP_kc_TO_jc_INSIDE_LOOP(kc, jc, d)                                 \
-    if ((kc)[(d)] < md->Subdomain.ic_start[(d)])                            \
+    if ((kc)[(d)] < md->subd.ic_start[(d)])                                 \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
             (jc)[(d)] = (kc)[(d)] + md->nc[(d)];                            \
         else                                                                \
             continue;                                                       \
     }                                                                       \
-    else if ((kc)[(d)] >= md->Subdomain.ic_stop[(d)])                       \
+    else if ((kc)[(d)] >= md->subd.ic_stop[(d)])                            \
     {                                                                       \
         if (md->PBC[(d)] && md->ns[(d)] == 1)                               \
             (jc)[(d)] = (kc)[(d)] - md->nc[(d)];                            \
@@ -205,7 +205,7 @@ inline int find_neighbor_in_cell(cell_t *c, unsigned MolID, unsigned neighborID)
 #define SEARCH_FOR_NEIGHBOR_IN_CELL_AND_SET_OUTPUT_IF_FOUND(xc)             \
     do                                                                      \
     {                                                                       \
-        cell_t *cell = &ARRAY_ELEMENT(md->Subdomain.grid, xc);              \
+        cell_t *cell = ARRAY_ELEMENT(md->subd.gridp, xc);                   \
         ind = find_neighbor_in_cell(cell, MolID, neighborID);               \
                                                                             \
         if (ind > -1) /* if the described neighbor was found */             \
@@ -227,16 +227,16 @@ static void find_neighbor(fmd_t *md, fmd_ituple_t ic, unsigned MolID, unsigned n
 {
     /* calculate maximum distance */
     int max_dist = 0;
-    for (int d=0; d<3; d++)
+    for (int d=0; d<DIM; d++)
     {
         int max_d;
 
         if (md->PBC[d] && md->ns[d] == 1)
-            max_d = md->Subdomain.cell_num_nonmarg[d] / 2;
+            max_d = md->subd.cell_num_nonmarg[d] / 2;
         else
         {
-            max_d = ic[d] - md->Subdomain.ic_start[d];             // left
-            unsigned tempo = md->Subdomain.ic_stop[d] - ic[d] - 1; // right
+            max_d = ic[d] - md->subd.ic_start[d];             // left
+            unsigned tempo = md->subd.ic_stop[d] - ic[d] - 1; // right
             if (tempo > max_d) max_d = tempo;
         }
 
@@ -357,8 +357,8 @@ void _fmd_matt_updateAtomNeighbors(fmd_t *md)
     int i;
 
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    LOOP3D(ic, md->subd.ic_start, md->subd.ic_stop)
+        for (c = ARRAY_ELEMENT(md->subd.gridp, ic), i=0; i < c->parts_num; i++)
         {
             if (c->molkind[i] == 0) continue;
 
@@ -459,11 +459,11 @@ void fmd_dync_computeBondForce(fmd_t *md)
     #pragma omp parallel for shared(md) default(none) collapse(DIM) reduction(+:PotEnergy) \
       schedule(dynamic,1) num_threads(md->numthreads)
 
-    for (int ic0 = md->Subdomain.ic_start[0]; ic0 < md->Subdomain.ic_stop[0]; ic0++)
-    for (int ic1 = md->Subdomain.ic_start[1]; ic1 < md->Subdomain.ic_stop[1]; ic1++)
-    for (int ic2 = md->Subdomain.ic_start[2]; ic2 < md->Subdomain.ic_stop[2]; ic2++)
+    for (int ic0 = md->subd.ic_start[0]; ic0 < md->subd.ic_stop[0]; ic0++)
+    for (int ic1 = md->subd.ic_start[1]; ic1 < md->subd.ic_stop[1]; ic1++)
+    for (int ic2 = md->subd.ic_start[2]; ic2 < md->subd.ic_stop[2]; ic2++)
     {
-        cell_t *ca = &md->Subdomain.grid[ic0][ic1][ic2];
+        cell_t *ca = md->subd.gridp[ic0][ic1][ic2];
 
         /* iterate over all atoms in cell a */
 

@@ -45,7 +45,6 @@ typedef struct _fmd fmd_t;
 /* Functions */
 
 void _fmd_createGlobalGrid(fmd_t *md);
-void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3);
 void _fmd_refreshGrid(fmd_t *md);
 
 #endif /* MISC_H */

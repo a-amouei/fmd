@@ -26,14 +26,14 @@ fmd_real_t _fmd_convert_pos_to_subd_coord_1D(fmd_t *md, fmd_real_t pos, int d)
 {
     fmd_real_t pos2, ref2, width1;
 
-    width1 = (md->Subdomain.w[d] + 1) * md->cellh[d];
-    ref2 = md->Subdomain.r[d] * width1;
+    width1 = (md->subd.w[d] + 1) * md->cellh[d];
+    ref2 = md->subd.r[d] * width1;
     pos2 = pos - ref2;
 
     if (pos2 <= 0.0)
         return pos / width1;
     else
-        return md->Subdomain.r[d] + pos2 / (md->Subdomain.w[d] * md->cellh[d]);
+        return md->subd.r[d] + pos2 / (md->subd.w[d] * md->cellh[d]);
 }
 
 /* This function receives the position of a point in MD simulation box
@@ -47,94 +47,147 @@ void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s)
         s[d] = _fmd_convert_pos_to_subd_coord_1D(md, pos[d], d);
 }
 
-static void clean_grid_cells(cell_t ***grid, fmd_utuple_t ex)
-{
-    fmd_ituple_t ic;
-
-    LOOP3D(ic, _fmd_ThreeZeros_int, ex)
-        _fmd_cell_free(&ARRAY_ELEMENT(grid, ic));
-}
-
 void _fmd_subd_free(fmd_t *md)
 {
-    if (md->Subdomain.grid != NULL)
+    if (md->subd.grid != NULL)
     {
-        clean_grid_cells(md->Subdomain.grid, md->Subdomain.cell_num);
-        _fmd_array_3d_free(&md->Subdomain.grid_array);
-        md->Subdomain.grid = NULL;
+        for (int ic=0; ic < md->subd.ncm; ic++)
+            _fmd_cell_free(md->subd.grid + ic);
+
+        free(md->subd.grid);
+        md->subd.grid = NULL;
+
+        _fmd_array_3d_free(&md->subd.gridp_array);
+    }
+}
+
+static void init_cneighbs(Subdomain_t *s)
+{
+    fmd_ituple_t ic, jc;
+
+    LOOP3D(ic, s->ic_start, s->ic_stop)
+    {
+        cell_t *c = ARRAY_ELEMENT(s->gridp, ic);
+        int i=0;
+
+        for (jc[0] = ic[0]-1; jc[0] <= ic[0]+1; jc[0]++)
+            for (jc[1] = ic[1]-1; jc[1] <= ic[1]+1; jc[1]++)
+                for (jc[2] = ic[2]-1; jc[2] <= ic[2]+1; jc[2]++)
+                    c->cneighbs[i++] = ARRAY_ELEMENT(s->gridp, jc);
+    }
+}
+
+static void init_gridp(Subdomain_t *s)
+{
+    fmd_ituple_t ic;
+    unsigned imarg = s->nc, inonmarg = 0;
+
+    LOOP3D(ic, _fmd_ThreeZeros_int, s->cell_num)
+    {
+        bool margin = false;
+
+        for (int d=0; d<DIM; d++)
+            if (ic[d] < s->ic_start[d] || ic[d] >= s->ic_stop[d])
+            {
+                margin = true;
+                break;
+            }
+
+        if (margin)
+            ARRAY_ELEMENT(s->gridp, ic) = s->grid + imarg++;
+        else
+        {
+            ARRAY_ELEMENT(s->gridp, ic) = s->grid + inonmarg++;
+        }
     }
 }
 
 void _fmd_subd_init(fmd_t *md)
 {
     /* initialize is */
-    INDEX_3D(md->Subdomain.myrank, md->ns, md->Subdomain.is);
+    INDEX_3D(md->subd.myrank, md->ns, md->subd.is);
 
     /* initialize rank_of_lower_subd and rank_of_upper_subd (neighbor processes) */
     fmd_ituple_t istemp;
 
     for (int d=0; d<DIM; d++)
-        istemp[d] = md->Subdomain.is[d];
+        istemp[d] = md->subd.is[d];
 
     for (int d=0; d<DIM; d++)
     {
-        if (!md->PBC[d] && (md->Subdomain.is[d] == 0))
-            md->Subdomain.rank_of_lower_subd[d] = MPI_PROC_NULL;
+        if (!md->PBC[d] && (md->subd.is[d] == 0))
+            md->subd.rank_of_lower_subd[d] = MPI_PROC_NULL;
         else
         {
-            istemp[d] = (md->Subdomain.is[d] - 1 + md->ns[d]) % md->ns[d];
-            md->Subdomain.rank_of_lower_subd[d] = INDEX_FLAT(istemp, md->ns);
+            istemp[d] = (md->subd.is[d] - 1 + md->ns[d]) % md->ns[d];
+            md->subd.rank_of_lower_subd[d] = INDEX_FLAT(istemp, md->ns);
         }
 
-        if (!md->PBC[d] && (md->Subdomain.is[d] == md->ns[d]-1))
-            md->Subdomain.rank_of_upper_subd[d] = MPI_PROC_NULL;
+        if (!md->PBC[d] && (md->subd.is[d] == md->ns[d]-1))
+            md->subd.rank_of_upper_subd[d] = MPI_PROC_NULL;
         else
         {
-            istemp[d] = (md->Subdomain.is[d] + 1) % md->ns[d];
-            md->Subdomain.rank_of_upper_subd[d] = INDEX_FLAT(istemp, md->ns);
+            istemp[d] = (md->subd.is[d] + 1) % md->ns[d];
+            md->subd.rank_of_upper_subd[d] = INDEX_FLAT(istemp, md->ns);
         }
 
-        istemp[d] = md->Subdomain.is[d];
+        istemp[d] = md->subd.is[d];
     }
 
-    /*  */
+    /* initialize other members of Subdomain_t */
     for (int d=0; d<DIM; d++)
     {
         int r, w;
 
-        md->Subdomain.ic_start[d] = 1;
+        md->subd.ic_start[d] = 1;
 
-        md->Subdomain.r[d] = r = md->nc[d] % md->ns[d];
-        md->Subdomain.w[d] = w = md->nc[d] / md->ns[d];
+        md->subd.r[d] = r = md->nc[d] % md->ns[d];
+        md->subd.w[d] = w = md->nc[d] / md->ns[d];
 
-        if (md->Subdomain.is[d] < r)
+        if (md->subd.is[d] < r)
         {
-            md->Subdomain.ic_stop[d] = md->Subdomain.ic_start[d] + w + 1;
-            md->Subdomain.ic_global_firstcell[d] = md->Subdomain.is[d] * (w + 1);
+            md->subd.ic_stop[d] = md->subd.ic_start[d] + w + 1;
+            md->subd.ic_global_firstcell[d] = md->subd.is[d] * (w + 1);
         }
         else
         {
-            md->Subdomain.ic_stop[d] = md->Subdomain.ic_start[d] + w;
-            md->Subdomain.ic_global_firstcell[d] = md->Subdomain.is[d] * w + r;
+            md->subd.ic_stop[d] = md->subd.ic_start[d] + w;
+            md->subd.ic_global_firstcell[d] = md->subd.is[d] * w + r;
         }
 
-        md->Subdomain.cell_num[d] = md->Subdomain.ic_stop[d] + md->Subdomain.ic_start[d];
-        md->Subdomain.cell_num_nonmarg[d] = md->Subdomain.ic_stop[d] - md->Subdomain.ic_start[d];
+        md->subd.cell_num[d] = md->subd.ic_stop[d] + md->subd.ic_start[d];
+        md->subd.cell_num_nonmarg[d] = md->subd.ic_stop[d] - md->subd.ic_start[d];
     }
 
-    _fmd_array_3d_create(md->Subdomain.cell_num, sizeof(cell_t), DATATYPE_CELL, &md->Subdomain.grid_array);
-    md->Subdomain.grid = (cell_t ***)md->Subdomain.grid_array.data;
-    assert(md->Subdomain.grid != NULL);
-    /* TO-DO: handle memory error */
+    md->subd.nc = md->subd.cell_num_nonmarg[0] *
+                  md->subd.cell_num_nonmarg[1] *
+                  md->subd.cell_num_nonmarg[2];
 
-    _fmd_initialize_grid(md->Subdomain.grid, &md->cellinfo, md->Subdomain.cell_num[0],
-                         md->Subdomain.cell_num[1], md->Subdomain.cell_num[2]);
+    md->subd.ncm = md->subd.cell_num[0] *
+                   md->subd.cell_num[1] *
+                   md->subd.cell_num[2];
 
-    md->Subdomain.NumberOfParticles = 0;
+    md->subd.NumberOfParticles = 0;
+
+    /* create grid and gridp and initialize them */
+
+    md->subd.grid = m_alloc(md->subd.ncm * sizeof(cell_t));
+
+    for (int ic=0; ic < md->subd.ncm; ic++)
+        _fmd_cell_init(&md->cellinfo, md->subd.grid + ic);
+
+    _fmd_array_3d_create(md->subd.cell_num, sizeof(cell_t *), DATATYPE_CELLP, &md->subd.gridp_array);
+    md->subd.gridp = (cell_t ****)md->subd.gridp_array.data;
+    assert(md->subd.gridp != NULL); /* TO-DO: handle memory error */
+
+    init_gridp(&md->subd);
+
+    /* initialize cneighbs array of each cell */
+    init_cneighbs(&md->subd);
 }
 
 void _fmd_conv_ic_loc_to_glob(fmd_t *md, fmd_ituple_t ic, fmd_ituple_t icglob)
 {
-    for (int d=0; d<3; d++)
-        icglob[d] = ic[d] - md->Subdomain.ic_start[d] + md->Subdomain.ic_global_firstcell[d];
+    for (int d=0; d<DIM; d++)
+        icglob[d] = ic[d] - md->subd.ic_start[d] + md->subd.ic_global_firstcell[d];
 }

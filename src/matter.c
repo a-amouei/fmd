@@ -31,7 +31,6 @@
    GroupKineticEnergy from "local grid" */
 void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md)
 {
-    fmd_ituple_t ic;
     fmd_real_t m_vSqd_Sum = 0, m_vSqd_SumSum;
     fmd_real_t mass;
     int ParticlesNum = 0;
@@ -39,8 +38,8 @@ void _fmd_compute_GroupTemperature_etc_localgrid(fmd_t *md)
     cell_t *c;
     unsigned i;
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -75,16 +74,20 @@ static void compute_GroupTemperature_etc_globalgrid(fmd_t *md)
 {
     if (md->Is_MD_comm_root)
     {
-        fmd_ituple_t ic;
-        fmd_real_t m_vSqd_Sum = 0.0;
+        md->GroupParticlesNum = 0;
+
+        md->GroupMomentum[0] = 0.;
+        md->GroupMomentum[1] = 0.;
+        md->GroupMomentum[2] = 0.;
+
+        fmd_real_t m_vSqd_Sum = 0.;
         cell_t *c;
         int i;
 
-        md->GroupParticlesNum = 0;
-        md->GroupMomentum[0] = md->GroupMomentum[1] = md->GroupMomentum[2] = 0.0;
+        int nc = md->nc[0] * md->nc[1] * md->nc[2];
 
-        LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-            for (c=&ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+        for (int ic = 0; ic < nc; ic++)
+            for (c = md->ggrid+ic, i = 0; i < c->parts_num; i++)
             {
                 if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                     continue;
@@ -114,33 +117,30 @@ static void compute_GroupTemperature_etc_globalgrid(fmd_t *md)
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
 {
-    cell_t ***grid;
-    const int *start, *stop;
-    fmd_ituple_t ic;
+    cell_t *grid;
+    int nc;
 
     if (md->ParticlesDistributed)
     {
-        grid = md->Subdomain.grid;
-        start = md->Subdomain.ic_start;
-        stop = md->Subdomain.ic_stop;
+        grid = md->subd.grid;
+        nc = md->subd.nc;
     }
     else
     {
-        start = _fmd_ThreeZeros_int;
         if (md->Is_MD_comm_root)
         {
-            grid = md->global_grid;
-            stop = md->nc;
+            grid = md->ggrid;
+            nc = md->nc[0] * md->nc[1] * md->nc[2];
         }
         else
-            stop = start;
+            nc = 0;
     }
 
     int i;
     cell_t *c;
 
-    LOOP3D(ic, start, stop)
-        for (c = &ARRAY_ELEMENT(grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < nc; ic++)
+        for (c = grid + ic, i=0; i < c->parts_num; i++)
             if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
             {
                 VEL(c, i, 0) += vx;
@@ -156,25 +156,23 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
 
 void fmd_matt_findLimits(fmd_t *md, int GroupID, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
 {
-    cell_t ***grid;
-    const int *start, *stop;
+    cell_t *grid;
+    int nc;
 
     if (md->ParticlesDistributed)
     {
-        grid = md->Subdomain.grid;
-        start = md->Subdomain.ic_start;
-        stop = md->Subdomain.ic_stop;
+        grid = md->subd.grid;
+        nc = md->subd.nc;
     }
     else
     {
-        start = _fmd_ThreeZeros_int;
         if (md->Is_MD_comm_root)
         {
-            grid = md->global_grid;
-            stop = md->nc;
+            grid = md->ggrid;
+            nc = md->nc[0] * md->nc[1] * md->nc[2];
         }
         else
-            stop = start;
+            nc = 0;
     }
 
     fmd_rtuple_t L, U;
@@ -187,10 +185,9 @@ void fmd_matt_findLimits(fmd_t *md, int GroupID, fmd_rtuple_t LowerLimit, fmd_rt
 
     int i;
     cell_t *c;
-    fmd_ituple_t ic;
 
-    LOOP3D(ic, start, stop)
-        for (c = &ARRAY_ELEMENT(grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < nc; ic++)
+        for (c = grid + ic, i=0; i < c->parts_num; i++)
             if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
                 for (int d=0; d<DIM; d++)
                 {
@@ -226,7 +223,7 @@ static void find_global_start_stop_ic_of_a_subd(fmd_t *md, int rank,
 
     INDEX_3D(rank, md->ns, is);
 
-    for (int d=0; d<3; d++)
+    for (int d=0; d<DIM; d++)
     {
         r = md->nc[d] % md->ns[d];
         w = md->nc[d] / md->ns[d];
@@ -248,7 +245,6 @@ static void find_global_start_stop_ic_of_a_subd(fmd_t *md, int rank,
 static void *create_packbuffer_for_matt_distribute(fmd_t *md, fmd_ituple_t global_icstart, fmd_ituple_t global_icstop)
 {
     fmd_ituple_t ic;
-    cell_t *c;
     int c_rtuple = 0, c_int = 0, c_unsigned = 0;
     int s, size = 0;
 
@@ -267,7 +263,7 @@ static void *create_packbuffer_for_matt_distribute(fmd_t *md, fmd_ituple_t globa
 
     LOOP3D(ic, global_icstart, global_icstop)
     {
-        c = &ARRAY_ELEMENT(md->global_grid, ic);
+        cell_t *c = md->ggrid + INDEX_FLAT(ic, md->nc);
 
         if (c->parts_num > 0)
         {
@@ -303,11 +299,10 @@ static void pack_for_matt_distribute(fmd_t *md, void *buff, int *bytecount,
     *bytecount = 0;
 
     fmd_ituple_t ic;
-    cell_t *c;
 
     LOOP3D(ic, global_icstart, global_icstop)
     {
-        c = &ARRAY_ELEMENT(md->global_grid, ic);
+        cell_t *c = md->ggrid + INDEX_FLAT(ic, md->nc);
 
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
 
@@ -345,15 +340,15 @@ static void transfer_from_globalgrid_to_rank0_grid(fmd_t *md)
     fmd_ituple_t icl, icg;
     cell_t *cl, *cg;
 
-    LOOP3D(icl, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+    LOOP3D(icl, md->subd.ic_start, md->subd.ic_stop)
     {
         _fmd_conv_ic_loc_to_glob(md, icl, icg);
 
-        cl = &ARRAY_ELEMENT(md->Subdomain.grid, icl);
-        cg = &ARRAY_ELEMENT(md->global_grid, icg);
+        cl = ARRAY_ELEMENT(md->subd.gridp, icl);
+        cg = md->ggrid + INDEX_FLAT(icg, md->nc);
 
         cl->parts_num = cg->parts_num;
-        md->Subdomain.NumberOfParticles += cl->parts_num;
+        md->subd.NumberOfParticles += cl->parts_num;
 
         _fmd_cell_resize(md, cl);
 
@@ -385,19 +380,17 @@ static void transfer_from_globalgrid_to_rank0_grid(fmd_t *md)
 
 static void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
 {
-    fmd_ituple_t ic;
-    cell_t *c;
     int pos = 0;
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+    for (int ic=0; ic < md->subd.nc; ic++)
     {
-        c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
+        cell_t *c = md->subd.grid + ic;
 
         MPI_Unpack(packbuf, bufsize, &pos, &c->parts_num, 1, MPI_UNSIGNED, md->MD_comm);
 
         if (c->parts_num > 0)
         {
-            md->Subdomain.NumberOfParticles += c->parts_num;
+            md->subd.NumberOfParticles += c->parts_num;
 
             _fmd_cell_resize(md, c);
 
@@ -428,14 +421,14 @@ static void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
 
 void _fmd_matt_distribute(fmd_t *md)
 {
-    if (md->Subdomain.grid == NULL) _fmd_subd_init(md);
+    if (md->subd.grid == NULL) _fmd_subd_init(md);
 
     if (md->Is_MD_comm_root)
     {
-        for (int i=1; i < md->Subdomain.numprocs; i++)  /* for all processes except the root */
+        for (int i=1; i < md->subd.numprocs; i++)  /* for all processes except the root */
         {
-            fmd_ituple_t global_icstart, global_icstop;
             int bytecount;
+            fmd_ituple_t global_icstart, global_icstop;
 
             find_global_start_stop_ic_of_a_subd(md, i, global_icstart, global_icstop);
 
@@ -450,7 +443,7 @@ void _fmd_matt_distribute(fmd_t *md)
 
         transfer_from_globalgrid_to_rank0_grid(md); /* for the root process */
 
-        _fmd_array_ordinary3d_free((void ***)md->global_grid, md->nc[0], md->nc[1]);
+        free(md->ggrid);
     }
     else
     {
@@ -475,7 +468,7 @@ void _fmd_matt_distribute(fmd_t *md)
 
     if (md->TotalNoOfMolecules > 0) _fmd_matt_updateAtomNeighbors(md);
 
-    md->GlobalGridExists = false;
+    md->ggrid = NULL;
     md->ParticlesDistributed = true;
 }
 
@@ -483,22 +476,23 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
 {
     int i;
     cell_t *c;
-    fmd_ituple_t ic;
 
     assert(new >= 0);   /* TO-DO: handle error */
 
     if (md->ParticlesDistributed)
     {
-        LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-            for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+        for (int ic=0; ic < md->subd.nc; ic++)
+            for (c = md->subd.grid+ic, i=0; i < c->parts_num; i++)
                 if (old == FMD_GROUP_ALL || c->GroupID[i] == old) c->GroupID[i] = new;
     }
     else
     {
         if (md->Is_MD_comm_root)
         {
-            LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-                for (c = &ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+            int nc = md->nc[0] * md->nc[1] * md->nc[2];
+
+            for (int ic=0; ic < nc; ic++)
+                for (c = md->ggrid+ic, i=0; i < c->parts_num; i++)
                     if (old == FMD_GROUP_ALL || c->GroupID[i] == old) c->GroupID[i] = new;
         }
     }
@@ -508,13 +502,13 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
             md->KineticEnergyUpdated = false;
 }
 
-#define WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX_2(md, c, i, d, x)                \
+#define WHAT_IF_THE_PARTICLE_HAS_LEFT(md, c, i, d, x)                          \
     if ( (((x) < 0.0) || ((x) >= (md)->l[(d)])) )                              \
     {                                                                          \
         if (!(md)->PBC[(d)])                                                   \
         {                                                                      \
             _fmd_cell_remove_atom((md), (c), (i));                             \
-            (md)->Subdomain.NumberOfParticles--;                               \
+            (md)->subd.NumberOfParticles--;                                    \
             (i)--;                                                             \
             break;                                                             \
         }                                                                      \
@@ -525,7 +519,7 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
 
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
 {
-    assert(!md->ParticlesDistributed);
+    assert(!md->ParticlesDistributed); /* TO-DO */
 
     if (md->ActiveGroup == FMD_GROUP_ALL ||
                 GroupID == FMD_GROUP_ALL ||
@@ -543,34 +537,37 @@ void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fm
     dr[1] = dy;
     dr[2] = dz;
 
-    fmd_ituple_t ic, jc;
     int i;
     cell_t *c;
+    int nc = md->nc[0] * md->nc[1] * md->nc[2];
 
-    LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-        for (c = &ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < nc; ic++)
+        for (c = md->ggrid + ic, i=0; i < c->parts_num; i++)
             if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
-                for (int d=0; d<3; d++)
+                for (int d=0; d<DIM; d++)
                 {
                     POS(c, i, d) += dr[d];
 
-                    WHAT_IF_THE_PARTICLE_HAS_LEFT_THE_BOX_2(md, c, i, d, POS(c, i, d));
+                    WHAT_IF_THE_PARTICLE_HAS_LEFT(md, c, i, d, POS(c, i, d));
                 }
 
-    LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-        for (c = &ARRAY_ELEMENT(md->global_grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < nc; ic++)
+       for (c = md->ggrid + ic, i=0; i < c->parts_num; i++)
             if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[i])
             {
-                for (int d=0; d<3; d++)
-                {
-                    jc[d] = (int)floor(POS(c, i, d) / md->cellh[d]);
+                fmd_ituple_t jcv;
 
-                    assert(!(jc[d] < 0 || jc[d] >= md->nc[d])); /* TO-DO: handle error */
+                for (int d=0; d<DIM; d++)
+                {
+                    jcv[d] = (int)floor(POS(c, i, d) / md->cellh[d]);
+
+                    assert(!(jcv[d] < 0 || jcv[d] >= md->nc[d])); /* TO-DO: handle error */
                 }
 
-                if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
+                cell_t *c2 = md->ggrid + INDEX_FLAT(jcv, md->nc);
+
+                if (c != c2)
                 {
-                    cell_t *c2 = &ARRAY_ELEMENT(md->global_grid, jc);
                     unsigned j = _fmd_cell_new_particle(md, c2);
 
                     _fmd_cell_copy_atom_from_cell_to_cell(c, i, c2, j);
@@ -603,26 +600,23 @@ fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
 
 void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp)
 {
-    cell_t ***grid;
-    const int *start, *stop;
-    fmd_ituple_t ic;
+    cell_t *grid;
+    int nc;
 
     if (md->ParticlesDistributed)
     {
-        grid = md->Subdomain.grid;
-        start = md->Subdomain.ic_start;
-        stop = md->Subdomain.ic_stop;
+        grid = md->subd.grid;
+        nc = md->subd.nc;
     }
     else
     {
-        start = _fmd_ThreeZeros_int;
         if (md->Is_MD_comm_root)
         {
-            grid = md->global_grid;
-            stop = md->nc;
+            grid = md->ggrid;
+            nc = md->nc[0] * md->nc[1] * md->nc[2];
         }
         else
-            stop = start;
+            nc = 0;
     }
 
     gsl_rng *rng;
@@ -632,8 +626,8 @@ void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp)
     cell_t *c;
     int pi;
 
-    LOOP3D(ic, start, stop)
-        for (c = &ARRAY_ELEMENT(grid, ic), pi = 0; pi < c->parts_num; pi++)
+    for (int ic=0; ic < nc; ic++)
+        for (c = grid+ic, pi = 0; pi < c->parts_num; pi++)
             if (GroupID == FMD_GROUP_ALL || GroupID == c->GroupID[pi])
             {
                 fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
@@ -669,15 +663,14 @@ void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out)
 static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)
 {
     config_atom_t *localdata;
-    fmd_ituple_t ic;
     cell_t *c;
     int pind;
     int k = 0;
 
-    localdata = (config_atom_t *)m_alloc(md->Subdomain.NumberOfParticles * sizeof(config_atom_t));
+    localdata = (config_atom_t *)m_alloc(md->subd.NumberOfParticles * sizeof(config_atom_t));
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), pind=0; pind < c->parts_num; pind++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, pind=0; pind < c->parts_num; pind++)
         {
             localdata[k].x[0] = (float)POS(c, pind, 0);
             localdata[k].x[1] = (float)POS(c, pind, 1);
@@ -698,29 +691,29 @@ static config_atom_t *gather_localdata_on_root_for_saveconfig(fmd_t *md, config_
     unsigned *nums;
     config_atom_t *globaldata;
 
-    if (md->Is_MD_comm_root) nums = (unsigned *)m_alloc(md->Subdomain.numprocs * sizeof(unsigned));
-    MPI_Gather(&md->Subdomain.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+    if (md->Is_MD_comm_root) nums = (unsigned *)m_alloc(md->subd.numprocs * sizeof(unsigned));
+    MPI_Gather(&md->subd.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
         md->TotalNoOfParticles = 0;
 
-        for (int i=0; i < md->Subdomain.numprocs; i++)
+        for (int i=0; i < md->subd.numprocs; i++)
             md->TotalNoOfParticles += nums[i];
 
         int displ = 0;
 
         globaldata = (config_atom_t *)m_alloc(md->TotalNoOfParticles * sizeof(config_atom_t));
-        displs     = (int *)m_alloc(md->Subdomain.numprocs * sizeof(int));
+        displs     = (int *)m_alloc(md->subd.numprocs * sizeof(int));
 
-        for (int k=0; k < md->Subdomain.numprocs; k++)
+        for (int k=0; k < md->subd.numprocs; k++)
         {
             displs[k] = displ;
             displ += nums[k];
         }
     }
 
-    MPI_Gatherv(localdata, md->Subdomain.NumberOfParticles, md->mpi_types.mpi_configa,
+    MPI_Gatherv(localdata, md->subd.NumberOfParticles, md->mpi_types.mpi_configa,
         globaldata, nums, displs, md->mpi_types.mpi_configa, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)

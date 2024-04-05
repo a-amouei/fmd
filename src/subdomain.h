@@ -24,17 +24,15 @@
 #include "types.h"
 #include "array.h"
 
-#define LOOP3D_NEIGHBOURS(jc, ic0, ic1, ic2)                           \
-    for ((jc)[0]=(ic0)-1; (jc)[0]<=(ic0)+1; (jc)[0]++)                 \
-        for ((jc)[1]=(ic1)-1; (jc)[1]<=(ic1)+1; (jc)[1]++)             \
-            for ((jc)[2]=(ic2)-1; (jc)[2]<=(ic2)+1; (jc)[2]++)
-
 typedef struct _cell cell_t;
 
 typedef struct
 {
-    cell_t ***grid;                   /* must be equal to grid_array->data */
-    fmd_array3s_t grid_array;
+    unsigned nc;                      /* equals product of all cell_num_nonmarg components */
+    unsigned ncm;                     /* equals product of all cell_num components */
+    cell_t *grid;                     /* local grid */
+    cell_t ****gridp;                 /* must be equal to gridp_array->data */
+    fmd_array3s_t gridp_array;
     int myrank;                       /* rank of the local process in MD_comm */
     int numprocs;                     /* number of processes in MD_comm */
     fmd_ituple_t is;                  /* position of subdomain in the subdomain grid */

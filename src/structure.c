@@ -33,19 +33,20 @@ typedef enum {LATTICE_FCC, LATTICE_BCC, LATTICE_SC} lattice_t;
 
 static void removeRemainingMomentum(fmd_t *md, int GroupID, fmd_real_t MomentumSum[], unsigned AtomsNum)
 {
-    fmd_ituple_t ic;
     cell_t *cell;
     int i;
 
-    LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-        for (cell = &ARRAY_ELEMENT(md->global_grid, ic), i = 0; i < cell->parts_num; i++)
+    int nc = md->nc[0] * md->nc[1] * md->nc[2];
+
+    for (int ic=0; ic < nc; ic++)
+        for (cell = md->ggrid + ic, i = 0; i < cell->parts_num; i++)
             if (cell->GroupID[i] == RESERVED_GROUP)
             {
                 cell->GroupID[i] = GroupID;
 
                 fmd_real_t mass = md->potsys.atomkinds[cell->atomkind[i]].mass;
 
-                for (int d=0; d<3; d++)
+                for (int d=0; d<DIM; d++)
                     VEL(cell, i, d) -= MomentumSum[d] / (AtomsNum * mass);
             }
 }
@@ -97,13 +98,13 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
         {
             fmd_rtuple_t x;
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
             {
                 x[d] = r0[d] + (CrystalCell[d] + .25 + rp[i*3+d]) * lp;
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
             }
 
-            cell_t *c = &ARRAY_ELEMENT(md->global_grid, ic);
+            cell_t *c = md->ggrid + INDEX_FLAT(ic, md->nc);
 
             unsigned pi = _fmd_cell_new_particle(md, c);
 
@@ -122,7 +123,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
             c->GroupID[pi] = RESERVED_GROUP;
             c->AtomID[pi] = md->TotalNoOfParticles++;
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
             {
                 POS(c, pi, d) = x[d];
                 VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
@@ -140,7 +141,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
 void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -155,7 +156,7 @@ void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t
 void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if  (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -175,7 +176,7 @@ void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if  (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -190,7 +191,7 @@ void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
 void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if  (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -210,7 +211,7 @@ void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -225,7 +226,7 @@ void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -246,7 +247,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
   fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
   int GroupID, fmd_real_t temp)
 {
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
         md->KineticEnergyUpdated = false;
@@ -259,7 +260,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
     fmd_rtuple_t x2 = {xb, yb, zb};
 
     fmd_rtuple_t X;
-    for (int d=0; d<3; d++)
+    for (int d=0; d<DIM; d++)
         X[d] = x2[d] - x1[d];
 
     gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
@@ -278,14 +279,14 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
         {
             fmd_rtuple_t xo;
 
-            for (int d=0; d<3; d++)  /* choose center position */
+            for (int d=0; d<DIM; d++)  /* choose center position */
                 xo[d] = x1[d] + X[d] * gsl_rng_uniform(rng);
 
             for (j=0; j < mk->atoms_num; j++)  /* iteration on number of atoms in a molecule */
             {
                 bool broke = false;
 
-                for (int d=0; d<3; d++)
+                for (int d=0; d<DIM; d++)
                 {
                     coords[j][d] = xo[d] + mk->atoms[j].position[d];
                     if (coords[j][d] <= x1[d])
@@ -314,13 +315,13 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
         {
             fmd_rtuple_t x;
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
             {
                 x[d] = coords[j][d];
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
             }
 
-            cell_t *c = &ARRAY_ELEMENT(md->global_grid, ic);
+            cell_t *c = md->ggrid + INDEX_FLAT(ic, md->nc);
             unsigned pi = _fmd_cell_new_particle(md, c);
 
             c->AtomIDlocal[pi] = j;
@@ -333,7 +334,7 @@ void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
             fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
             fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * temp / mass);
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
             {
                 POS(c, pi, d) = x[d];
                 VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);

@@ -55,11 +55,6 @@
         for ( (i3)[1]=(min3)[1]; (i3)[1]<(up3)[1]; (i3)[1]++ )        \
             for ( (i3)[2]=(min3)[2]; (i3)[2]<(up3)[2]; (i3)[2]++ )
 
-#define LOOP3D_OMP(i0, i1, i2, min3, up3)                             \
-    for (int (i0)=(min3)[0]; (i0)<(up3)[0]; (i0)++ )                  \
-        for (int (i1)=(min3)[1]; (i1)<(up3)[1]; (i1)++ )              \
-            for (int (i2)=(min3)[2]; (i2)<(up3)[2]; (i2)++ )
-
 /* converts index from 3D space to flat space */
 #define INDEX_FLAT(i3, n3)   ((i3)[2] + (n3)[2]*((i3)[1] + (n3)[1]*(i3)[0]))
 

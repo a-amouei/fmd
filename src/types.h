@@ -58,7 +58,8 @@ typedef enum
     DATATYPE_INT,
     DATATYPE_UNSIGNED,
     DATATYPE_RTUPLE,
-    DATATYPE_CELL             /* a cell_t */
+    DATATYPE_CELL,             // a cell_t
+    DATATYPE_CELLP             // a cell_t *
 } datatype_t;
 
 typedef struct _fmd_params fmd_params_t;

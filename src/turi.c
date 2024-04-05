@@ -176,9 +176,9 @@ static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
 
     array_t *table;
 
-    table = m_alloc(md->Subdomain.numprocs * sizeof(array_t));
+    table = m_alloc(md->subd.numprocs * sizeof(array_t));
 
-    for (int i=0; i < md->Subdomain.numprocs; i++)
+    for (int i=0; i < md->subd.numprocs; i++)
     {
         table[i].elms = NULL;
         table[i].size = 0;
@@ -191,7 +191,7 @@ static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
         array_t *pset = (array_t *)(psets.elms) + psets_ind;
         int *elpset = pset->elms;
 
-        if (elpset[0] > md->Subdomain.myrank) break; /* because psets is sorted */
+        if (elpset[0] > md->subd.myrank) break; /* because psets is sorted */
 
         for (int irow=0; ; irow++)
             if (is_table_row_available(table, elpset, pset->size, irow))
@@ -203,7 +203,7 @@ static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
 
     /* write output to lpsets */
 
-    array_t *col = table + md->Subdomain.myrank;
+    array_t *col = table + md->subd.myrank;
 
     lpsets->size = 0;
     lpsets->elms = NULL;
@@ -236,7 +236,7 @@ static void obtain_local_psets(fmd_t *md, turi_t *t, array_t *lpsets)
         free(((array_t *)(psets.elms))[i].elms);
     free(psets.elms);
 
-    for (int i=0; i < md->Subdomain.numprocs; i++)
+    for (int i=0; i < md->subd.numprocs; i++)
         free(table[i].elms);
     free(table);
 }
@@ -555,12 +555,12 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
         /* is this turi-cell owned by current subdomain? (do owned_tcells and owned_tcells_num need an update?) */
 
-        if (pset[0] == md->Subdomain.myrank)
+        if (pset[0] == md->subd.myrank)
         {
             t->ownerscomm.owned_tcells = (fmd_ituple_t *)re_alloc(t->ownerscomm.owned_tcells,
                                           (t->ownerscomm.owned_tcells_num+1) * sizeof(*t->ownerscomm.owned_tcells));
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
                 t->ownerscomm.owned_tcells[t->ownerscomm.owned_tcells_num][d] = itc[d] + t->itc_glob_to_loc[d];
 
             t->ownerscomm.owned_tcells_num++;
@@ -580,7 +580,7 @@ static void prepare_turi_for_communication(fmd_t *md, turi_t *t)
 
             tcomm->itcs = (fmd_ituple_t *)re_alloc(tcomm->itcs, (tcomm->num_tcells+1) * sizeof(fmd_ituple_t));
 
-            for (int d=0; d<3; d++)
+            for (int d=0; d<DIM; d++)
                 tcomm->itcs[tcomm->num_tcells][d] = itc[d] + t->itc_glob_to_loc[d];
 
             tcomm->num_tcells++;
@@ -608,7 +608,7 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
     fmd_ituple_t is_tempo;
 
     for (int d=0; d<DIM; d++)                 /* set is_tempo[] to current subdomain */
-        is_tempo[d] = md->Subdomain.is[d];
+        is_tempo[d] = md->subd.is[d];
 
     for (int d=0; d<DIM; d++)
     {
@@ -620,8 +620,8 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
         is_tempo[d] = (int)impreal( _fmd_convert_pos_to_subd_coord_1D(md, pos, d) );
         t->rank_of_upper_owner[d] = INDEX_FLAT(is_tempo, md->ns);
 
-        if ( (t->rank_of_upper_owner[d] < md->Subdomain.myrank && !md->PBC[d]) ||
-             (t->rank_of_upper_owner[d] == md->Subdomain.myrank) )
+        if ( (t->rank_of_upper_owner[d] < md->subd.myrank && !md->PBC[d]) ||
+             (t->rank_of_upper_owner[d] == md->subd.myrank) )
             t->rank_of_upper_owner[d] = MPI_PROC_NULL;
 
         /* initialize rank_of_lower_owner[d] */
@@ -631,8 +631,8 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
         is_tempo[d] = (int)impreal( _fmd_convert_pos_to_subd_coord_1D(md, pos, d) );
         t->rank_of_lower_owner[d] = INDEX_FLAT(is_tempo, md->ns);
 
-        if ( (t->rank_of_lower_owner[d] > md->Subdomain.myrank && !md->PBC[d]) ||
-             (t->rank_of_lower_owner[d] == md->Subdomain.myrank) )
+        if ( (t->rank_of_lower_owner[d] > md->subd.myrank && !md->PBC[d]) ||
+             (t->rank_of_lower_owner[d] == md->subd.myrank) )
             t->rank_of_lower_owner[d] = MPI_PROC_NULL;
 
         /* initialize has_upper_lower_procs[d] */
@@ -642,13 +642,13 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
 
         /* set is_tempo[] back again to current subdomain so as to prepare for the next iteration */
 
-        is_tempo[d] = md->Subdomain.is[d];
+        is_tempo[d] = md->subd.is[d];
     }
 }
 
 fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime)
 {
-    if (md->Subdomain.grid == NULL) _fmd_subd_init(md);
+    if (md->subd.grid == NULL) _fmd_subd_init(md);
 
     int ti = md->turies_num;
 
@@ -686,14 +686,14 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 
         t->tcellh[d] = md->l[d] / t->tdims_global[d];
 
-        fmd_real_t xlo = md->Subdomain.ic_global_firstcell[d] * md->cellh[d];
+        fmd_real_t xlo = md->subd.ic_global_firstcell[d] * md->cellh[d];
         fmd_real_t xlodiv = impreal(xlo / t->tcellh[d]);
         t->itc_start_global[d] = (int)xlodiv;
 
         /* if the fractional part of xlodiv is zero, then t->itc_start_owned[d] = t->itc_start[d] */
         t->itc_start_owned[d] = t->itc_start[d] + ((fmd_real_t)t->itc_start_global[d] == xlodiv ? 0 : 1);
 
-        fmd_real_t xhi = xlo + md->Subdomain.cell_num_nonmarg[d] * md->cellh[d];
+        fmd_real_t xhi = xlo + md->subd.cell_num_nonmarg[d] * md->cellh[d];
         t->itc_stop_global[d] = (int)ceil(impreal(xhi / t->tcellh[d]));
 
         t->tdims_local_nonmarg[d] = t->itc_stop_global[d] - t->itc_start_global[d];
@@ -815,7 +815,7 @@ static void perform_field_reduce_rtuple(fmd_t *md, field_t *f, turi_t *t, bool a
 
         /* copy from buf2 to data array */
 
-        if (allhave || tcm->pset[0] == md->Subdomain.myrank)
+        if (allhave || tcm->pset[0] == md->subd.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -856,7 +856,7 @@ static void perform_field_reduce_real(fmd_t *md, field_t *f, turi_t *t, bool all
 
         /* copy from buf2 to data array */
 
-        if (allhave || tcm->pset[0] == md->Subdomain.myrank)
+        if (allhave || tcm->pset[0] == md->subd.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -896,7 +896,7 @@ static void perform_field_reduce_unsigned(fmd_t *md, field_t *f, turi_t *t, bool
 
         /* copy from buf2 to data array */
 
-        if (allhave || tcm->pset[0] == md->Subdomain.myrank)
+        if (allhave || tcm->pset[0] == md->subd.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -925,7 +925,7 @@ static void perform_field_bcast_real(fmd_t *md, field_t *f, turi_t *t)
 
         /* prepare buffer on root process */
 
-        if (tcm->pset[0] == md->Subdomain.myrank)
+        if (tcm->pset[0] == md->subd.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -941,7 +941,7 @@ static void perform_field_bcast_real(fmd_t *md, field_t *f, turi_t *t)
 
         /* copy from buffer to data array on non-root processes */
 
-        if (tcm->pset[0] != md->Subdomain.myrank)
+        if (tcm->pset[0] != md->subd.myrank)
         {
             for (int j=0; j < tcm->num_tcells; j++)
             {
@@ -962,12 +962,12 @@ static void update_field_number(fmd_t *md, field_t *f, turi_t *t, bool allhave)
     /* clean data of number field (initialize with zeros) */
     _fmd_array_3d_unsigned_clean(num, t->tdims_local);
 
-    fmd_ituple_t ic, itc;
+    fmd_ituple_t itc;
     cell_t *cell;
     int i;
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (cell = md->subd.grid + ic, i=0; i < cell->parts_num; i++)
         {
             /* find local index of turi-cell from particle's position */
             for (int d=0; d<DIM; d++)
@@ -1026,13 +1026,13 @@ static void update_field_mass(fmd_t *md, field_t *f, turi_t *t, bool allhave)
     /* clean data of mass field (initialize with zeros) */
     _fmd_array_3d_real_clean(mass, t->tdims_local);
 
-    fmd_ituple_t ic, itc;
+    fmd_ituple_t itc;
     cell_t *cell;
     int i;
 
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (cell = md->subd.grid + ic, i=0; i < cell->parts_num; i++)
         {
             /* find index of turi-cell from particle's position */
             for (int d=0; d<DIM; d++)
@@ -1060,11 +1060,11 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
     cell_t *cell;
     int i;
-    fmd_ituple_t ic, itc;
+    fmd_ituple_t itc;
 
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (cell = md->subd.grid + ic, i=0; i < cell->parts_num; i++)
         {
 
             /* find index of turi-cell from particle's position */
@@ -1110,7 +1110,7 @@ static void update_field_vcm_only(fmd_t *md, field_t *fvcm, field_t *fmass, turi
 
 static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, turi_t *t, bool allhave)
 {
-    fmd_ituple_t ic, itc;
+    fmd_ituple_t itc;
 
     fmd_rtuple_t ***vcm = (fmd_rtuple_t ***)fvcm->data.data;
     fmd_real_t ***mass = (fmd_real_t ***)fmass->data.data;
@@ -1127,10 +1127,9 @@ static void update_field_vcm_and_mass(fmd_t *md, field_t *fvcm, field_t *fmass, 
     int i;
 
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (cell = md->subd.grid + ic, i=0; i < cell->parts_num; i++)
         {
-
             /* find index of turi-cell from particle's position */
             for (int d=0; d<DIM; d++)
                 itc[d] = (int)(POS(cell, i, d) / t->tcellh[d]) + t->itc_glob_to_loc[d];
@@ -1205,11 +1204,10 @@ static void update_field_temperature_and_number(fmd_t *md, field_t *ftemp, field
 
     cell_t *cell;
     int i;
-    fmd_ituple_t ic;
 
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (cell = md->subd.grid + ic, i=0; i < cell->parts_num; i++)
         {
             /* find index of turi-cell from particle's position */
             for (int d=0; d<DIM; d++)
@@ -1272,11 +1270,11 @@ static void update_field_temperature_only(fmd_t *md, field_t *ftemp, field_t *fn
 
     cell_t *cell;
     int i;
-    fmd_ituple_t ic, itc;
+    fmd_ituple_t itc;
 
     /* iterate over all particles in current subdomain */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (cell = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < cell->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (cell = md->subd.grid + ic, i=0; i < cell->parts_num; i++)
         {
             /* find index of turi-cell from particle's position */
             for (int d=0; d<DIM; d++)

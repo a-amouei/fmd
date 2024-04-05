@@ -39,10 +39,7 @@ fmd_real_t fmd_dync_getTime(fmd_t *md)
 
 static void VelocityVerlet_startStep(fmd_t *md, bool UseThermostat)
 {
-    fmd_ituple_t ic;
     fmd_real_t VelocityScale, mass;
-    cell_t *c;
-    unsigned i;
 
     if (UseThermostat)
     {
@@ -52,8 +49,11 @@ static void VelocityVerlet_startStep(fmd_t *md, bool UseThermostat)
                         (md->DesiredTemperature / md->GroupTemperature - 1));
     }
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    cell_t *c;
+    unsigned i;
+
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -65,6 +65,7 @@ static void VelocityVerlet_startStep(fmd_t *md, bool UseThermostat)
                 if (UseThermostat) VEL(c, i, d) *= VelocityScale;
 
                 VEL(c, i, d) += md->timestep * 0.5 / mass * FRC(c, i, d);
+
                 POS(c, i, d) += md->timestep * VEL(c, i, d);
             }
         }
@@ -92,7 +93,6 @@ void updateGroupProperties(fmd_t *md, fmd_rtuple_t MomentumSum, int ParticlesNum
 
 static void VelocityVerlet_finishStep(fmd_t *md)
 {
-    fmd_ituple_t ic;
     fmd_real_t m_vSqd_Sum = 0;
     fmd_real_t mass;
     int ParticlesNum = 0;
@@ -100,8 +100,8 @@ static void VelocityVerlet_finishStep(fmd_t *md)
     cell_t *c;
     unsigned i;
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -128,12 +128,11 @@ static void VelocityVerlet_finishStep(fmd_t *md)
 /* implementation of semi-implicit Euler method */
 static void SymplecticEuler_takeOneStep(fmd_t *md)
 {
-    fmd_ituple_t ic;
     cell_t *c;
     unsigned i;
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -156,8 +155,8 @@ static void SymplecticEuler_takeOneStep(fmd_t *md)
     fmd_rtuple_t MomentumSum = {0., 0., 0.};
     fmd_real_t m_vSqd_Sum = 0;
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, i=0; i < c->parts_num; i++)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c->GroupID[i] != md->ActiveGroup)
                 continue;
@@ -278,13 +277,8 @@ static void create_force_arrays_of_cells(fmd_t *md)
     bool FembP_alter = md->cellinfo.FembPrime_active != md->potsys.eam_applied;
 
     if (!md->cellinfo.F_active || FembP_alter)
-    {
-        fmd_ituple_t ic;
-
-        LOOP3D(ic, _fmd_ThreeZeros_int, md->Subdomain.cell_num)
-            _fmd_cell_create_force_arrays(&ARRAY_ELEMENT(md->Subdomain.grid, ic),
-                                          FembP_alter);
-    }
+        for (int ic=0; ic < md->subd.ncm; ic++)
+            _fmd_cell_create_force_arrays(md->subd.grid + ic, FembP_alter);
 
     md->cellinfo.F_active = true;
     md->cellinfo.FembPrime_active = md->potsys.eam_applied;

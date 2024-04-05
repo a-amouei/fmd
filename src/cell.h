@@ -30,6 +30,12 @@
 
 typedef struct _list list_t;
 
+typedef struct _cell cell_t;
+
+#if DIM==3
+#define CNEIGHBS_NUM    27
+#endif
+
 struct _cell
 {
     unsigned parts_num;
@@ -41,12 +47,11 @@ struct _cell
     unsigned *atomkind;
     unsigned *molkind;
     unsigned *MolID;
-    unsigned *AtomIDlocal;    /* Atom ID in molecule */
-    list_t **neighbors;       /* for each molecule atom in cell there is a list of neighbors;
-                                 each data pointer in this list points to a mol_atom_neighbor_t */
+    unsigned *AtomIDlocal;              /* Atom ID in molecule */
+    list_t **neighbors;                 /* for each molecule atom in cell there is a list of neighbors;
+                                           each data pointer in this list points to a mol_atom_neighbor_t */
+    cell_t *cneighbs[CNEIGHBS_NUM];     /* the array of neighbor cells of the current cell */
 };
-
-typedef struct _cell cell_t;
 
 struct _cellinfo
 {

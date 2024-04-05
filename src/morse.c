@@ -34,12 +34,12 @@ void fmd_computeMorse(fmd_t *md)
 
     /* iterate over all cells */
 
-    #pragma omp parallel for shared(md,pottable) default(none) collapse(DIM) reduction(+:PotEnergy) \
+    #pragma omp parallel for shared(md,pottable) default(none) reduction(+:PotEnergy) \
       schedule(dynamic,1) num_threads(md->numthreads)
 
-    LOOP3D_OMP(ic0, ic1, ic2, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+    for (int ic=0; ic < md->subd.nc; ic++)
     {
-        cell_t *c1 = &md->Subdomain.grid[ic0][ic1][ic2];
+        cell_t *c1 = md->subd.grid + ic;
 
         /* iterate over all particles in cell c1 */
 
@@ -56,11 +56,9 @@ void fmd_computeMorse(fmd_t *md)
 
             /* iterate over neighbor cells of cell c1 */
 
-            fmd_ituple_t jc;
-
-            LOOP3D_NEIGHBOURS(jc, ic0, ic1, ic2)
+            for (int jc=0; jc < CNEIGHBS_NUM; jc++)
             {
-                cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
+                cell_t *c2 = c1->cneighbs[jc];
 
                 /* iterate over all particles in cell c2 */
 

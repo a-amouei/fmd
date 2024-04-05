@@ -42,7 +42,7 @@ void _fmd_createGlobalGrid(fmd_t *md)
 {
     fmd_real_t cutoff = _fmd_pot_get_largest_cutoff(&md->potsys);
 
-    for (int d=0; d<DIM; d++)
+    for (int d=0; d < DIM; d++)
     {
         md->nc[d] = (int)(md->l[d] / cutoff);
         md->cellh[d] = md->l[d] / md->nc[d];
@@ -52,20 +52,13 @@ void _fmd_createGlobalGrid(fmd_t *md)
 
     if (md->Is_MD_comm_root)
     {
-        md->global_grid = (cell_t ***)_fmd_array_ordinary3d_create(md->nc, sizeof(cell_t));
+        unsigned nc = md->nc[0] * md->nc[1] * md->nc[2];
 
-        _fmd_initialize_grid(md->global_grid, &md->cellinfo, md->nc[0], md->nc[1], md->nc[2]);
+        md->ggrid = m_alloc(nc * sizeof(cell_t));
+
+        for (int ic=0; ic < nc; ic++)
+            _fmd_cell_init(&md->cellinfo, md->ggrid + ic);
     }
-
-    md->GlobalGridExists = true;
-}
-
-void _fmd_initialize_grid(cell_t ***grid, cellinfo_t *cinfo, unsigned dim1, unsigned dim2, unsigned dim3)
-{
-    for (unsigned i=0; i < dim1; i++)
-        for (unsigned j=0; j < dim2; j++)
-            for (unsigned k=0; k < dim3; k++)
-                _fmd_cell_init(cinfo, &grid[i][j][k]);
 }
 
 static void compLocOrdParam(fmd_t *md)
@@ -215,14 +208,13 @@ static void compLocOrdParam(fmd_t *md)
    see [J. Chem. Phys. 131, 154107 (2009)] */
 static fmd_real_t compVirial_internal(fmd_t *md)
 {
-    fmd_ituple_t ic;
     fmd_real_t virial = 0.0;
     fmd_real_t virial_global;
     unsigned i;
     cell_t *c;
 
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-        for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), i=0; i < c->parts_num; i++)
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (c = md->subd.grid + ic, i=0; i < c->parts_num; i++)
             virial += POS(c, i, 0) * FRC(c, i, 0) +
                       POS(c, i, 1) * FRC(c, i, 1) +
                       POS(c, i, 2) * FRC(c, i, 2);
@@ -270,7 +262,6 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
 {
     FILE *fp;
     char name[3];
-    fmd_ituple_t ic;
     fmd_real_t StateFileTime;
     unsigned ParticlesNum;
     fmd_real_t l0, l1, l2;
@@ -315,7 +306,7 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
         md->PBCdetermined = true;
     }
 
-    if (!md->GlobalGridExists) _fmd_createGlobalGrid(md);
+    if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (UseTime)
         MPI_Bcast(&md->time, 1, FMD_MPI_REAL, RANK0, md->MD_comm);
@@ -347,12 +338,12 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
             assert( fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]) == 3 ); /* TO-DO: handle error */
             assert( fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]) == 3 ); /* TO-DO: handle error */
 
+            fmd_ituple_t ic;
+
             for (int d=0; d<DIM; d++)
                 ic[d] = (int)floor(x[d] / md->cellh[d]);
 
-            cell_t *c;
-
-            c = &ARRAY_ELEMENT(md->global_grid, ic);
+            cell_t *c = md->ggrid + INDEX_FLAT(ic, md->nc);
 
             j = _fmd_cell_new_particle(md, c);
 
@@ -375,35 +366,34 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
 
 void _fmd_refreshGrid(fmd_t *md)
 {
-    fmd_ituple_t ic, jc;
-
     /* iterate over all cells */
-    LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
+    for (int ic=0; ic < md->subd.nc; ic++)
     {
         /* iterate over all particles in cell ic */
 
-        cell_t *c = &ARRAY_ELEMENT(md->Subdomain.grid, ic);
+        cell_t *c = md->subd.grid + ic;
         int i = 0;  /* particle index */
+        fmd_ituple_t jcv;
 
         while (i < c->parts_num)
         {
             for (int d=0; d<DIM; d++)
             {
-                jc[d] = (int)floor(POS(c, i, d) / md->cellh[d]) - md->Subdomain.ic_global_firstcell[d]
-                        + md->Subdomain.ic_start[d];
+                jcv[d] = (int)floor(POS(c, i, d) / md->cellh[d]) - md->subd.ic_global_firstcell[d]
+                         + md->subd.ic_start[d];
 
-                if (jc[d] < 0 || jc[d] >= md->Subdomain.cell_num[d])
+                if (jcv[d] < 0 || jcv[d] >= md->subd.cell_num[d])
                 {
                     fprintf(stderr, "ERROR: Unexpected particle position!\n");
                     MPI_Abort(MPI_COMM_WORLD, ERROR_UNEXPECTED_PARTICLE_POSITION);
                 }
             }
 
-            if ((ic[0] != jc[0]) || (ic[1] != jc[1]) || (ic[2] != jc[2]))
-            {
-                cell_t *c2 = &ARRAY_ELEMENT(md->Subdomain.grid, jc);
-                unsigned j = _fmd_cell_new_particle(md, c2);
+            cell_t *c2 = ARRAY_ELEMENT(md->subd.gridp, jcv);
 
+            if (c != c2)
+            {
+                unsigned j = _fmd_cell_new_particle(md, c2);
                 _fmd_cell_copy_atom_from_cell_to_cell(c, i, c2, j);
                 _fmd_cell_remove_atom(md, c, i);
             }
@@ -419,7 +409,6 @@ void _fmd_refreshGrid(fmd_t *md)
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 {
     unsigned *nums;
-    fmd_ituple_t ic;
     char StateFilePath[MAX_PATH_LENGTH];
     FILE *fp;
     MPI_Status status;
@@ -438,8 +427,10 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
             fprintf(fp, formatstr_3xpoint16e, md->l[0], md->l[1], md->l[2]);
             fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
 
-            LOOP3D(ic, _fmd_ThreeZeros_int, md->nc)
-                for (c = &ARRAY_ELEMENT(md->global_grid, ic), pi=0; pi < c->parts_num; pi++)
+            int nc = md->nc[0] * md->nc[1] * md->nc[2];
+
+            for (int ic=0; ic < nc; ic++)
+                for (c = md->ggrid + ic, pi=0; pi < c->parts_num; pi++)
                 {
                     fprintf(fp, "%s %d\n", md->potsys.atomkinds[c->atomkind[pi]].name, c->GroupID[pi]);
                     fprintf(fp, formatstr_3xpoint16e, POS(c, pi, 0), POS(c, pi, 1), POS(c, pi, 2));
@@ -454,13 +445,13 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 
     if (md->Is_MD_comm_root)
     {
-        nums = (unsigned *)m_alloc(md->Subdomain.numprocs * sizeof(unsigned));
+        nums = (unsigned *)m_alloc(md->subd.numprocs * sizeof(unsigned));
 
-        MPI_Gather(&md->Subdomain.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+        MPI_Gather(&md->subd.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
         md->TotalNoOfParticles = 0;
 
-        for (int k=0; k < md->Subdomain.numprocs; k++)
+        for (int k=0; k < md->subd.numprocs; k++)
             md->TotalNoOfParticles += nums[k];
 
         sprintf(StateFilePath, "%s%s", md->SaveDirectory, filename);
@@ -471,15 +462,15 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         fprintf(fp, formatstr_3xpoint16e, md->l[0], md->l[1], md->l[2]);
         fprintf(fp, "%d %d %d\n", md->PBC[0], md->PBC[1], md->PBC[2]);
 
-        LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-            for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), pi=0; pi < c->parts_num; pi++)
+        for (int ic=0; ic < md->subd.nc; ic++)
+            for (c = md->subd.grid + ic, pi=0; pi < c->parts_num; pi++)
             {
                 fprintf(fp, "%s %d\n", md->potsys.atomkinds[c->atomkind[pi]].name, c->GroupID[pi]);
                 fprintf(fp, formatstr_3xpoint16e, POS(c, pi, 0), POS(c, pi, 1), POS(c, pi, 2));
                 fprintf(fp, formatstr_3xpoint16e, VEL(c, pi, 0), VEL(c, pi, 1), VEL(c, pi, 2));
             }
 
-        for (int i=1; i < md->Subdomain.numprocs; i++)
+        for (int i=1; i < md->subd.numprocs; i++)
         {
             state_atom_t *states = (state_atom_t *)m_alloc(nums[i] * sizeof(state_atom_t));
 
@@ -502,14 +493,14 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     }
     else
     {
-        MPI_Gather(&md->Subdomain.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
+        MPI_Gather(&md->subd.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
-        state_atom_t *states = (state_atom_t *)m_alloc(md->Subdomain.NumberOfParticles * sizeof(state_atom_t));
+        state_atom_t *states = (state_atom_t *)m_alloc(md->subd.NumberOfParticles * sizeof(state_atom_t));
 
         unsigned k = 0;
 
-        LOOP3D(ic, md->Subdomain.ic_start, md->Subdomain.ic_stop)
-            for (c = &ARRAY_ELEMENT(md->Subdomain.grid, ic), pi=0; pi < c->parts_num; pi++)
+        for (int ic=0; ic < md->subd.nc; ic++)
+            for (c = md->subd.grid + ic, pi=0; pi < c->parts_num; pi++)
             {
                 for (int d=0; d<DIM; d++)
                     states[k].x[d] = POS(c, pi, d);
@@ -523,7 +514,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
                 k++;
             }
 
-        MPI_Send(states, md->Subdomain.NumberOfParticles, md->mpi_types.mpi_statea, RANK0, 150, md->MD_comm);
+        MPI_Send(states, md->subd.NumberOfParticles, md->mpi_types.mpi_statea, RANK0, 150, md->MD_comm);
 
         free(states);
     }
@@ -548,9 +539,9 @@ bool fmd_box_setSubdomains(fmd_t *md, int dimx, int dimy, int dimz)
 
     if (md->Is_MD_process)
     {
-        MPI_Comm_size(md->MD_comm, &md->Subdomain.numprocs);
-        MPI_Comm_rank(md->MD_comm, &md->Subdomain.myrank);
-        if (md->Subdomain.myrank == RANK0)
+        MPI_Comm_size(md->MD_comm, &md->subd.numprocs);
+        MPI_Comm_rank(md->MD_comm, &md->subd.myrank);
+        if (md->subd.myrank == RANK0)
             md->Is_MD_comm_root = true;
     }
 
@@ -632,13 +623,12 @@ fmd_t *fmd_create()
     md->SaveDirectory = (char *)m_alloc(1);
     md->SaveDirectory[0] = '\0';
 
-    md->Subdomain.grid = NULL;
+    md->subd.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->TotalNoOfMolecules = 0;
     md->ActiveGroup = FMD_GROUP_ALL;             /* all groups are active by default */
     md->ParticlesDistributed = false;
-    md->GlobalGridExists = false;
-    md->global_grid = NULL;
+    md->ggrid = NULL;
     md->BoxSizeDetermined = false;
     md->PBCdetermined = false;
     md->PBC[0] = md->PBC[1] = md->PBC[2] = false;
@@ -668,7 +658,7 @@ fmd_t *fmd_create()
 
 void fmd_box_setSize(fmd_t *md, fmd_real_t sx, fmd_real_t sy, fmd_real_t sz)
 {
-    if (!md->GlobalGridExists)
+    if (md->ggrid == NULL)
     {
         md->l[0] = sx;
         md->l[1] = sy;

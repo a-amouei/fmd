@@ -56,9 +56,9 @@ typedef struct _turi turi_t;
 
 struct _fmd
 {
-    Subdomain_t Subdomain;
+    Subdomain_t subd;
     potsys_t potsys;
-    cell_t ***global_grid;
+    cell_t *ggrid;                        /* global grid */
     cellinfo_t cellinfo;
     fmd_EventHandler_t EventHandler;
     fmd_pointer_t userobject;
@@ -68,7 +68,6 @@ struct _fmd
     unsigned turies_num;
     turi_t *turies;
     turi_t *active_ttm_turi;
-    bool GlobalGridExists;
     bool BoxSizeDetermined;
     bool PBCdetermined;
     fmd_real_t time;

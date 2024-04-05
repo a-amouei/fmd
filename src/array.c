@@ -275,7 +275,7 @@ float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3s_t *array)
     {
         case DATATYPE_RTUPLE:
             LOOP3D(iv, _fmd_ThreeZeros_int, array->dims)
-                for (int d=0; d<3; d++)
+                for (int d=0; d<DIM; d++)
                     f[cc++] = ARRAY_ELEMENT((fmd_rtuple_t ***)(array->data), iv)[d];
             break;
 

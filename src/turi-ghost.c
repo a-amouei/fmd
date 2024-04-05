@@ -115,7 +115,7 @@ static void prepare_communication_in_direction_d(
 {
     int dd;
 
-    for (dd=0; dd<3; dd++)
+    for (dd=0; dd<DIM; dd++)
     {
         if (dd == d) /* only ghost */
         {
