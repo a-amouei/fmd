@@ -36,5 +36,6 @@
 typedef struct _fmd fmd_t;
 
 void _fmd_dync_updateForces(fmd_t *md);
+void _fmd_clean_forces(fmd_t *md);
 
 #endif /* FORCES_H */

@@ -209,17 +209,19 @@ void _fmd_dync_updateForces(fmd_t *md)
         switch (potkind)
         {
             case POT_LJ_6_12:
-                fmd_computeLJ(md);
+                _fmd_computeLJ(md);
+                _fmd_ghostparticles_transfer_partialforces(md);
                 break;
 
             case POT_MORSE:
-                fmd_computeMorse(md);
+                _fmd_computeMorse(md);
+                _fmd_ghostparticles_transfer_partialforces(md);
                 break;
 
             case POT_EAM_ALLOY: ;
                 fmd_real_t FembSum;
                 _fmd_computeEAM_pass1(md, &FembSum);
-                _fmd_ghostparticles_update_Femb(md);
+                _fmd_ghostparticles_transfer_Femb(md);
                 _fmd_computeEAM_pass0(md, FembSum);
                 break;
         }
@@ -231,7 +233,7 @@ void _fmd_dync_updateForces(fmd_t *md)
         if (md->potsys.hybridpasses[1])
         {
             compute_hybrid_pass1(md, &FembSum);
-            _fmd_ghostparticles_update_Femb(md);
+            _fmd_ghostparticles_transfer_Femb(md);
         }
 
         if (md->potsys.hybridpasses[0])
@@ -245,4 +247,15 @@ void _fmd_dync_updateForces(fmd_t *md)
             add_ttm_term_to_forces(md);
 
     _fmd_ghostparticles_delete(md);
+}
+
+void _fmd_clean_forces(fmd_t *md)
+{
+    int i;
+    cell_t *c;
+
+    for (int ic=0; ic < md->subd.ncm; ic++)
+        for (i=0, c = md->subd.grid + ic; i < c->parts_num; i++)
+            for (int d=0; d < DIM; d++)
+                FRC(c, i, d) = 0.;
 }

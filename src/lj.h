@@ -56,12 +56,14 @@
 typedef struct
 {
     fmd_real_t eps;
+    fmd_real_t eps4;
     fmd_real_t sig;
+    fmd_real_t sig_sqr;
     fmd_real_t cutoff_sqr;
 } LJ_6_12_t;
 
 typedef struct _fmd fmd_t;
 
-void fmd_computeLJ(fmd_t *md);
+void _fmd_computeLJ(fmd_t *md);
 
 #endif /* LJ_H */

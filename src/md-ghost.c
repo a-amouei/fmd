@@ -60,24 +60,8 @@ static unsigned cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t i
 
 void _fmd_ghostparticles_delete(fmd_t *md)
 {
-    fmd_ituple_t ic_from, ic_to;
-    fmd_ituple_t jc;
-
-    for (int d=0; d<DIM; d++)
-    {
-        ic_from[d] = md->subd.ic_start[d] - 1;
-        jc[d] = ic_to[d] = md->subd.ic_stop[d] + 1;
-    }
-
-    for (int d=0; d<DIM; d++)
-    {
-        jc[d] = md->subd.ic_start[d];
-        cleanGridSegment(md, ic_from, jc);
-        ic_from[d] = md->subd.ic_stop[d];
-        cleanGridSegment(md, ic_from, ic_to);
-        ic_from[d] = md->subd.ic_start[d];
-        jc[d] = ic_to[d] = md->subd.ic_stop[d];
-    }
+    for (int i = md->subd.nc; i < md->subd.ncm; i++)
+        _fmd_cell_minimize(md, md->subd.grid + i);
 }
 
 static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
@@ -101,7 +85,14 @@ static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, i
         POS(dest, i, dim) += value;
 }
 
-static void ccopy_for_updateFemb(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
+static void ccopy_for_partialforces(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
+{
+    for (unsigned i=0; i < src->parts_num; i++)
+        for (int d=0; d < DIM; d++)
+            FRC(dest, i, d) += FRC(src, i, d);
+}
+
+static void ccopy_for_Femb(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
 {
     memcpy(dest->FembPrime, src->FembPrime, src->parts_num * sizeof(fmd_real_t));
 }
@@ -172,7 +163,85 @@ static void copy_local(fmd_t *md, fmd_ituple_t ic_start_send, fmd_ituple_t ic_st
 }
 
 /* creates an empty buffer */
-static void *create_packbuffer_for_Fembpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop)
+static void *create_packbuffer_for_partialforces(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop)
+{
+    fmd_ituple_t ic;
+    cell_t *c;
+    int s, size = 0;
+
+    MPI_Pack_size(1, MPI_UNSIGNED, md->MD_comm, &s);
+
+    size += s * (ic_stop[0] - ic_start[0]) *
+                (ic_stop[1] - ic_start[1]) *
+                (ic_stop[2] - ic_start[2]);
+
+    LOOP3D(ic, ic_start, ic_stop)
+    {
+        c = ARRAY_ELEMENT(md->subd.gridp, ic);
+
+        if (c->parts_num > 0)
+        {
+            MPI_Pack_size(c->parts_num, md->mpi_types.mpi_rtuple, md->MD_comm, &s);
+
+            size += s;
+        }
+    }
+
+    return (size > 0 ? m_alloc(size) : NULL);
+}
+
+static void partialforces_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
+                               int *size, fmd_pointer_t *out, bool nodest)
+{
+    fmd_ituple_t ic;
+    cell_t *c;
+
+    if (nodest) return;
+
+    *out = create_packbuffer_for_partialforces(md, ic_start, ic_stop); /* make an empty buffer */
+    *size = 0;
+
+    LOOP3D(ic, ic_start, ic_stop)
+    {
+        c = ARRAY_ELEMENT(md->subd.gridp, ic);
+
+        MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
+
+        if (c->parts_num > 0)
+            MPI_Pack(c->F, c->parts_num, md->mpi_types.mpi_rtuple, *out, INT_MAX, size, md->MD_comm);
+    }
+}
+
+static void partialforces_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
+                                 int insize, fmd_pointer_t in, int dim, int dir)
+{
+    fmd_ituple_t ic;
+    int byte = 0;
+
+    LOOP3D(ic, ic_start, ic_stop)
+    {
+        unsigned num;
+        cell_t *c = ARRAY_ELEMENT(md->subd.gridp, ic);
+
+        MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
+
+        if (num > 0)
+        {
+            fmd_real_t *F = m_alloc(num * sizeof(fmd_rtuple_t));
+
+            MPI_Unpack(in, insize, &byte, F, num, md->mpi_types.mpi_rtuple, md->MD_comm);
+
+            for (int i=0; i < num; i++)
+                for (int d=0; d < DIM; d++)
+                    FRC(c, i, d) += F[COMP(i, d)];
+
+            free(F);
+        }
+    }
+}
+
+/* creates an empty buffer */
+static void *create_packbuffer_for_Femb(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop)
 {
     fmd_ituple_t ic;
     cell_t *c;
@@ -207,7 +276,7 @@ static void Femb_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     if (nodest) return;
 
-    *out = create_packbuffer_for_Fembpack(md, ic_start, ic_stop); /* make an empty buffer */
+    *out = create_packbuffer_for_Femb(md, ic_start, ic_stop); /* make an empty buffer */
     *size = 0;
 
     LOOP3D(ic, ic_start, ic_stop)
@@ -561,8 +630,8 @@ static void transfer(fmd_t *md, int source, int dest,
     }
 }
 
-static void particles_prepare_migration_in_direction_d(
-    Subdomain_t *s_p, int d, fmd_ituple_t ic_start_send_lower,
+static void set_cell_indexes_for_migration_in_direction_d(
+    Subdomain_t *s, int d, fmd_ituple_t ic_start_send_lower,
     fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
     fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
     fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
@@ -574,14 +643,14 @@ static void particles_prepare_migration_in_direction_d(
     {
         if (dd == d) // only ghost
         {
-            ic_start_send_lower[dd] = s_p->ic_start[dd];
-            ic_stop_send_lower[dd] = ic_start_send_lower[dd] + s_p->ic_start[dd];
+            ic_start_send_lower[dd] = s->ic_start[dd];
+            ic_stop_send_lower[dd] = ic_start_send_lower[dd] + s->ic_start[dd];
             ic_start_receive_lower[dd] = 0;
-            ic_stop_receive_lower[dd] = s_p->ic_start[dd];
-            ic_stop_send_upper[dd] = s_p->ic_stop[dd];
-            ic_start_send_upper[dd] = ic_stop_send_upper[dd] - s_p->ic_start[dd];
-            ic_start_receive_upper[dd] = s_p->ic_stop[dd];
-            ic_stop_receive_upper[dd] = s_p->cell_num[dd];
+            ic_stop_receive_lower[dd] = s->ic_start[dd];
+            ic_stop_send_upper[dd] = s->ic_stop[dd];
+            ic_start_send_upper[dd] = ic_stop_send_upper[dd] - s->ic_start[dd];
+            ic_start_receive_upper[dd] = s->ic_stop[dd];
+            ic_stop_receive_upper[dd] = s->cell_num[dd];
         }
         else if (dd > d) // including ghost
         {
@@ -589,21 +658,21 @@ static void particles_prepare_migration_in_direction_d(
                                        = ic_start_receive_upper[dd]
                                        = ic_start_send_upper[dd] = 0;
             ic_stop_receive_lower[dd]  = ic_stop_send_lower[dd] = ic_stop_receive_upper[dd]
-                                       = ic_stop_send_upper[dd] = s_p->cell_num[dd];
+                                       = ic_stop_send_upper[dd] = s->cell_num[dd];
         }
         else // excluding ghost
         {
             ic_start_receive_lower[dd] = ic_start_send_lower[dd]
                                        = ic_start_receive_upper[dd]
-                                       = ic_start_send_upper[dd] = s_p->ic_start[dd];
+                                       = ic_start_send_upper[dd] = s->ic_start[dd];
             ic_stop_receive_lower[dd]  = ic_stop_send_lower[dd] = ic_stop_receive_upper[dd]
-                                       = ic_stop_send_upper[dd] = s_p->ic_stop[dd];
+                                       = ic_stop_send_upper[dd] = s->ic_stop[dd];
         }
     }
 }
 
-static void ghostparticles_prepare_init_update_in_direction_d(
-    fmd_t *md, int d, fmd_ituple_t ic_start_send_lower,
+static void set_cell_indexes_for_transfer_in_direction_d(
+    Subdomain_t *s, int d, fmd_ituple_t ic_start_send_lower,
     fmd_ituple_t ic_stop_send_lower, fmd_ituple_t ic_start_receive_lower,
     fmd_ituple_t ic_stop_receive_lower, fmd_ituple_t ic_start_send_upper,
     fmd_ituple_t ic_stop_send_upper, fmd_ituple_t ic_start_receive_upper,
@@ -615,13 +684,13 @@ static void ghostparticles_prepare_init_update_in_direction_d(
     {
         if (dd == d) // only ghost
         {
-            ic_start_send_lower[dd] = md->subd.ic_start[dd];
+            ic_start_send_lower[dd] = s->ic_start[dd];
             ic_stop_send_lower[dd] = ic_start_send_lower[dd] + 1;
-            ic_stop_receive_lower[dd] = md->subd.ic_start[dd];
+            ic_stop_receive_lower[dd] = s->ic_start[dd];
             ic_start_receive_lower[dd] = ic_stop_receive_lower[dd] - 1;
-            ic_stop_send_upper[dd] = md->subd.ic_stop[dd];
+            ic_stop_send_upper[dd] = s->ic_stop[dd];
             ic_start_send_upper[dd] = ic_stop_send_upper[dd] - 1;
-            ic_start_receive_upper[dd] = md->subd.ic_stop[dd];
+            ic_start_receive_upper[dd] = s->ic_stop[dd];
             ic_stop_receive_upper[dd] = ic_start_receive_upper[dd] + 1;
         }
         else if (dd > d) // including ghost
@@ -629,27 +698,27 @@ static void ghostparticles_prepare_init_update_in_direction_d(
             ic_start_receive_lower[dd] = ic_start_send_lower[dd]
                                        = ic_start_receive_upper[dd]
                                        = ic_start_send_upper[dd]
-                                       = md->subd.ic_start[dd] - 1;
+                                       = s->ic_start[dd] - 1;
             ic_stop_receive_lower[dd]  = ic_stop_send_lower[dd]
                                        = ic_stop_receive_upper[dd]
                                        = ic_stop_send_upper[dd]
-                                       = md->subd.ic_stop[dd] + 1;
+                                       = s->ic_stop[dd] + 1;
         }
         else // excluding ghost
         {
             ic_start_receive_lower[dd] = ic_start_send_lower[dd]
                                        = ic_start_receive_upper[dd]
                                        = ic_start_send_upper[dd]
-                                       = md->subd.ic_start[dd];
+                                       = s->ic_start[dd];
             ic_stop_receive_lower[dd]  = ic_stop_send_lower[dd]
                                        = ic_stop_receive_upper[dd]
                                        = ic_stop_send_upper[dd]
-                                       = md->subd.ic_stop[dd];
+                                       = s->ic_stop[dd];
         }
     }
 }
 
-void _fmd_ghostparticles_update_Femb(fmd_t *md)
+void _fmd_ghostparticles_transfer_Femb(fmd_t *md)
 {
     int d;
     fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
@@ -659,8 +728,8 @@ void _fmd_ghostparticles_update_Femb(fmd_t *md)
 
     for (d = DIM-1; d >= 0; d--)
     {
-        ghostparticles_prepare_init_update_in_direction_d(
-            md, d, ic_start_send_lower, ic_stop_send_lower,
+        set_cell_indexes_for_transfer_in_direction_d(
+            &md->subd, d, ic_start_send_lower, ic_stop_send_lower,
             ic_start_receive_lower, ic_stop_receive_lower,
             ic_start_send_upper, ic_stop_send_upper, ic_start_receive_upper,
             ic_stop_receive_upper);
@@ -681,8 +750,8 @@ void _fmd_ghostparticles_update_Femb(fmd_t *md)
         }
         else if (md->PBC[d])
         {
-            copy_local(md, ic_start_send_lower, ic_stop_send_lower, d, -1, ccopy_for_updateFemb);
-            copy_local(md, ic_start_send_upper, ic_stop_send_upper, d, +1, ccopy_for_updateFemb);
+            copy_local(md, ic_start_send_lower, ic_stop_send_lower, d, -1, ccopy_for_Femb);
+            copy_local(md, ic_start_send_upper, ic_stop_send_upper, d, +1, ccopy_for_Femb);
         }
 
     }
@@ -698,8 +767,8 @@ void _fmd_ghostparticles_init(fmd_t *md)
 
     for (d = DIM-1; d >= 0; d--)
     {
-        ghostparticles_prepare_init_update_in_direction_d(
-            md, d, ic_start_send_lower, ic_stop_send_lower,
+        set_cell_indexes_for_transfer_in_direction_d(
+            &md->subd, d, ic_start_send_lower, ic_stop_send_lower,
             ic_start_receive_lower, ic_stop_receive_lower,
             ic_start_send_upper, ic_stop_send_upper, ic_start_receive_upper,
             ic_stop_receive_upper);
@@ -726,6 +795,45 @@ void _fmd_ghostparticles_init(fmd_t *md)
     }
 }
 
+void _fmd_ghostparticles_transfer_partialforces(fmd_t *md)
+{
+    fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
+    fmd_ituple_t ic_start_send_upper, ic_stop_send_upper;
+    fmd_ituple_t ic_start_receive_lower, ic_stop_receive_lower;
+    fmd_ituple_t ic_start_receive_upper, ic_stop_receive_upper;
+
+    for (int d = 0; d < DIM; d++)
+    {
+        set_cell_indexes_for_transfer_in_direction_d(
+            &md->subd, d, ic_start_receive_lower, ic_stop_receive_lower,
+            ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper,
+            ic_stop_receive_upper, ic_start_send_upper, ic_stop_send_upper );
+
+        if (md->ns[d] != 1)
+        {
+            /* sending to lower process, receiving from upper process */
+
+            transfer(md, md->subd.rank_of_upper_subd[d], md->subd.rank_of_lower_subd[d],
+                     ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper, ic_stop_receive_upper,
+                     partialforces_pack, partialforces_unpack, d, -1);
+
+            /* sending to upper process, receiving from lower process */
+
+            transfer(md, md->subd.rank_of_lower_subd[d], md->subd.rank_of_upper_subd[d],
+                     ic_start_send_upper, ic_stop_send_upper, ic_start_receive_lower, ic_stop_receive_lower,
+                     partialforces_pack, partialforces_unpack, d, +1);
+        }
+        else
+        {
+            if (md->PBC[d])
+            {
+                copy_local(md, ic_start_send_lower, ic_stop_send_lower, d, -1, ccopy_for_partialforces);
+                copy_local(md, ic_start_send_upper, ic_stop_send_upper, d, +1, ccopy_for_partialforces);
+            }
+        }
+    }
+}
+
 void _fmd_particles_migrate(fmd_t *md)
 {
     fmd_ituple_t ic_start_send_lower, ic_stop_send_lower;
@@ -735,8 +843,8 @@ void _fmd_particles_migrate(fmd_t *md)
 
     for (int d = 0; d < DIM; d++)
     {
-        particles_prepare_migration_in_direction_d( &md->subd, d,
-            ic_start_receive_lower, ic_stop_receive_lower,
+        set_cell_indexes_for_migration_in_direction_d(
+            &md->subd, d, ic_start_receive_lower, ic_stop_receive_lower,
             ic_start_send_lower, ic_stop_send_lower, ic_start_receive_upper,
             ic_stop_receive_upper, ic_start_send_upper, ic_stop_send_upper );
 

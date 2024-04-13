@@ -63,6 +63,6 @@ typedef struct
 
 typedef struct _fmd fmd_t;
 
-void fmd_computeMorse(fmd_t *md);
+void _fmd_computeMorse(fmd_t *md);
 
 #endif /* MORSE_H */

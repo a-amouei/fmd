@@ -23,8 +23,8 @@
 #include "config.h"
 
 void _fmd_ghostparticles_init(fmd_t *md);
-void _fmd_ghostparticles_update_Femb(fmd_t *md);
-//void _fmd_ghostparticles_update_LocOrdParam(fmd_t *md);
+void _fmd_ghostparticles_transfer_partialforces(fmd_t *md);
+void _fmd_ghostparticles_transfer_Femb(fmd_t *md);
 void _fmd_ghostparticles_delete(fmd_t *md);
 void _fmd_particles_migrate(fmd_t *md);
 
