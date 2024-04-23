@@ -46,7 +46,11 @@
             fmd_real_t factor = 2.0 * morse->alpha * morse->D0 * inv_r * (exp2 - exp1);     \
                                                                                             \
             for (int d=0; d<DIM; d++)                                                       \
-                FRC(c1, i1, d) += factor * rv[d];                                           \
+            {                                                                               \
+                fmd_real_t tmp = factor * rv[d];                                            \
+                FRC(c1, i1, d) += tmp;                                                      \
+                FRC(c2, i2, d) -= tmp;                                                      \
+            }                                                                               \
                                                                                             \
             /* potential energy, U = D0 * ( exp(-2*alpha*(r-r0)) - 2*exp(-alpha*(r-r0)) ) */\
             PotEn += morse->D0 * (exp2 - 2.0 * exp1);                                       \

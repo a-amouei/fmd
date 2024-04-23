@@ -23,6 +23,10 @@
 #include "config.h"
 #include "types.h"
 
+#if DIM==3
+#define CNEIGHBS_NUM    27
+#endif
+
 #define COMP(i, d) ((i)*DIM + (d))
 #define FRC(cell,i,d) ((cell)->F[COMP((i), (d))])
 #define POS(cell,i,d) ((cell)->x[COMP((i), (d))])
@@ -32,16 +36,12 @@ typedef struct _list list_t;
 
 typedef struct _cell cell_t;
 
-#if DIM==3
-#define CNEIGHBS_NUM    27
-#endif
-
 struct _cell
 {
     unsigned parts_num;
     unsigned capacity;
     fmd_real_t *x, *v, *F;
-    fmd_real_t *FembPrime;
+    fmd_real_t *vaream;
     int *GroupID;
     unsigned *AtomID;
     unsigned *atomkind;
@@ -50,7 +50,15 @@ struct _cell
     unsigned *AtomIDlocal;              /* Atom ID in molecule */
     list_t **neighbors;                 /* for each molecule atom in cell there is a list of neighbors;
                                            each data pointer in this list points to a mol_atom_neighbor_t */
-    cell_t *cneighbs[CNEIGHBS_NUM];     /* the array of neighbor cells of the current cell */
+    /* arrays of neighbor cells of the current cell and their lengths;
+       cnb0, cnb1 and cnb2 are arrays of cell_t*;
+       the meanings of cnb0, cnb1 and cnb2 depend on whether the current cell is margin cell or not; */
+    unsigned cnb0len;
+    cell_t **cnb0;
+    unsigned cnb1len;
+    cell_t **cnb1;
+    unsigned cnb2len;
+    cell_t **cnb2;
 };
 
 struct _cellinfo
@@ -58,7 +66,7 @@ struct _cellinfo
     bool x_active;
     bool v_active;
     bool F_active;
-    bool FembPrime_active;
+    bool vaream_active;
     bool GroupID_active;
     bool AtomID_active;
     bool atomkind_active;

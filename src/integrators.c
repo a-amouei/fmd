@@ -274,14 +274,14 @@ static void setActiveGroup(fmd_t *md, int GroupID)
 
 static void create_force_arrays_of_cells(fmd_t *md)
 {
-    bool FembP_alter = md->cellinfo.FembPrime_active != md->potsys.eam_applied;
+    bool FembP_alter = md->cellinfo.vaream_active != md->potsys.eam_applied;
 
     if (!md->cellinfo.F_active || FembP_alter)
         for (int ic=0; ic < md->subd.ncm; ic++)
             _fmd_cell_create_force_arrays(md->subd.grid + ic, FembP_alter);
 
     md->cellinfo.F_active = true;
-    md->cellinfo.FembPrime_active = md->potsys.eam_applied;
+    md->cellinfo.vaream_active = md->potsys.eam_applied;
 }
 
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep)

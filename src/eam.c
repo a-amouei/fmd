@@ -31,7 +31,9 @@ void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
     potpair_t **pottable = md->potsys.pottable;
     fmd_real_t PotEnergy = 0.0;
 
-    /* iterate over all cells */
+    _fmd_clean_forces(md);
+
+    /* iterate over all non-margin cells */
 
     #pragma omp parallel for shared(md,pottable) default(none) reduction(+:PotEnergy) \
       schedule(dynamic,1) num_threads(md->numthreads)
@@ -46,17 +48,14 @@ void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
         {
             if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup) continue;
 
-            for (int d=0; d<DIM; d++)
-                FRC(c1, i1, d) = 0.0;
-
             unsigned atomkind1 = c1->atomkind[i1];
             fmd_real_t *x1 = &POS(c1, i1, 0);
 
-            /* iterate over neighbor cells of cell c1 */
+            /* iterate over non-margin neighbor cells of cell c1 */
 
-            for (int jc=0; jc < CNEIGHBS_NUM; jc++)
+            for (int jc=0; jc < c1->cnb2len; jc++)
             {
-                cell_t *c2 = c1->cneighbs[jc];
+                cell_t *c2 = c1->cnb2[jc];
 
                 /* iterate over all particles in cell c2 */
 
@@ -64,31 +63,169 @@ void _fmd_computeEAM_pass0(fmd_t *md, fmd_real_t FembSum)
                 {
                     if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
 
-                    if ( (c1 != c2) || (i1 != i2) )
-                    {
-                        unsigned atomkind2 = c2->atomkind[i2];
+                    unsigned atomkind2 = c2->atomkind[i2];
 
-                        EAM_PAIR_UPDATE_FORCE_AND_POTENERGY(x1, atomkind1, c1, i1, atomkind2,
-                                                            c2, i2, PotEnergy, pottable);
-                    }
+                    EAM_PAIR_UPDATE_FORCE_AND_POTENERGY2(x1, atomkind1, c1, i1, atomkind2,
+                                                         c2, i2, PotEnergy, pottable);
+                }
+            }
+
+            cell_t *c2 = c1;
+
+            /* iterate over particles in cell c2=c1 with i2 < i1 */
+
+            for (int i2=0; i2 < i1; i2++)
+            {
+                if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                unsigned atomkind2 = c2->atomkind[i2];
+
+                EAM_PAIR_UPDATE_FORCE_AND_POTENERGY2(x1, atomkind1, c1, i1, atomkind2,
+                                                     c2, i2, PotEnergy, pottable);
+            }
+        }
+    }
+
+    /* iterate over all margin cells */
+
+    #pragma omp parallel for shared(md,pottable) default(none) reduction(+:PotEnergy) \
+      schedule(dynamic,1) num_threads(md->numthreads)
+
+    for (int ic=md->subd.nc; ic < md->subd.ncm; ic++)
+    {
+        cell_t *c1 = md->subd.grid + ic;
+
+        /* iterate over all particles in cell c1 */
+
+        for (int i1=0; i1 < c1->parts_num; i1++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup) continue;
+
+            unsigned atomkind1 = c1->atomkind[i1];
+            fmd_real_t *x1 = &POS(c1, i1, 0);
+
+            /* iterate over non-margin neighbor cells of cell c1 */
+
+            for (int jc=0; jc < c1->cnb1len; jc++)
+            {
+                cell_t *c2 = c1->cnb1[jc];
+
+                /* iterate over particles in cell c2 */
+
+                for (int i2=0; i2 < c2->parts_num; i2++)
+                {
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                    unsigned atomkind2 = c2->atomkind[i2];
+
+                    EAM_PAIR_UPDATE_FORCE(x1, atomkind1, c1, i1, atomkind2, c2, i2, pottable);
+                }
+            }
+
+            for (int jc=0; jc < c1->cnb2len; jc++)
+            {
+                cell_t *c2 = c1->cnb2[jc];
+
+                /* iterate over particles in cell c2 */
+
+                for (int i2=0; i2 < c2->parts_num; i2++)
+                {
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                    unsigned atomkind2 = c2->atomkind[i2];
+
+                    EAM_PAIR_UPDATE_FORCE_AND_POTENERGY1(x1, atomkind1, c1, i1, atomkind2,
+                                                         c2, i2, PotEnergy, pottable);
                 }
             }
         }
     }
 
-    PotEnergy = 0.5 * PotEnergy + FembSum;
+    PotEnergy += FembSum;
     MPI_Allreduce(&PotEnergy, &md->GroupPotentialEnergy, 1, FMD_MPI_REAL, MPI_SUM, md->MD_comm);
 }
 
-void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
+void _fmd_clean_vaream(fmd_t *md)
 {
-    fmd_real_t Femb_sum = 0.0;
+    int i;
+    cell_t *c;
+
+    for (int ic=0; ic < md->subd.nc; ic++)
+        for (i=0, c = md->subd.grid + ic; i < c->parts_num; i++)
+            c->vaream[i] = 0.;
+
+}
+
+#ifdef USE_CSPLINE
+#define EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(c1, i1, atomkind1, atomkinds, FembSum)    \
+    do                                                                                     \
+    {                                                                                      \
+        eam_element_t *el = atomkinds[atomkind1].eam_element;                              \
+        eam_t *eam = el->eam;                                                              \
+        fmd_real_t h = eam->drho;                                                          \
+        fmd_real_t rho_host = c1->vaream[i1];                                              \
+        int irho = (int)(rho_host / h);                                                    \
+        assert(irho < eam->Nrho - 1);                                                      \
+        int irho_h = irho + 1;                                                             \
+        fmd_real_t *F = el->F;                                                             \
+        fmd_real_t *F_DD = el->F_DD;                                                       \
+        fmd_real_t a = irho_h - rho_host/h;                                                \
+        fmd_real_t b = 1-a;                                                                \
+        c1->vaream[i1] = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);                           \
+        FembSum += SPLINE_VAL(a,b,F,irho,irho_h,F_DD,h);                                   \
+    } while (0)
+#else
+#define EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(c1, i1, atomkind1, atomkinds, FembSum)    \
+    do                                                                                     \
+    {                                                                                      \
+        eam_element_t *el = atomkinds[atomkind1].eam_element;                              \
+        eam_t *eam = el->eam;                                                              \
+        fmd_real_t h = eam->drho;                                                          \
+        fmd_real_t rho_host = c1->vaream[i1];                                              \
+        int irho = (int)(rho_host / h);                                                    \
+        assert(irho < eam->Nrho - 1);                                                      \
+        int irho_h = irho + 1;                                                             \
+        fmd_real_t *F = el->F;                                                             \
+        c1->vaream[i1] = (F[irho_h] - F[irho]) / h;                                        \
+        Femb_sum += F[irho] + (rho_host - irho * h) * c1->vaream[i1];                      \
+    } while (0)
+#endif
+
+fmd_real_t _fmd_calcFembPrime(fmd_t *md)
+{
+    fmd_real_t FembSum = 0.;
+    atomkind_t *atomkinds = md->potsys.atomkinds;
+
+    for (int ic=0; ic < md->subd.nc; ic++)
+    {
+        cell_t *c1 = md->subd.grid + ic;
+
+        /* iterate over all particles in cell c1 */
+
+        for (int i1=0; i1 < c1->parts_num; i1++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup) continue;
+
+            unsigned atomkind1 = c1->atomkind[i1];
+
+            if (atomkinds[atomkind1].eam_element != NULL)
+                EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(c1, i1, atomkind1, atomkinds, FembSum);
+        }
+    }
+
+    return FembSum;
+}
+
+void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum)
+{
     potpair_t **pottable = md->potsys.pottable;
     atomkind_t *atomkinds = md->potsys.atomkinds;
 
-    /* iterate over all cells */
+    _fmd_clean_vaream(md);
 
-    #pragma omp parallel for shared(md,pottable,atomkinds) default(none) reduction(+:Femb_sum) \
+    /* iterate over all non-margin cells */
+
+    #pragma omp parallel for shared(md,pottable,atomkinds) default(none) \
       schedule(dynamic,1) num_threads(md->numthreads)
 
     for (int ic=0; ic < md->subd.nc; ic++)
@@ -103,13 +240,12 @@ void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
 
             unsigned atomkind1 = c1->atomkind[i1];
             fmd_real_t *x1 = &POS(c1, i1, 0);
-            fmd_real_t rho_host = 0.0;
 
-            /* iterate over neighbor cells of cell c1 */
+            /* iterate over non-margin neighbor cells of cell c1 */
 
-            for (int jc=0; jc < CNEIGHBS_NUM; jc++)
+            for (int jc=0; jc < c1->cnb2len; jc++)
             {
-                cell_t *c2 = c1->cneighbs[jc];
+                cell_t *c2 = c1->cnb2[jc];
 
                 /* iterate over particles in cell c2 */
 
@@ -117,21 +253,66 @@ void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum_p)
                 {
                     if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
 
-                    if ( (c1 != c2) || (i1 != i2) )
-                    {
-                        unsigned atomkind2 = c2->atomkind[i2];
+                    unsigned atomkind2 = c2->atomkind[i2];
 
-                        EAM_PAIR_UPDATE_rho_host(x1, atomkind1, c1, i1, atomkind2,
-                                                 c2, i2, rho_host, pottable);
-                    }
+                    EAM_PAIR_UPDATE_rho_host2(x1, atomkind1, c1, i1, atomkind2, c2, i2, pottable);
                 }
             }
 
-            EAM_COMPUTE_FembPrime_AND_UPDATE_Femb_sum(c1, i1, atomkind1, rho_host, atomkinds, Femb_sum);
+            cell_t *c2 = c1;
+
+            /* iterate over particles in cell c2=c1 with i2 < i1 */
+
+            for (int i2=0; i2 < i1; i2++)
+            {
+                if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                unsigned atomkind2 = c2->atomkind[i2];
+
+                EAM_PAIR_UPDATE_rho_host2(x1, atomkind1, c1, i1, atomkind2, c2, i2, pottable);
+            }
         }
     }
 
-    *FembSum_p = Femb_sum;
+    /* iterate over all margin cells */
+
+    #pragma omp parallel for shared(md,pottable,atomkinds) default(none) \
+      schedule(dynamic,1) num_threads(md->numthreads)
+
+    for (int ic=md->subd.nc; ic < md->subd.ncm; ic++)
+    {
+        cell_t *c1 = md->subd.grid + ic;
+
+        /* iterate over all particles in cell c1 */
+
+        for (int i1=0; i1 < c1->parts_num; i1++)
+        {
+            if (md->ActiveGroup != FMD_GROUP_ALL && c1->GroupID[i1] != md->ActiveGroup) continue;
+
+            unsigned atomkind1 = c1->atomkind[i1];
+            fmd_real_t *x1 = &POS(c1, i1, 0);
+
+            /* iterate over non-margin neighbor cells of cell c1 */
+
+            for (int jc=0; jc < c1->cnb0len; jc++)
+            {
+                cell_t *c2 = c1->cnb0[jc];
+
+                /* iterate over particles in cell c2 */
+
+                for (int i2=0; i2 < c2->parts_num; i2++)
+                {
+                    if (md->ActiveGroup != FMD_GROUP_ALL && c2->GroupID[i2] != md->ActiveGroup) continue;
+
+                    unsigned atomkind2 = c2->atomkind[i2];
+
+                    EAM_PAIR_UPDATE_rho_host1(x1, atomkind1, c1, i1, atomkind2, c2, i2, pottable);
+                }
+            }
+        }
+    }
+
+    *FembSum = _fmd_calcFembPrime(md);
 }
 
 static void EAM_convert_r_to_r2(eam_t *eam, fmd_real_t *source, fmd_real_t *dest)

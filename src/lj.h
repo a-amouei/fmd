@@ -40,16 +40,20 @@
         {                                                                           \
             /* force, F = -(d/dr)U */                                               \
             fmd_real_t inv_r2 = 1.0/r2;                                             \
-            fmd_real_t inv_rs2 = sqrr(lj->sig) * inv_r2;                            \
+            fmd_real_t inv_rs2 = lj->sig_sqr * inv_r2;                              \
             fmd_real_t inv_rs6 = inv_rs2 * inv_rs2 * inv_rs2;                       \
             fmd_real_t inv_rs12 = sqrr(inv_rs6);                                    \
-            fmd_real_t factor = 48.0 * lj->eps * inv_r2 * (inv_rs12 - 0.5*inv_rs6); \
+            fmd_real_t factor = 12.0 * lj->eps4 * inv_r2 * (inv_rs12 - 0.5*inv_rs6);\
                                                                                     \
             for (int d=0; d<DIM; d++)                                               \
-                FRC(c1, i1, d) += rv[d] * factor;                                   \
+            {                                                                       \
+                fmd_real_t tmp = rv[d] * factor;                                    \
+                FRC(c1, i1, d) += tmp;                                              \
+                FRC(c2, i2, d) -= tmp;                                              \
+            }                                                                       \
                                                                                     \
             /* potential energy, U = 4*eps*( (sig/r)^12 - (sig/r)^6 ) */            \
-            PotEn += 4.0 * lj->eps * (inv_rs12 - inv_rs6);                          \
+            PotEn += lj->eps4 * (inv_rs12 - inv_rs6);                               \
         }                                                                           \
     } while (0)
 

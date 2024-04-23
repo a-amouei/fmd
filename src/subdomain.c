@@ -52,7 +52,19 @@ void _fmd_subd_free(fmd_t *md)
     if (md->subd.grid != NULL)
     {
         for (int ic=0; ic < md->subd.ncm; ic++)
-            _fmd_cell_free(md->subd.grid + ic);
+        {
+            cell_t *c = md->subd.grid + ic;
+
+            if (ic < md->subd.nc)
+            {
+                if (c->cnb1 != c->cnb2) free(c->cnb2);
+                free(c->cnb1);
+            }
+            else
+                free(c->cnb0);
+
+            _fmd_cell_free(c);
+        }
 
         free(md->subd.grid);
         md->subd.grid = NULL;
@@ -64,16 +76,125 @@ void _fmd_subd_free(fmd_t *md)
 static void init_cneighbs(Subdomain_t *s)
 {
     fmd_ituple_t ic, jc;
+    const fmd_utriple_t n3 = {3, 3, 3};
 
-    LOOP3D(ic, s->ic_start, s->ic_stop)
+    LOOP3D(ic, _fmd_ThreeZeros_int, s->cell_num)
     {
-        cell_t *c = ARRAY_ELEMENT(s->gridp, ic);
-        int i=0;
+        bool margin = false;
 
-        for (jc[0] = ic[0]-1; jc[0] <= ic[0]+1; jc[0]++)
-            for (jc[1] = ic[1]-1; jc[1] <= ic[1]+1; jc[1]++)
-                for (jc[2] = ic[2]-1; jc[2] <= ic[2]+1; jc[2]++)
-                    c->cneighbs[i++] = ARRAY_ELEMENT(s->gridp, jc);
+        for (int d=0; d < DIM; d++)
+            if (ic[d] < s->ic_start[d] || ic[d] >= s->ic_stop[d])
+            {
+                margin = true;
+                break;
+            }
+
+        cell_t *c = ARRAY_ELEMENT(s->gridp, ic);
+
+        if (margin)
+        {
+            /* make cnb0; count cnb0len, cnb1len, cnb2len; initialize cnb1, cnb2 */
+
+            c->cnb0len = 0;
+            c->cnb1len = 0;
+            c->cnb2len = 0;
+            c->cnb0 = NULL;
+
+            for (unsigned j = 0; j < CNEIGHBS_NUM; j++)
+            {
+                bool inside = true;
+
+                INDEX_3D(j, n3, jc);
+
+                for (int d=0; d<DIM; d++)
+                {
+                    jc[d] += ic[d] - 1;
+
+                    if (jc[d] < s->ic_start[d] || jc[d] >= s->ic_stop[d])
+                    {
+                        inside = false;
+                        break;
+                    }
+                }
+
+                if (inside)
+                {
+                    c->cnb0 = re_alloc(c->cnb0, ++c->cnb0len * sizeof(*c->cnb0));
+
+                    c->cnb0[c->cnb0len-1] = ARRAY_ELEMENT(s->gridp, jc);
+
+                    if (j < CNEIGHBS_NUM/2)
+                        c->cnb2len++;
+                    else
+                        c->cnb1len++;
+                }
+            }
+
+            c->cnb1 = c->cnb0 + c->cnb2len;
+            c->cnb2 = c->cnb0;
+        }
+
+        else /* not margin cell */
+
+        {
+            c->cnb0 = NULL;
+            c->cnb0len = 0;
+
+            /* make cnb1 and count cnb2len */
+
+            int i=0;
+
+            c->cnb1len = CNEIGHBS_NUM / 2;
+            c->cnb2len = 0;
+            c->cnb1 = m_alloc(c->cnb1len * sizeof(*c->cnb1));
+
+            for (unsigned j = CNEIGHBS_NUM/2 + 1; j < CNEIGHBS_NUM; j++)
+            {
+                bool inside = true;
+
+                INDEX_3D(j, n3, jc);
+
+                for (int d=0; d<DIM; d++)
+                {
+                    jc[d] += ic[d] - 1;
+
+                    if (jc[d] < s->ic_start[d] || jc[d] >= s->ic_stop[d])
+                        inside = false;
+                }
+
+                if (inside) c->cnb2len++;
+
+                c->cnb1[i++] = ARRAY_ELEMENT(s->gridp, jc);
+            }
+
+            /* make cnb2 */
+
+            if (c->cnb2len == c->cnb1len)
+                c->cnb2 = c->cnb1;
+            else
+            {
+                i = 0;
+
+                c->cnb2 = (c->cnb2len > 0) ? m_alloc(c->cnb2len * sizeof(*c->cnb2)) : NULL;
+
+                for (unsigned j = CNEIGHBS_NUM/2 + 1; j < CNEIGHBS_NUM; j++)
+                {
+                    bool inside = true;
+
+                    INDEX_3D(j, n3, jc);
+
+                    for (int d=0; d<DIM; d++)
+                    {
+                        jc[d] += ic[d] - 1;
+
+                        if (jc[d] < s->ic_start[d] || jc[d] >= s->ic_stop[d])
+                            inside = false;
+                    }
+
+                    if (inside) c->cnb2[i++] = ARRAY_ELEMENT(s->gridp, jc);
+                }
+            }
+        }
     }
 }
 
@@ -96,9 +217,7 @@ static void init_gridp(Subdomain_t *s)
         if (margin)
             ARRAY_ELEMENT(s->gridp, ic) = s->grid + imarg++;
         else
-        {
             ARRAY_ELEMENT(s->gridp, ic) = s->grid + inonmarg++;
-        }
     }
 }
 
@@ -139,7 +258,7 @@ void _fmd_subd_init(fmd_t *md)
     {
         int r, w;
 
-        md->subd.ic_start[d] = 1;
+        md->subd.ic_start[d] = 1;  /* don't change this value! */
 
         md->subd.r[d] = r = md->nc[d] % md->ns[d];
         md->subd.w[d] = w = md->nc[d] / md->ns[d];

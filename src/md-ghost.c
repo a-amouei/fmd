@@ -94,7 +94,7 @@ static void ccopy_for_partialforces(fmd_t *md, cell_t *src, cell_t *dest, int di
 
 static void ccopy_for_Femb(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
 {
-    memcpy(dest->FembPrime, src->FembPrime, src->parts_num * sizeof(fmd_real_t));
+    memcpy(dest->vaream, src->vaream, src->parts_num * sizeof(fmd_real_t));
 }
 
 static void ccopy_for_migrate(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
@@ -286,7 +286,7 @@ static void Femb_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
         MPI_Pack(&c->parts_num, 1, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
         if (c->parts_num > 0)
-            MPI_Pack(c->FembPrime, c->parts_num, FMD_MPI_REAL, *out, INT_MAX, size, md->MD_comm);
+            MPI_Pack(c->vaream, c->parts_num, FMD_MPI_REAL, *out, INT_MAX, size, md->MD_comm);
     }
 }
 
@@ -304,7 +304,7 @@ static void Femb_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
         MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
 
         if (num > 0)
-            MPI_Unpack(in, insize, &byte, c->FembPrime, num, FMD_MPI_REAL, md->MD_comm);
+            MPI_Unpack(in, insize, &byte, c->vaream, num, FMD_MPI_REAL, md->MD_comm);
     }
 }
 
