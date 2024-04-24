@@ -187,7 +187,7 @@ void _fmd_clean_vaream(fmd_t *md)
         int irho_h = irho + 1;                                                             \
         fmd_real_t *F = el->F;                                                             \
         c1->vaream[i1] = (F[irho_h] - F[irho]) / h;                                        \
-        Femb_sum += F[irho] + (rho_host - irho * h) * c1->vaream[i1];                      \
+        FembSum += F[irho] + (rho_host - irho * h) * c1->vaream[i1];                       \
     } while (0)
 #endif
 
