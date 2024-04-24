@@ -271,13 +271,17 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
     {
         fp = f_open(path, "r");
 
-        assert( fscanf(fp, "%lf", &StateFileTime) == 1 ); /* TO-DO: handle error */
+        int numread = fscanf(fp, "%lf", &StateFileTime);
+        assert(numread == 1); /* TO-DO: handle error */
 
         if (UseTime) md->time = StateFileTime;
 
-        assert( fscanf(fp, "%u\n", &ParticlesNum) == 1 ); /* TO-DO: handle error */
-        assert( fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2) == 3 ); /* TO-DO: handle error */
-        assert( fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2) == 3 ); /* TO-DO: handle error */
+        numread = fscanf(fp, "%u\n", &ParticlesNum);
+        assert(numread == 1); /* TO-DO: handle error */
+        numread = fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2);
+        assert(numread == 3); /* TO-DO: handle error */
+        numread = fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2);
+        assert(numread == 3); /* TO-DO: handle error */
     }
 
     if (!md->BoxSizeDetermined)
@@ -318,7 +322,8 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
             int GroupID;
             unsigned atomkind;
 
-            assert( fscanf(fp, "%s%d", name, &GroupID) == 2 ); /* TO-DO: handle error */
+            int numread = fscanf(fp, "%s%d", name, &GroupID);
+            assert(numread == 2); /* TO-DO: handle error */
             assert(GroupID >= 0);  /* TO-DO: handle error */
 
             unsigned j;
@@ -335,8 +340,10 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
 
             fmd_rtuple_t x, v;
 
-            assert( fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]) == 3 ); /* TO-DO: handle error */
-            assert( fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]) == 3 ); /* TO-DO: handle error */
+            numread = fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]);
+            assert(numread == 3); /* TO-DO: handle error */
+            numread = fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]);
+            assert(numread == 3); /* TO-DO: handle error */
 
             fmd_ituple_t ic;
 

@@ -377,24 +377,32 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
         char str[1024];
 
         for (int i=0; i<3; i++)
-            assert( fgets(str, 1024, fp) != NULL );
+        {
+            char *ret = fgets(str, 1024, fp);
+            assert(ret != NULL); /* TO-DO: handle error */
+        }
 
-        assert( fscanf(fp, "%d", &eam->ElementsNo) == 1 );
+        int numread = fscanf(fp, "%d", &eam->ElementsNo);
+        assert(numread == 1); /* TO-DO: handle error */
 
         eam->elements = (eam_element_t *)m_alloc(eam->ElementsNo * sizeof(eam_element_t));
 
         for (int i=0; i < eam->ElementsNo; i++)
-            if (fscanf(fp, "%s", str) == 1)
-            {
-                eam->elements[i].name = (char *)m_alloc(strlen(str) + 1);
-                strcpy(eam->elements[i].name, str);
-            }
+        {
+            numread = fscanf(fp, "%s", str);
+            assert(numread == 1); /* TO-DO: handle error */
+
+            eam->elements[i].name = (char *)m_alloc(strlen(str) + 1);
+            strcpy(eam->elements[i].name, str);
+        }
 
         fmd_real_t cutoff;
 
-        assert ( fscanf(fp, "%d%lf%d%lf%lf", &eam->Nrho, &eam->drho, &eam->Nr, &eam->dr, &cutoff) == 5 );
+        numread = fscanf(fp, "%d%lf%d%lf%lf", &eam->Nrho, &eam->drho, &eam->Nr, &eam->dr, &cutoff);
+        assert(numread == 5); /* TO-DO: handle error */
+
         eam->Nr2 = (eam->Nr += 2);
-        assert( (eam->Nr-1) * eam->dr > cutoff );
+        assert( (eam->Nr-1) * eam->dr > cutoff ); /* TO-DO: handle error */
         eam->cutoff_sqr = sqrr(cutoff);
         eam->dr2 = sqrr((eam->Nr-1) * eam->dr) / (eam->Nr2-1);
 
@@ -403,17 +411,28 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
         for (int i=0; i < eam->ElementsNo; i++)
         {
             eam->elements[i].eam = eam;
-            assert ( fscanf(fp, "%s%lf%lf%s", str, &eam->elements[i].mass,
-                &eam->elements[i].latticeParameter, str) == 4 );
+
+            numread = fscanf(fp, "%s%lf%lf%s", str, &eam->elements[i].mass,
+                             &eam->elements[i].latticeParameter, str);
+            assert(numread == 4); /* TO-DO: handle error */
+
             eam->elements[i].mass /= MD_MASS_UNIT;
 
             eam->elements[i].F = (fmd_real_t *)m_alloc(eam->Nrho * sizeof(fmd_real_t));
+
             for (int j=0; j < eam->Nrho; j++)
-                assert( fscanf(fp, "%lf", &eam->elements[i].F[j]) == 1 );
+            {
+                numread = fscanf(fp, "%lf", &eam->elements[i].F[j]);
+                assert(numread == 1); /* TO-DO: handle error */
+            }
 
             eam->elements[i].rho = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
+
             for (int j=0; j < eam->Nr-2; j++)  /* read rho(r) values from file */
-                assert( fscanf(fp, "%lf", &TempArray[j]) == 1 );
+            {
+                numread = fscanf(fp, "%lf", &TempArray[j]);
+                assert(numread == 1); /* TO-DO: handle error */
+            }
             TempArray[eam->Nr-1] = TempArray[eam->Nr-2] = 0.;
             EAM_convert_r_to_r2(eam, TempArray, eam->elements[i].rho);
 
@@ -432,13 +451,15 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
             {
                 for (int k=0; k < eam->Nr-2; k++) /* read r*phi values from file */
                 {
-                    assert( fscanf(fp, "%lf", &TempArray[k]) == 1 );
+                    numread = fscanf(fp, "%lf", &TempArray[k]);
+                    assert(numread == 1); /* TO-DO: handle error */
 
                     if (k==0)
                         TempArray[k] = FLT_MAX;
                     else
                         TempArray[k] /= k * eam->dr;
                 }
+
                 TempArray[eam->Nr-1] = TempArray[eam->Nr-2] = 0.;
                 eam->elements[i].phi[j] = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
                 EAM_convert_r_to_r2(eam, TempArray, eam->elements[i].phi[j]);
@@ -465,6 +486,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
     if (!md->Is_MD_comm_root)
     {
         eam->elements = (eam_element_t *)m_alloc(eam->ElementsNo * sizeof(eam_element_t));
+
         for (int i=0; i < eam->ElementsNo; i++)
         {
             eam->elements[i].eam = eam;
