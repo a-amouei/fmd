@@ -1339,7 +1339,7 @@ static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t)
 
     /* update the temperature field if not already updated */
     if (ftemp->timestep != md->time_iteration)
-        update_field_temperature(md, ftemp, t, false);
+        update_field_temperature(md, ftemp, t, ftemp->allhave_now);
 
     ttm_t *ttm = t->ttm;
     field_t *fTe = &t->fields[ttm->iTe];
