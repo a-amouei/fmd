@@ -672,6 +672,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         switch (cat)
         {
             case FMD_TURI_TTM_TYPE1:
+            case FMD_TURI_TTM_TYPE2:
                 /* if ttm is 3D, all directions have margins, if it's 1D only one direction has margin */
                 if (d == 2)
                     t->itc_start[d] = 1;
@@ -725,6 +726,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
             break;
 
         case FMD_TURI_TTM_TYPE1:
+        case FMD_TURI_TTM_TYPE2:
             t->ttm = _fmd_ttm_construct(md, t);
             md->active_ttm_turi = t;
             break;
@@ -1631,7 +1633,7 @@ void _fmd_turies_update(fmd_t *md, bool Xupd, bool Vupd, bool Fupd)
 
         if (_is_time_within_turi_start_stop_times(md, t))
         {
-            bool IsTTM = (t->cat == FMD_TURI_TTM_TYPE1);
+            bool IsTTM = (t->cat == FMD_TURI_TTM_TYPE1 || FMD_TURI_TTM_TYPE2);
 
             allhave_now_update(md, t, IsTTM);
 

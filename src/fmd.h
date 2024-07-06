@@ -43,7 +43,8 @@ typedef enum
 typedef enum
 {
     FMD_TURI_CUSTOM,
-    FMD_TURI_TTM_TYPE1
+    FMD_TURI_TTM_TYPE1,
+    FMD_TURI_TTM_TYPE2
 } fmd_turi_t;
 
 typedef enum

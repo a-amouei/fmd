@@ -239,7 +239,7 @@ static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
         ttm->preupdate_xe_te = ttm_presolve_1d;
         ttm->update_xe_te = ttm_type1_solve_1d;
 
-       if (t->ownerscomm.owned_tcells_num == 0)
+        if (t->ownerscomm.owned_tcells_num == 0)
             ttm->tgp = NULL;
         else
         {
@@ -247,6 +247,66 @@ static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
             ttm->tgp->pack._1D = type1_1d_pack;
             ttm->tgp->unpack._1D = type1_1d_unpack;
             ttm->tgp->bufsize = type1_1d_calc_tghost_buffsize(md);
+            ttm->tgp->sendbuf = m_alloc(ttm->tgp->bufsize);
+            ttm->tgp->recvbuf = m_alloc(ttm->tgp->bufsize);
+        }
+    }
+    else
+    {
+        ttm->dim = 3;
+
+        ttm->num = (unsigned ***)t->fields[inum].data.data;
+        ttm->vcm = (fmd_rtuple_t ***)t->fields[ivcm].data.data;
+        ttm->Ti = (fmd_real_t ***)t->fields[iTi].data.data;
+        ttm->Te = (fmd_real_t ***)t->fields[ttm->iTe].data.data;
+        ttm->Te2 = (fmd_real_t ***)ttm->Te_aux.data;
+        ttm->xi = (fmd_real_t ***)t->fields[ttm->ixi].data.data;
+
+        ttm->preupdate_xe_te = NULL;
+        ttm->update_xe_te = NULL; /* no 3D preupdater and updater is written */
+    }
+}
+
+static void ttm_init_type2(fmd_t *md, ttm_t *ttm, turi_t *t)
+{
+    int inum = _fmd_field_add(t, FMD_FIELD_NUMBER, md->timestep, false);
+    int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, true);
+    int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, false);
+    ttm->iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, false);
+    ttm->ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, true);
+
+    _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
+    assert(ttm->Te_aux.data != NULL);
+
+    /* set default value for "cell activation fraction" */
+    ttm->CellActivFrac = 0.1;
+
+    if (t->tdims_global[0] == 1 && t->tdims_global[1] == 1)
+    {
+        ttm->dim = 1;
+
+        ttm->num_1d = ((unsigned ***)t->fields[inum].data.data)[0][0];
+        ttm->vcm_1d = ((fmd_rtuple_t ***)t->fields[ivcm].data.data)[0][0];
+        ttm->Ti_1d = ((fmd_real_t ***)t->fields[iTi].data.data)[0][0];
+        ttm->Te_1d = ((fmd_real_t ***)t->fields[ttm->iTe].data.data)[0][0];
+        ttm->Te2_1d = ((fmd_real_t ***)ttm->Te_aux.data)[0][0];
+        ttm->xi_1d = ((fmd_real_t ***)t->fields[ttm->ixi].data.data)[0][0];
+
+        ttm->num_1d[0] = ttm->num_1d[t->itc_stop[2]] = 0;
+
+        ttm->dz2 = t->tcellh[2] * t->tcellh[2];
+
+        //ttm->preupdate_xe_te = ttm_presolve_1d;
+        //ttm->update_xe_te = ttm_type1_solve_1d;
+
+        if (t->ownerscomm.owned_tcells_num == 0)
+            ttm->tgp = NULL;
+        else
+        {
+            ttm->tgp = (tghost_pack_t *)m_alloc(sizeof(tghost_pack_t));
+            //ttm->tgp->pack._1D = type1_1d_pack;
+            //ttm->tgp->unpack._1D = type1_1d_unpack;
+            //ttm->tgp->bufsize = type1_1d_calc_tghost_buffsize(md);
             ttm->tgp->sendbuf = m_alloc(ttm->tgp->bufsize);
             ttm->tgp->recvbuf = m_alloc(ttm->tgp->bufsize);
         }
@@ -275,6 +335,10 @@ ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
     {
         case FMD_TURI_TTM_TYPE1:
             ttm_init_type1(md, ttm, t);
+            break;
+
+        case FMD_TURI_TTM_TYPE2:
+            ttm_init_type2(md, ttm, t);
             break;
 
         default:
