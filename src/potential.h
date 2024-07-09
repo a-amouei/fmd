@@ -54,9 +54,6 @@ typedef struct
 } atomkind_t;
 
 typedef struct _list list_t;
-typedef struct _bondkind bondkind_t;
-typedef bondkind_t *bondkindp_t;
-typedef struct _molkind molkind_t;
 
 typedef struct
 {
@@ -68,10 +65,6 @@ typedef struct
     list_t *potlist;                // list of all pots, whether applied or not
     bool hybridpasses[2];
     bool eam_applied;
-    bondkindp_t *bondkinds;         // array of pointers to bondkinds that are defined
-    unsigned bondkinds_num;         // size of 'bondkinds' array
-    molkind_t *molkinds;
-    unsigned molkinds_num;
 } potsys_t;
 
 typedef struct _fmd fmd_t;

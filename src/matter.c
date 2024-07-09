@@ -25,7 +25,6 @@
 #include "matter.h"
 #include "fmd-private.h"
 #include "general.h"
-#include "molecule.h"
 
 /* calculate GroupTemperature, GroupParticlesNum, GroupMomentum and
    GroupKineticEnergy from "local grid" */
@@ -253,7 +252,6 @@ static void *create_packbuffer_for_matt_distribute(fmd_t *md, fmd_ituple_t globa
     if (md->cellinfo.GroupID_active) c_int++;
     if (md->cellinfo.AtomID_active) c_unsigned++;
     if (md->cellinfo.atomkind_active) c_unsigned++;
-    if (md->cellinfo.molkind_active) c_unsigned += 3; /* for molkind, MolID and AtomIDlocal arrays */
 
     MPI_Pack_size(1, MPI_UNSIGNED, md->MD_comm, &s);
 
@@ -322,13 +320,6 @@ static void pack_for_matt_distribute(fmd_t *md, void *buff, int *bytecount,
 
             if (c->atomkind != NULL)
                 MPI_Pack(c->atomkind, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
-
-            if (c->molkind != NULL)
-            {
-                MPI_Pack(c->molkind, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
-                MPI_Pack(c->MolID, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
-                MPI_Pack(c->AtomIDlocal, c->parts_num, MPI_UNSIGNED, buff, INT_MAX, bytecount, md->MD_comm);
-            }
         }
 
         _fmd_cell_free(c);
@@ -367,13 +358,6 @@ static void transfer_from_globalgrid_to_rank0_grid(fmd_t *md)
         if (cg->atomkind != NULL)
             memcpy(cl->atomkind, cg->atomkind, cg->parts_num * sizeof(unsigned));
 
-        if (cg->molkind != NULL)
-        {
-            memcpy(cl->molkind, cg->molkind, cg->parts_num * sizeof(unsigned));
-            memcpy(cl->MolID, cg->MolID, cg->parts_num * sizeof(unsigned));
-            memcpy(cl->AtomIDlocal, cg->AtomIDlocal, cg->parts_num * sizeof(unsigned));
-        }
-
         _fmd_cell_free(cg);
     }
 }
@@ -408,13 +392,6 @@ static void unpack_for_matt_distribute(fmd_t *md, void *packbuf, int bufsize)
 
             if (c->atomkind != NULL)
                 MPI_Unpack(packbuf, bufsize, &pos, c->atomkind, c->parts_num, MPI_UNSIGNED, md->MD_comm);
-
-            if (c->molkind != NULL)
-            {
-                MPI_Unpack(packbuf, bufsize, &pos, c->molkind, c->parts_num, MPI_UNSIGNED, md->MD_comm);
-                MPI_Unpack(packbuf, bufsize, &pos, c->MolID, c->parts_num, MPI_UNSIGNED, md->MD_comm);
-                MPI_Unpack(packbuf, bufsize, &pos, c->AtomIDlocal, c->parts_num, MPI_UNSIGNED, md->MD_comm);
-            }
         }
     }
 }
@@ -464,9 +441,6 @@ void _fmd_matt_distribute(fmd_t *md)
     }
 
     MPI_Bcast(&md->TotalNoOfParticles, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
-    MPI_Bcast(&md->TotalNoOfMolecules, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
-
-    if (md->TotalNoOfMolecules > 0) _fmd_matt_updateAtomNeighbors(md);
 
     md->ggrid = NULL;
     md->ParticlesDistributed = true;

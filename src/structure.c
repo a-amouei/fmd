@@ -22,7 +22,6 @@
 #include <gsl/gsl_randist.h>
 #include "fmd-private.h"
 #include "misc.h"
-#include "molecule.h"
 #include "array.h"
 #include "general.h"
 #include "cell.h"
@@ -114,8 +113,6 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
             for (j=0; j < md->potsys.atomkinds_num; j++)
                 if (rn < prps_cumult[j]) break;
             c->atomkind[pi] = j;
-
-            if (c->molkind != NULL) c->molkind[pi] = 0;
 
             fmd_real_t mass = md->potsys.atomkinds[j].mass;
             fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * temp / mass);
@@ -241,111 +238,4 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
     makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 
     free(ratio);
-}
-
-void fmd_matt_scatterMolecule(fmd_t *md, fmd_handle_t molkind, fmd_real_t xa,
-  fmd_real_t ya, fmd_real_t za, fmd_real_t xb, fmd_real_t yb, fmd_real_t zb, unsigned num,
-  int GroupID, fmd_real_t temp)
-{
-    if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
-
-    if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
-        md->KineticEnergyUpdated = false;
-
-    if (!md->Is_MD_comm_root) return;
-
-    assert(GroupID >= 0); /* TO-DO: handle error */
-
-    fmd_rtuple_t x1 = {xa, ya, za};
-    fmd_rtuple_t x2 = {xb, yb, zb};
-
-    fmd_rtuple_t X;
-    for (int d=0; d<DIM; d++)
-        X[d] = x2[d] - x1[d];
-
-    gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng, time(NULL) + md->random_seed_aux++);
-
-    molkind_t *mk = &md->potsys.molkinds[molkind];
-    fmd_real_t **coords = (fmd_real_t **)_fmd_array_neat2d_create(mk->atoms_num, 3, sizeof(fmd_real_t));
-    fmd_rtuple_t MomentumSum = {0., 0., 0.};
-
-    for (unsigned i=0; i<num; i++) /* iteration on number of molecules */
-    {
-        unsigned j, trycount=0;
-
-        /* prepare coordinates for this molecule */
-        do
-        {
-            fmd_rtuple_t xo;
-
-            for (int d=0; d<DIM; d++)  /* choose center position */
-                xo[d] = x1[d] + X[d] * gsl_rng_uniform(rng);
-
-            for (j=0; j < mk->atoms_num; j++)  /* iteration on number of atoms in a molecule */
-            {
-                bool broke = false;
-
-                for (int d=0; d<DIM; d++)
-                {
-                    coords[j][d] = xo[d] + mk->atoms[j].position[d];
-                    if (coords[j][d] <= x1[d])
-                    {
-                        broke = true;
-                        break;
-                    }
-                    else if (coords[j][d] >= x2[d])
-                    {
-                        broke = true;
-                        break;
-                    }
-                }
-
-                if (broke) break;
-            }
-            trycount++;
-        } while (j != mk->atoms_num && trycount < 1000);
-        /* TO-DO: error handling */
-        assert(trycount < 1000);
-
-        fmd_ituple_t ic;
-
-        /* create the atoms in memory and initialize them */
-        for (j=0; j < mk->atoms_num; j++)
-        {
-            fmd_rtuple_t x;
-
-            for (int d=0; d<DIM; d++)
-            {
-                x[d] = coords[j][d];
-                ic[d] = (int)floor(x[d] / md->cellh[d]);
-            }
-
-            cell_t *c = md->ggrid + INDEX_FLAT(ic, md->nc);
-            unsigned pi = _fmd_cell_new_particle(md, c);
-
-            c->AtomIDlocal[pi] = j;
-            c->atomkind[pi] = mk->atoms[j].atomkind;
-            c->MolID[pi] = md->TotalNoOfMolecules;
-            c->molkind[pi] = molkind;
-            c->AtomID[pi] = md->TotalNoOfParticles++;
-            c->GroupID[pi] = RESERVED_GROUP;
-
-            fmd_real_t mass = md->potsys.atomkinds[c->atomkind[pi]].mass;
-            fmd_real_t StdDevVelocity = sqrt(K_BOLTZMANN * temp / mass);
-
-            for (int d=0; d<DIM; d++)
-            {
-                POS(c, pi, d) = x[d];
-                VEL(c, pi, d) = gsl_ran_gaussian_ziggurat(rng, StdDevVelocity);
-                MomentumSum[d] += mass * VEL(c, pi, d);
-            }
-        }
-
-        md->TotalNoOfMolecules++;
-    }
-
-    removeRemainingMomentum(md, GroupID, MomentumSum, num * mk->atoms_num);
-
-    _fmd_array_neat2d_free((void **)coords);
 }

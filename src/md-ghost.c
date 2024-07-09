@@ -118,13 +118,6 @@ static void ccopy_for_migrate(fmd_t *md, cell_t *src, cell_t *dest, int dim, int
 
     memcpy(dest->atomkind + oldnum, src->atomkind, src->parts_num * sizeof(unsigned));
 
-    if (dest->molkind != NULL)
-    {
-        memcpy(dest->molkind + oldnum, src->molkind, src->parts_num * sizeof(unsigned));
-        memcpy(dest->MolID + oldnum, src->MolID, src->parts_num * sizeof(unsigned));
-        memcpy(dest->AtomIDlocal + oldnum, src->AtomIDlocal, src->parts_num * sizeof(unsigned));
-    }
-
     fmd_real_t value;
 
     if (dir > 0)
@@ -453,7 +446,6 @@ static void *create_packbuffer_for_migrate(fmd_t *md, fmd_ituple_t ic_start, fmd
     if (md->cellinfo.GroupID_active) c_int++;
     if (md->cellinfo.AtomID_active) c_unsigned++;
     if (md->cellinfo.atomkind_active) c_unsigned++;
-    if (md->cellinfo.molkind_active) c_unsigned += 3; /* for molkind, MolID and AtomIDlocal arrays */
 
     MPI_Pack_size(1, MPI_UNSIGNED, md->MD_comm, &s);
 
@@ -530,13 +522,6 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
             MPI_Pack(c->atomkind, c->parts_num, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
-            if (c->molkind != NULL)
-            {
-                MPI_Pack(c->molkind, c->parts_num, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
-                MPI_Pack(c->MolID, c->parts_num, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
-                MPI_Pack(c->AtomIDlocal, c->parts_num, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
-            }
-
             md->subd.NumberOfParticles -= c->parts_num;
             _fmd_cell_minimize(md, c);
         }
@@ -585,13 +570,6 @@ static void migrate_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
                 MPI_Unpack(in, insize, &byte, c->AtomID + oldnum, incr, MPI_UNSIGNED, md->MD_comm);
 
             MPI_Unpack(in, insize, &byte, c->atomkind + oldnum, incr, MPI_UNSIGNED, md->MD_comm);
-
-            if (c->molkind != NULL)
-            {
-                MPI_Unpack(in, insize, &byte, c->molkind + oldnum, incr, MPI_UNSIGNED, md->MD_comm);
-                MPI_Unpack(in, insize, &byte, c->MolID + oldnum, incr, MPI_UNSIGNED, md->MD_comm);
-                MPI_Unpack(in, insize, &byte, c->AtomIDlocal + oldnum, incr, MPI_UNSIGNED, md->MD_comm);
-            }
         }
     }
 }

@@ -26,7 +26,6 @@
 #include "misc.h"
 #include "md-ghost.h"
 #include "list.h"
-#include "molecule.h"
 #include "general.h"
 #include "turi.h"
 #include "ttm.h"
@@ -374,8 +373,6 @@ void _fmd_dync_updateForces(fmd_t *md)
 
         _fmd_ghostparticles_transfer_partialforces(md);
     }
-
-    if (md->TotalNoOfMolecules > 0) fmd_dync_computeBondForce(md);   // TO-DO
 
     if (md->active_ttm_turi != NULL)
         if (_is_time_within_turi_start_stop_times(md, md->active_ttm_turi))

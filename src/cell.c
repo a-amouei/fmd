@@ -48,13 +48,6 @@ static inline void realloc_arrays(cell_t *c)
     if (c->GroupID != NULL) c->GroupID = re_alloc(c->GroupID, c->capacity * sizeof(int));
     if (c->AtomID != NULL) c->AtomID = re_alloc(c->AtomID, c->capacity * sizeof(unsigned));
     if (c->atomkind != NULL) c->atomkind = re_alloc(c->atomkind, c->capacity * sizeof(unsigned));
-    if (c->molkind != NULL)
-    {
-        c->molkind = re_alloc(c->molkind, c->capacity * sizeof(unsigned));
-        c->MolID = re_alloc(c->MolID, c->capacity * sizeof(unsigned));
-        c->AtomIDlocal = re_alloc(c->AtomIDlocal, c->capacity * sizeof(unsigned));
-        c->neighbors = re_alloc(c->neighbors, c->capacity * sizeof(list_t *));
-    }
 }
 
 void _fmd_cell_init(cellinfo_t *cinfo, cell_t *c)
@@ -66,10 +59,6 @@ void _fmd_cell_init(cellinfo_t *cinfo, cell_t *c)
     c->GroupID = (cinfo->GroupID_active ? m_alloc(sizeof(int)) : NULL);
     c->AtomID = (cinfo->AtomID_active ? m_alloc(sizeof(unsigned)) : NULL);
     c->atomkind = (cinfo->atomkind_active ? m_alloc(sizeof(unsigned)) : NULL);
-    c->molkind = (cinfo->molkind_active ? m_alloc(sizeof(unsigned)) : NULL);
-    c->MolID = (cinfo->MolID_active ? m_alloc(sizeof(unsigned)) : NULL);
-    c->AtomIDlocal = (cinfo->AtomIDlocal_active ? m_alloc(sizeof(unsigned)) : NULL);
-    c->neighbors = (cinfo->neighbors_active ? m_alloc(sizeof(list_t *)) : NULL);
     c->capacity = 1;
     c->parts_num = 0;
 }
@@ -83,10 +72,6 @@ void _fmd_cellinfo_init(cellinfo_t *cinfo)
     cinfo->GroupID_active = true;
     cinfo->AtomID_active = true;
     cinfo->atomkind_active = true;
-    cinfo->molkind_active = false;
-    cinfo->MolID_active = false;
-    cinfo->AtomIDlocal_active = false;
-    cinfo->neighbors_active = false;
 }
 
 void _fmd_cell_resize(fmd_t *md, cell_t *c)
@@ -139,18 +124,6 @@ void _fmd_cell_free(cell_t *c)
 
     free(c->atomkind);
     c->atomkind = NULL;
-
-    free(c->molkind);
-    c->molkind = NULL;
-
-    free(c->MolID);
-    c->MolID = NULL;
-
-    free(c->AtomIDlocal);
-    c->AtomIDlocal = NULL;
-
-    free(c->neighbors);
-    c->neighbors = NULL;
 }
 
 void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t *cto, unsigned ito)
@@ -171,14 +144,6 @@ void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t
     if (cfrom->GroupID != NULL) cto->GroupID[ito] = cfrom->GroupID[ifrom];
     if (cfrom->AtomID != NULL) cto->AtomID[ito] = cfrom->AtomID[ifrom];
     if (cfrom->atomkind != NULL) cto->atomkind[ito] = cfrom->atomkind[ifrom];
-
-    if (cfrom->molkind != NULL)
-    {
-        cto->molkind[ito] = cfrom->molkind[ifrom];
-        cto->MolID[ito] = cfrom->MolID[ifrom];
-        cto->AtomIDlocal[ito] = cfrom->AtomIDlocal[ifrom];
-        cto->neighbors[ito] = cfrom->neighbors[ifrom];
-    }
 }
 
 void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind)

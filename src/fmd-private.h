@@ -74,7 +74,6 @@ struct _fmd
     int time_iteration;
     fmd_real_t timestep;
     unsigned TotalNoOfParticles;
-    unsigned TotalNoOfMolecules;
     fmd_real_t GroupTemperature;          /* for the "active group" only */
     bool Is_MD_process;
     bool Is_MD_comm_root;

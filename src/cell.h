@@ -45,11 +45,6 @@ struct _cell
     int *GroupID;
     unsigned *AtomID;
     unsigned *atomkind;
-    unsigned *molkind;
-    unsigned *MolID;
-    unsigned *AtomIDlocal;              /* Atom ID in molecule */
-    list_t **neighbors;                 /* for each molecule atom in cell there is a list of neighbors;
-                                           each data pointer in this list points to a mol_atom_neighbor_t */
     /* arrays of neighbor cells of the current cell and their lengths;
        cnb0, cnb1 and cnb2 are arrays of cell_t*;
        the meanings of cnb0, cnb1 and cnb2 depend on whether the current cell is margin cell or not; */
@@ -70,10 +65,6 @@ struct _cellinfo
     bool GroupID_active;
     bool AtomID_active;
     bool atomkind_active;
-    bool molkind_active;
-    bool MolID_active;
-    bool AtomIDlocal_active;
-    bool neighbors_active;
 };
 
 typedef struct _cellinfo cellinfo_t;

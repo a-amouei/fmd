@@ -25,7 +25,6 @@
 #include "array.h"
 #include "list.h"
 #include "eam.h"
-#include "molecule.h"
 #include "general.h"
 #include "morse.h"
 #include "lj.h"
@@ -85,22 +84,10 @@ static void atomkinds_free(fmd_t *md)
 
 void _fmd_potsys_free(fmd_t *md)
 {
-    if (md->potsys.molkinds != NULL)
-    {
-        // TO-DO: call fmd_molecule_freeKinds()
-        md->potsys.molkinds = NULL;
-    }
-
     if (md->potsys.atomkinds != NULL)
     {
         atomkinds_free(md);
         md->potsys.atomkinds = NULL;
-    }
-
-    if (md->potsys.bondkinds != NULL)
-    {
-        fmd_bond_freeKinds(md);
-        md->potsys.bondkinds = NULL;
     }
 
     if (md->potsys.pottable != NULL)
@@ -128,10 +115,6 @@ void _fmd_potsys_init(fmd_t *md)
     md->potsys.potlist = NULL;
     md->potsys.pottable = NULL;
     md->potsys.potcats = NULL;
-    md->potsys.bondkinds = NULL;
-    md->potsys.bondkinds_num = 0;
-    md->potsys.molkinds = NULL;
-    md->potsys.molkinds_num = 0;
 }
 
 static void pottable_create(fmd_t *md)
