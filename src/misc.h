@@ -25,9 +25,7 @@
 /* Global macroes and symbolic constants */
 
 #define LIGHT_SPEED                 2.9979245800e+06   // (ang / ps)
-#define METER_PER_SECOND            1e-2               // (ang / ps)
 #define JOULE_PER_METER2            6.2415091259e-02   // (eV / ang^2)
-#define JOULE_PER_METER3_KELVIN     6.2415091259e-12   // (eV / ang^3 Kelvin)
 #define PASCAL                      6.2415091259e-12   // (mass_unit / ang ps^2)
 #define MD_CHARGE_UNIT              1.2657711566e-10   // x (electrostatic unit of charge (esu) = statcoulomb)
 #define E_CHARGE                    3.7946864629e+00   // electron charge in MD electric charge unit

@@ -42,6 +42,8 @@
 #define MD_MASS_UNIT                9.6485332907e+03   /* Da */
 #define METER                       1e10               /* Ang */
 #define SECOND                      1e12               /* ps */
+#define METER_PER_SECOND            1e-2               /* (Ang / ps) */
+#define JOULE_PER_METER3_KELVIN     6.2415091259e-12   /* (eV / ang^3 Kelvin)    */
 #define JOULE_PER_METER3_KELVIN2    6.2415091259e-12   /* (eV / Ang^3 Kelvin^2)  */
 #define WATT_PER_METER_KELVIN       6.2415091259e-4    /* (eV / ps Ang Kelvin)   */
 #define WATT_PER_METER2             6.2415091259e-14   /* (eV / ps Ang^2)        */

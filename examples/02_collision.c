@@ -75,7 +75,7 @@ int main()
     fmd_matt_setAtomKinds(md, 2, names, masses);
 
     // load the EAM file into memory
-    fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "../potentials/Cu01.eam.alloy");
+    fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "data/Cu01.eam.alloy");
 
     // apply the EAM potential for Cu
     fmd_pot_apply(md, 0, 0, pot);

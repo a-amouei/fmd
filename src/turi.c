@@ -295,8 +295,6 @@ static void gather_field_data_real(fmd_t *md, turi_t *t, field_t *f, fmd_array3s
     if (md->Is_MD_comm_root)
     {
         _fmd_array_3d_create(t->tdims_global, sizeof(fmd_real_t), f->datatype, out);
-        assert(out->data != NULL);
-        /* TO-DO: handle memory error */
 
         for (int i=0; i < t->tcells_global_num; i++)
         {
@@ -339,8 +337,6 @@ static void gather_field_data_unsigned(fmd_t *md, turi_t *t, field_t *f, fmd_arr
     if (md->Is_MD_comm_root)
     {
         _fmd_array_3d_create(t->tdims_global, sizeof(unsigned), f->datatype, out);
-        assert(out->data != NULL);
-        /* TO-DO: handle memory error */
 
         for (int i=0; i < t->tcells_global_num; i++)
         {
@@ -384,8 +380,6 @@ static void gather_field_data_rtuple(fmd_t *md, turi_t *t, field_t *f, fmd_array
     if (md->Is_MD_comm_root)
     {
         _fmd_array_3d_create(t->tdims_global, sizeof(fmd_rtuple_t), f->datatype, out);
-        assert(out->data != NULL);
-        /* TO-DO: handle memory error */
 
         for (int i=0; i < t->tcells_global_num; i++)
         {
@@ -1492,7 +1486,6 @@ int _fmd_field_add(turi_t *t, fmd_field_t cat, fmd_real_t interval, bool allhave
 
         /* allocate space for field data */
         _fmd_array_3d_create(t->tdims_local, f->data_el_size, f->datatype, &f->data);
-        assert(f->data.data != NULL);
     }
     else
         f = &t->fields[i];
@@ -1831,7 +1824,7 @@ static void turi_free(fmd_t *md, turi_t *t)
 
     free(t->comms);
 
-    if (t->ttm != NULL) _fmd_ttm_destruct(&t->ttm);
+    if (t->ttm != NULL) _fmd_ttm_destruct(t);
 
     turi_ownerscomm_free(md, &t->ownerscomm);
 }

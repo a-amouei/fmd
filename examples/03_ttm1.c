@@ -1,5 +1,5 @@
 /*
-   03_ttm.c - an example showing how to use FMD in practice
+   03_ttm1.c - an example showing how to use FMD in practice
 
    This program simulates interaction of short laser pulse with copper.
    It shows how to define a turi and perform a hybrid TTM-MD simulation
@@ -8,11 +8,11 @@
 
 /* Assuming that FMD is already installed, this example can be compiled by
 
-   $ gcc 03_ttm.c -lfmd -o 03_ttm.x
+   $ gcc 03_ttm1.c -lfmd -o 03_ttm1.x
 
    and can be executed by
 
-   $ mpirun -n 2 ./03_ttm.x
+   $ mpirun -n 2 ./03_ttm1.x
 */
 
 #include <fmd.h>
@@ -113,7 +113,7 @@ int main()
     fmd_matt_setAtomKinds(md, 1, name, mass);
 
     // load the EAM file into memory; can be called only after fmd_box_setSubdomains()
-    fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "../potentials/Cu01.eam.alloy");
+    fmd_pot_t *pot = fmd_pot_eam_alloy_load(md, "data/Cu01.eam.alloy");
 
     // apply the EAM potential
     fmd_pot_apply(md, 0, 0, pot);

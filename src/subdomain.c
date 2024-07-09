@@ -297,7 +297,6 @@ void _fmd_subd_init(fmd_t *md)
 
     _fmd_array_3d_create(md->subd.cell_num, sizeof(cell_t *), DATATYPE_CELLP, &md->subd.gridp_array);
     md->subd.gridp = (cell_t ****)md->subd.gridp_array.data;
-    assert(md->subd.gridp != NULL); /* TO-DO: handle memory error */
 
     init_gridp(&md->subd);
 
