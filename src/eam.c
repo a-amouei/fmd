@@ -157,37 +157,43 @@ void _fmd_clean_vaream(fmd_t *md)
 }
 
 #ifdef USE_CSPLINE
-#define EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(c1, i1, atomkind1, atomkinds, FembSum)    \
-    do                                                                                     \
-    {                                                                                      \
-        eam_element_t *el = atomkinds[atomkind1].eam_element;                              \
-        eam_t *eam = el->eam;                                                              \
-        fmd_real_t h = eam->drho;                                                          \
-        fmd_real_t rho_host = c1->vaream[i1];                                              \
-        int irho = (int)(rho_host / h);                                                    \
-        assert(irho < eam->Nrho - 1);                                                      \
-        int irho_h = irho + 1;                                                             \
-        fmd_real_t *F = el->F;                                                             \
-        fmd_real_t *F_DD = el->F_DD;                                                       \
-        fmd_real_t a = irho_h - rho_host/h;                                                \
-        fmd_real_t b = 1-a;                                                                \
-        c1->vaream[i1] = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);                           \
-        FembSum += SPLINE_VAL(a,b,F,irho,irho_h,F_DD,h);                                   \
+#define EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(md, c1, i1, atomkind1, atomkinds, FembSum)       \
+    do                                                                                            \
+    {                                                                                             \
+        eam_element_t *el = atomkinds[atomkind1].eam_element;                                     \
+        eam_t *eam = el->eam;                                                                     \
+        fmd_real_t h = eam->drho;                                                                 \
+        fmd_real_t rho_host = c1->vaream[i1];                                                     \
+        int irho = (int)(rho_host / h);                                                           \
+        if (irho >= eam->Nrho - 1)                                                                \
+            _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,\
+                                             "electron density", rho_host,                        \
+                                             "related to EAM potential");                         \
+        int irho_h = irho + 1;                                                                    \
+        fmd_real_t *F = el->F;                                                                    \
+        fmd_real_t *F_DD = el->F_DD;                                                              \
+        fmd_real_t a = irho_h - rho_host/h;                                                       \
+        fmd_real_t b = 1-a;                                                                       \
+        c1->vaream[i1] = SPLINE_DERIV(a,b,F,irho,irho_h,F_DD,h);                                  \
+        FembSum += SPLINE_VAL(a,b,F,irho,irho_h,F_DD,h);                                          \
     } while (0)
 #else
-#define EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(c1, i1, atomkind1, atomkinds, FembSum)    \
-    do                                                                                     \
-    {                                                                                      \
-        eam_element_t *el = atomkinds[atomkind1].eam_element;                              \
-        eam_t *eam = el->eam;                                                              \
-        fmd_real_t h = eam->drho;                                                          \
-        fmd_real_t rho_host = c1->vaream[i1];                                              \
-        int irho = (int)(rho_host / h);                                                    \
-        assert(irho < eam->Nrho - 1);                                                      \
-        int irho_h = irho + 1;                                                             \
-        fmd_real_t *F = el->F;                                                             \
-        c1->vaream[i1] = (F[irho_h] - F[irho]) / h;                                        \
-        FembSum += F[irho] + (rho_host - irho * h) * c1->vaream[i1];                       \
+#define EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(md, c1, i1, atomkind1, atomkinds, FembSum)       \
+    do                                                                                            \
+    {                                                                                             \
+        eam_element_t *el = atomkinds[atomkind1].eam_element;                                     \
+        eam_t *eam = el->eam;                                                                     \
+        fmd_real_t h = eam->drho;                                                                 \
+        fmd_real_t rho_host = c1->vaream[i1];                                                     \
+        int irho = (int)(rho_host / h);                                                           \
+        if (irho >= eam->Nrho - 1)                                                                \
+            _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,\
+                                             "electron density", rho_host,                        \
+                                             "related to EAM potential");                         \
+        int irho_h = irho + 1;                                                                    \
+        fmd_real_t *F = el->F;                                                                    \
+        c1->vaream[i1] = (F[irho_h] - F[irho]) / h;                                               \
+        FembSum += F[irho] + (rho_host - irho * h) * c1->vaream[i1];                              \
     } while (0)
 #endif
 
@@ -209,7 +215,7 @@ fmd_real_t _fmd_calcFembPrime(fmd_t *md)
             unsigned atomkind1 = c1->atomkind[i1];
 
             if (atomkinds[atomkind1].eam_element != NULL)
-                EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(c1, i1, atomkind1, atomkinds, FembSum);
+                EAM_COMPUTE_FembPrime_AND_UPDATE_FembSum(md, c1, i1, atomkind1, atomkinds, FembSum);
         }
     }
 
@@ -315,7 +321,7 @@ void _fmd_computeEAM_pass1(fmd_t *md, fmd_real_t *FembSum)
     *FembSum = _fmd_calcFembPrime(md);
 }
 
-static void EAM_convert_r_to_r2(eam_t *eam, fmd_real_t *source, fmd_real_t *dest)
+static void EAM_convert_r_to_r2(fmd_t *md, eam_t *eam, fmd_real_t *source, fmd_real_t *dest)
 /* Consider two functions f1 and f2 with the relation f2(r^2)=f1(r)
  * between them. Given the array source[0..eam.Nr-1] containing a table
  * of the function f1, i.e. source[i]=f1(r_i), with r_i=i*eam.dr , this
@@ -325,11 +331,12 @@ static void EAM_convert_r_to_r2(eam_t *eam, fmd_real_t *source, fmd_real_t *dest
     fmd_real_t *SourceDD;
     int i;
 
-    SourceDD = (fmd_real_t *)m_alloc(eam->Nr * sizeof(fmd_real_t));
-    spline_prepare(eam->dr, source, eam->Nr, SourceDD);
+    SourceDD = (fmd_real_t *)m_alloc(md, eam->Nr * sizeof(fmd_real_t));
+    _fmd_spline_prepare(md, eam->dr, source, eam->Nr, SourceDD);
 
     for (i=0; i < eam->Nr2; i++)
-        dest[i] = spline_val(eam->dr, source, SourceDD, sqrt(i * eam->dr2));
+        dest[i] = _fmd_spline_val(eam->dr, source, SourceDD, sqrt(i * eam->dr2));
+
     free(SourceDD);
 }
 
@@ -366,83 +373,84 @@ static void create_mpi_eam(fmd_t *md, MPI_Datatype *mpi_eam)
     MPI_Type_commit(mpi_eam);
 }
 
-static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
+static eam_t *load_DYNAMOsetfl(fmd_t *md, char *path)
 {
-    eam_t *eam = (eam_t *)m_alloc(sizeof(eam_t));
+    eam_t *eam = (eam_t *)m_alloc(md, sizeof(eam_t));
+
+    if (eam == NULL) return NULL;
 
     if (md->Is_MD_comm_root)
     {
-        FILE *fp = f_open(FilePath, "r");
+        FILE *fp = f_open(md, path, "r");
 
         char str[1024];
+        fmd_string_t ftype = "DYNAMO multi-element setfl (eam/alloy)";
 
         for (int i=0; i<3; i++)
-        {
-            char *ret = fgets(str, 1024, fp);
-            assert(ret != NULL); /* TO-DO: handle error */
-        }
+            if (fgets(str, 1024, fp) == NULL)
+                _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
-        int numread = fscanf(fp, "%d", &eam->ElementsNo);
-        assert(numread == 1); /* TO-DO: handle error */
+        if (fscanf(fp, "%d", &eam->ElementsNo) != 1)
+            _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
-        eam->elements = (eam_element_t *)m_alloc(eam->ElementsNo * sizeof(eam_element_t));
+        eam->elements = (eam_element_t *)m_alloc(md, eam->ElementsNo * sizeof(eam_element_t));
 
         for (int i=0; i < eam->ElementsNo; i++)
         {
-            numread = fscanf(fp, "%s", str);
-            assert(numread == 1); /* TO-DO: handle error */
+            if (fscanf(fp, "%s", str) != 1)
+                _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
-            eam->elements[i].name = (char *)m_alloc(strlen(str) + 1);
+            eam->elements[i].name = (char *)m_alloc(md, strlen(str) + 1);
             strcpy(eam->elements[i].name, str);
         }
 
         fmd_real_t cutoff;
 
-        numread = fscanf(fp, "%d%lf%d%lf%lf", &eam->Nrho, &eam->drho, &eam->Nr, &eam->dr, &cutoff);
-        assert(numread == 5); /* TO-DO: handle error */
+        if (fscanf(fp, "%d%lf%d%lf%lf", &eam->Nrho, &eam->drho, &eam->Nr, &eam->dr, &cutoff) != 5)
+            _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
         eam->Nr2 = (eam->Nr += 2);
-        assert( (eam->Nr-1) * eam->dr > cutoff ); /* TO-DO: handle error */
+
+        if ( (eam->Nr-1) * eam->dr <= cutoff )
+            _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
+
         eam->cutoff_sqr = sqrr(cutoff);
         eam->dr2 = sqrr((eam->Nr-1) * eam->dr) / (eam->Nr2-1);
 
-        fmd_real_t *TempArray = (fmd_real_t *)m_alloc(eam->Nr * sizeof(fmd_real_t));
+        fmd_real_t *TempArray = (fmd_real_t *)m_alloc(md, eam->Nr * sizeof(fmd_real_t));
 
         for (int i=0; i < eam->ElementsNo; i++)
         {
             eam->elements[i].eam = eam;
 
-            numread = fscanf(fp, "%s%lf%lf%s", str, &eam->elements[i].mass,
-                             &eam->elements[i].latticeParameter, str);
-            assert(numread == 4); /* TO-DO: handle error */
+            if (fscanf(fp, "%s%lf%lf%s", str, &eam->elements[i].mass,
+                &eam->elements[i].latticeParameter, str) != 4)
+                    _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
             eam->elements[i].mass /= MD_MASS_UNIT;
 
-            eam->elements[i].F = (fmd_real_t *)m_alloc(eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].F = (fmd_real_t *)m_alloc(md, eam->Nrho * sizeof(fmd_real_t));
 
             for (int j=0; j < eam->Nrho; j++)
-            {
-                numread = fscanf(fp, "%lf", &eam->elements[i].F[j]);
-                assert(numread == 1); /* TO-DO: handle error */
-            }
+                if (fscanf(fp, "%lf", &eam->elements[i].F[j]) != 1)
+                    _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
-            eam->elements[i].rho = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
+            eam->elements[i].rho = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
 
             for (int j=0; j < eam->Nr-2; j++)  /* read rho(r) values from file */
-            {
-                numread = fscanf(fp, "%lf", &TempArray[j]);
-                assert(numread == 1); /* TO-DO: handle error */
-            }
-            TempArray[eam->Nr-1] = TempArray[eam->Nr-2] = 0.;
-            EAM_convert_r_to_r2(eam, TempArray, eam->elements[i].rho);
+                if (fscanf(fp, "%lf", &TempArray[j]) != 1)
+                    _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
-            eam->elements[i].phi = (fmd_real_t **)m_alloc(eam->ElementsNo * sizeof(fmd_real_t *));
+            TempArray[eam->Nr-1] = TempArray[eam->Nr-2] = 0.;
+            EAM_convert_r_to_r2(md, eam, TempArray, eam->elements[i].rho);
+
+            eam->elements[i].phi = (fmd_real_t **)m_alloc(md, eam->ElementsNo * sizeof(fmd_real_t *));
 #ifdef USE_CSPLINE
-            eam->elements[i].F_DD = (fmd_real_t *)m_alloc(eam->Nrho * sizeof(fmd_real_t));
-            eam->elements[i].rhoDD = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
-            spline_prepare(eam->drho, eam->elements[i].F, eam->Nrho, eam->elements[i].F_DD);
-            spline_prepare(eam->dr2, eam->elements[i].rho, eam->Nr2, eam->elements[i].rhoDD);
-            eam->elements[i].phiDD = (fmd_real_t **)m_alloc(eam->ElementsNo * sizeof(fmd_real_t *));
+            eam->elements[i].F_DD = (fmd_real_t *)m_alloc(md, eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].rhoDD = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
+            _fmd_spline_prepare(md, eam->drho, eam->elements[i].F, eam->Nrho, eam->elements[i].F_DD);
+            _fmd_spline_prepare(md, eam->dr2, eam->elements[i].rho, eam->Nr2, eam->elements[i].rhoDD);
+            eam->elements[i].phiDD = (fmd_real_t **)m_alloc(md, eam->ElementsNo * sizeof(fmd_real_t *));
 #endif
         }
 
@@ -451,8 +459,8 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
             {
                 for (int k=0; k < eam->Nr-2; k++) /* read r*phi values from file */
                 {
-                    numread = fscanf(fp, "%lf", &TempArray[k]);
-                    assert(numread == 1); /* TO-DO: handle error */
+                    if (fscanf(fp, "%lf", &TempArray[k]) != 1)
+                        _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
                     if (k==0)
                         TempArray[k] = FLT_MAX;
@@ -461,12 +469,12 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
                 }
 
                 TempArray[eam->Nr-1] = TempArray[eam->Nr-2] = 0.;
-                eam->elements[i].phi[j] = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
-                EAM_convert_r_to_r2(eam, TempArray, eam->elements[i].phi[j]);
+                eam->elements[i].phi[j] = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
+                EAM_convert_r_to_r2(md, eam, TempArray, eam->elements[i].phi[j]);
                 eam->elements[j].phi[i] = eam->elements[i].phi[j];
 #ifdef USE_CSPLINE
-                eam->elements[i].phiDD[j] = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
-                spline_prepare(eam->dr2, eam->elements[i].phi[j], eam->Nr2, eam->elements[i].phiDD[j]);
+                eam->elements[i].phiDD[j] = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
+                _fmd_spline_prepare(md, eam->dr2, eam->elements[i].phi[j], eam->Nr2, eam->elements[i].phiDD[j]);
                 eam->elements[j].phiDD[i] = eam->elements[i].phiDD[j];
 #endif
             }
@@ -485,28 +493,28 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
 
     if (!md->Is_MD_comm_root)
     {
-        eam->elements = (eam_element_t *)m_alloc(eam->ElementsNo * sizeof(eam_element_t));
+        eam->elements = (eam_element_t *)m_alloc(md, eam->ElementsNo * sizeof(eam_element_t));
 
         for (int i=0; i < eam->ElementsNo; i++)
         {
             eam->elements[i].eam = eam;
-            eam->elements[i].F = (fmd_real_t *)m_alloc(eam->Nrho * sizeof(fmd_real_t));
-            eam->elements[i].rho = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
-            eam->elements[i].phi = (fmd_real_t **)m_alloc(eam->ElementsNo * sizeof(fmd_real_t *));
+            eam->elements[i].F = (fmd_real_t *)m_alloc(md, eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].rho = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
+            eam->elements[i].phi = (fmd_real_t **)m_alloc(md, eam->ElementsNo * sizeof(fmd_real_t *));
 
             for (int j=0; j<=i; j++)
             {
-                eam->elements[i].phi[j] = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
+                eam->elements[i].phi[j] = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
                 eam->elements[j].phi[i] = eam->elements[i].phi[j];
             }
 
 #ifdef USE_CSPLINE
-            eam->elements[i].F_DD = (fmd_real_t *)m_alloc(eam->Nrho * sizeof(fmd_real_t));
-            eam->elements[i].rhoDD = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
-            eam->elements[i].phiDD = (fmd_real_t **)m_alloc(eam->ElementsNo * sizeof(fmd_real_t *));
+            eam->elements[i].F_DD = (fmd_real_t *)m_alloc(md, eam->Nrho * sizeof(fmd_real_t));
+            eam->elements[i].rhoDD = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
+            eam->elements[i].phiDD = (fmd_real_t **)m_alloc(md, eam->ElementsNo * sizeof(fmd_real_t *));
             for (int j=0; j<=i; j++)
             {
-                eam->elements[i].phiDD[j] = (fmd_real_t *)m_alloc(eam->Nr2 * sizeof(fmd_real_t));
+                eam->elements[i].phiDD[j] = (fmd_real_t *)m_alloc(md, eam->Nr2 * sizeof(fmd_real_t));
                 eam->elements[j].phiDD[i] = eam->elements[i].phiDD[j];
             }
 #endif
@@ -526,7 +534,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *FilePath)
         MPI_Bcast(&namelen, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
         if (!md->Is_MD_comm_root)
-            eam->elements[i].name = (char *)m_alloc(namelen + 1);
+            eam->elements[i].name = (char *)m_alloc(md, namelen + 1);
 
         MPI_Bcast(eam->elements[i].name, namelen+1, MPI_CHAR, RANK0, md->MD_comm);
 
@@ -550,7 +558,9 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
 {
     eam_t *eam = load_DYNAMOsetfl(md, path);
 
-    fmd_pot_t *pot = (fmd_pot_t *)m_alloc(sizeof(fmd_pot_t));
+    if (eam == NULL) return NULL;
+
+    fmd_pot_t *pot = (fmd_pot_t *)m_alloc(md, sizeof(fmd_pot_t));
     pot->cat = POT_EAM_ALLOY;
     pot->data = eam;
 
@@ -561,8 +571,9 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
 
 fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot)
 {
-    // TO-DO: handle error
-    assert(pot->cat == POT_EAM_ALLOY);
+    if (pot->cat != POT_EAM_ALLOY)
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                          "potential category", pot->cat);
 
     return sqrt(((eam_t *)pot->data)->cutoff_sqr);
 }
@@ -592,8 +603,12 @@ void _fmd_pot_eam_free(eam_t *eam)
 
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element)
 {
-    // TO-DO: handle error
-    assert(pot->cat == POT_EAM_ALLOY);
+    if (pot->cat != POT_EAM_ALLOY)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                          "potential category", pot->cat);
+        return 0.;
+    }
 
     eam_t *eam = (eam_t *)(pot->data);
     for (unsigned i=0; i < eam->ElementsNo; i++)

@@ -72,14 +72,14 @@ typedef struct _cellinfo cellinfo_t;
 typedef struct _fmd fmd_t;
 
 void _fmd_cell_resize(fmd_t *md, cell_t *c);
-void _fmd_cell_resize_exact(cell_t *c);
+void _fmd_cell_resize_exact(fmd_t *md, cell_t *c);
 void _fmd_cell_minimize(fmd_t *md, cell_t *c);
 void _fmd_cell_free(cell_t *c);
-void _fmd_cell_init(cellinfo_t *cinfo, cell_t *c);
+void _fmd_cell_init(fmd_t *md, cellinfo_t *cinfo, cell_t *c);
 void _fmd_cellinfo_init(cellinfo_t *cinfo);
 void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind);
 void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t *cto, unsigned ito);
-void _fmd_cell_create_force_arrays(cell_t *c, bool FembP_alter);
+void _fmd_cell_create_force_arrays(fmd_t *md, cell_t *c, bool FembP_alter);
 
 inline unsigned _fmd_cell_new_particle(fmd_t *md, cell_t *c)
 {

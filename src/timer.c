@@ -49,7 +49,7 @@ fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interv
 {
     int i = md->timers_num;
 
-    md->timers = (fmd_timer_t *)re_alloc(md->timers, (i+1) * sizeof(fmd_timer_t));
+    md->timers = (fmd_timer_t *)re_alloc(md, md->timers, (i+1) * sizeof(fmd_timer_t));
 
     md->timers[i].enabled = true;
     md->timers[i].cat = TIMER_SIMPLE;

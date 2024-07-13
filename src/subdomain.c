@@ -73,7 +73,7 @@ void _fmd_subd_free(fmd_t *md)
     }
 }
 
-static void init_cneighbs(Subdomain_t *s)
+static void init_cneighbs(fmd_t *md, Subdomain_t *s)
 {
     fmd_ituple_t ic, jc;
     const fmd_utriple_t n3 = {3, 3, 3};
@@ -119,7 +119,7 @@ static void init_cneighbs(Subdomain_t *s)
 
                 if (inside)
                 {
-                    c->cnb0 = re_alloc(c->cnb0, ++c->cnb0len * sizeof(*c->cnb0));
+                    c->cnb0 = re_alloc(md, c->cnb0, ++c->cnb0len * sizeof(*c->cnb0));
 
                     c->cnb0[c->cnb0len-1] = ARRAY_ELEMENT(s->gridp, jc);
 
@@ -146,7 +146,7 @@ static void init_cneighbs(Subdomain_t *s)
 
             c->cnb1len = CNEIGHBS_NUM / 2;
             c->cnb2len = 0;
-            c->cnb1 = m_alloc(c->cnb1len * sizeof(*c->cnb1));
+            c->cnb1 = m_alloc(md, c->cnb1len * sizeof(*c->cnb1));
 
             for (unsigned j = CNEIGHBS_NUM/2 + 1; j < CNEIGHBS_NUM; j++)
             {
@@ -175,7 +175,7 @@ static void init_cneighbs(Subdomain_t *s)
             {
                 i = 0;
 
-                c->cnb2 = (c->cnb2len > 0) ? m_alloc(c->cnb2len * sizeof(*c->cnb2)) : NULL;
+                c->cnb2 = (c->cnb2len > 0) ? m_alloc(md, c->cnb2len * sizeof(*c->cnb2)) : NULL;
 
                 for (unsigned j = CNEIGHBS_NUM/2 + 1; j < CNEIGHBS_NUM; j++)
                 {
@@ -290,18 +290,18 @@ void _fmd_subd_init(fmd_t *md)
 
     /* create grid and gridp and initialize them */
 
-    md->subd.grid = m_alloc(md->subd.ncm * sizeof(cell_t));
+    md->subd.grid = m_alloc(md, md->subd.ncm * sizeof(cell_t));
 
     for (int ic=0; ic < md->subd.ncm; ic++)
-        _fmd_cell_init(&md->cellinfo, md->subd.grid + ic);
+        _fmd_cell_init(md, &md->cellinfo, md->subd.grid + ic);
 
-    _fmd_array_3d_create(md->subd.cell_num, sizeof(cell_t *), DATATYPE_CELLP, &md->subd.gridp_array);
+    _fmd_array_3d_create(md, md->subd.cell_num, sizeof(cell_t *), DATATYPE_CELLP, &md->subd.gridp_array);
     md->subd.gridp = (cell_t ****)md->subd.gridp_array.data;
 
     init_gridp(&md->subd);
 
     /* initialize cneighbs array of each cell */
-    init_cneighbs(&md->subd);
+    init_cneighbs(md, &md->subd);
 }
 
 void _fmd_conv_ic_loc_to_glob(fmd_t *md, fmd_ituple_t ic, fmd_ituple_t icglob)

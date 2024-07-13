@@ -21,7 +21,7 @@
 #include "cspline.h"
 #include "general.h"
 
-void spline_prepare_adv(fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[])
+void _fmd_spline_prepare_adv(fmd_t *md, fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[])
 /*
 Given arrays x[0..n-1] and y[0..n-1] containing a tabulated function, i.e., y_i = f ( x_i ), with
 x_0 < x_1 < ... < x_(n-1), this routine returns an array yDD[0..n-1] that contains
@@ -32,7 +32,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     int i,k;
     fmd_real_t p,sig,*u;
 
-    u=m_alloc((n-1)*sizeof(fmd_real_t));
+    u=m_alloc(md, (n-1)*sizeof(fmd_real_t));
     yDD[0]=u[0]=0.0;
     for (i=1;i<=n-2;i++) {
         sig=(x[i]-x[i-1])/(x[i+1]-x[i-1]);
@@ -47,7 +47,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     free(u);
 }
 
-void spline_prepare(fmd_real_t h, fmd_real_t y[], int n, fmd_real_t yDD[])
+void _fmd_spline_prepare(fmd_t *md, fmd_real_t h, fmd_real_t y[], int n, fmd_real_t yDD[])
 /*
 Given the array y[0..n-1] containing a tabulated function, i.e., y_i = f ( x_i ), with
 x_i = h * i , this routine returns an array yDD[0..n-1] that contains
@@ -58,7 +58,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     int i,k;
     fmd_real_t p,sig=0.5,*u;
 
-    u=m_alloc((n-1)*sizeof(fmd_real_t));
+    u=m_alloc(md, (n-1)*sizeof(fmd_real_t));
     yDD[0]=u[0]=0.0;
     for (i=1;i<=n-2;i++)
     {
@@ -73,7 +73,7 @@ boundary conditions are set for a natural spline, with zero second derivative on
     free(u);
 }
 
-fmd_real_t spline_val(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x)
+fmd_real_t _fmd_spline_val(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x)
 /*  Given the array ya[0..n-1] which tabulates a function,
 and given the array yDDa[0..n-1], which is the output from spline_prepare(), and given a value of
 x, this routine returns a cubic-spline interpolated value. */
@@ -89,7 +89,7 @@ x, this routine returns a cubic-spline interpolated value. */
     return SPLINE_VAL(a,b,ya,lo,hi,yDDa,h);
 }
 
-fmd_real_t spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x)
+fmd_real_t _fmd_spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x)
 {
     int lo,hi;
     fmd_real_t b,a;
@@ -102,7 +102,7 @@ fmd_real_t spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_re
     return SPLINE_DERIV(a,b,ya,lo,hi,yDDa,h);
 }
 
-void spline_val_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x, fmd_real_t *y, fmd_real_t *yD)
+void _fmd_spline_val_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x, fmd_real_t *y, fmd_real_t *yD)
 {
     int lo,hi;
     fmd_real_t b,a;

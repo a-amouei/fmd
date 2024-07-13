@@ -27,6 +27,7 @@
 #include "turi-ghost.h"
 #include "types.h"
 #include "cspline.h"
+#include "error.h"
 
 typedef struct
 {
@@ -150,7 +151,7 @@ static size_t type2_1d_calc_tghost_buffsize(fmd_t *md)
     return size;
 }
 
-static void type2_update_Ce_Ke_G(turi_t *t, ttm_t *ttm)
+static void type2_update_Ce_Ke_G(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
     for (int i = t->itc_start_owned[2]; i < t->itc_stop[2]; i++)
     {
@@ -159,8 +160,10 @@ static void type2_update_Ce_Ke_G(turi_t *t, ttm_t *ttm)
 
         if (ttm->Te_1d[i] < 0.) continue; /* nothing to do with deactivated cells */
 
-        assert(ttm->Te_1d[i] > ttm->T_C[0]);
-        assert(ttm->Te_1d[i] < ttm->T_C[ttm->nC-1]);
+        if (ttm->Te_1d[i] < ttm->T_C[0] || ttm->Te_1d[i] > ttm->T_C[ttm->nC-1])
+            _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                             "electron temperature", ttm->Te_1d[i],
+                                             "related to electron heat capacity");
 
         FIND_klo_AND_ETC(ttm->T_C, ttm->Te_1d[i], ttm->nC);
 
@@ -173,8 +176,10 @@ static void type2_update_Ce_Ke_G(turi_t *t, ttm_t *ttm)
         ttm->Ke_1d[i] = 1./3. * ttm->Ce_1d[i] * ttm->Kzh.v2 /
                         (ttm->Kzh.A * sqrr(ttm->Te_1d[i]) + ttm->Kzh.B * ttm->Ti_1d[i]);
 
-        assert(ttm->Te_1d[i] > ttm->T_G[0]);
-        assert(ttm->Te_1d[i] < ttm->T_G[ttm->nG-1]);
+        if (ttm->Te_1d[i] < ttm->T_G[0] || ttm->Te_1d[i] > ttm->T_G[ttm->nG-1])
+            _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                             "electron temperature", ttm->Te_1d[i],
+                                             "related to electron-ion coupling factor");
 
         FIND_klo_AND_ETC(ttm->T_G, ttm->Te_1d[i], ttm->nG);
 
@@ -228,7 +233,7 @@ static void ttm_type2_presolve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
     presolve_common_types_1_2(md, t, ttm);
 
-    type2_update_Ce_Ke_G(t, ttm);
+    type2_update_Ce_Ke_G(md, t, ttm);
 
     if (t->has_upper_lower_owner_procs[2]) /* again! since ghost cells may have been activated/deactivated */
         _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp); /* also transfers correct Ke data */
@@ -355,7 +360,7 @@ static void ttm_type2_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
         if (j < ttm->timestep_ratio-1)
         {
-            type2_update_Ce_Ke_G(t, ttm);
+            type2_update_Ce_Ke_G(md, t, ttm);
 
             if (t->has_upper_lower_owner_procs[2]) _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
         }
@@ -379,13 +384,13 @@ static void ttm_type2_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
 static void init_common_types_1_2(fmd_t *md, ttm_t *ttm, turi_t *t)
 {
-    int inum = _fmd_field_add(t, FMD_FIELD_NUMBER, md->timestep, false);
-    int ivcm = _fmd_field_add(t, FMD_FIELD_VCM, md->timestep, true);
-    int iTi = _fmd_field_add(t, FMD_FIELD_TEMPERATURE, md->timestep, false);
-    ttm->iTe = _fmd_field_add(t, FMD_FIELD_TTM_TE, md->timestep, false);
-    ttm->ixi = _fmd_field_add(t, FMD_FIELD_TTM_XI, md->timestep, true);
+    int inum = _fmd_field_add(md, t, FMD_FIELD_NUMBER, md->timestep, false);
+    int ivcm = _fmd_field_add(md, t, FMD_FIELD_VCM, md->timestep, true);
+    int iTi = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, md->timestep, false);
+    ttm->iTe = _fmd_field_add(md, t, FMD_FIELD_TTM_TE, md->timestep, false);
+    ttm->ixi = _fmd_field_add(md, t, FMD_FIELD_TTM_XI, md->timestep, true);
 
-    _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
+    _fmd_array_3d_create(md, t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
 
     /* set default value for "cell activation fraction" */
     ttm->CellActivFrac = 0.1;
@@ -408,7 +413,7 @@ static void init_common_types_1_2(fmd_t *md, ttm_t *ttm, turi_t *t)
         if (t->ownerscomm.owned_tcells_num == 0)
             ttm->tgp = NULL;
         else
-            ttm->tgp = (tghost_pack_t *)m_alloc(sizeof(tghost_pack_t));
+            ttm->tgp = m_alloc(md, sizeof(tghost_pack_t));
     }
     else
     {
@@ -437,8 +442,8 @@ static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
             ttm->tgp->pack._1D = type1_1d_pack;
             ttm->tgp->unpack._1D = type1_1d_unpack;
             ttm->tgp->bufsize = type1_1d_calc_tghost_buffsize(md);
-            ttm->tgp->sendbuf = m_alloc(ttm->tgp->bufsize);
-            ttm->tgp->recvbuf = m_alloc(ttm->tgp->bufsize);
+            ttm->tgp->sendbuf = m_alloc(md, ttm->tgp->bufsize);
+            ttm->tgp->recvbuf = m_alloc(md, ttm->tgp->bufsize);
         }
     }
     else
@@ -452,9 +457,9 @@ static void ttm_init_type2(fmd_t *md, ttm_t *ttm, turi_t *t)
 {
     init_common_types_1_2(md, ttm, t);
 
-    _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Kel);
-    _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Cel);
-    _fmd_array_3d_create(t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Geis);
+    _fmd_array_3d_create(md, t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Kel);
+    _fmd_array_3d_create(md, t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Cel);
+    _fmd_array_3d_create(md, t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Geis);
 
     ttm->T_C = ttm->Ct = ttm->C_DD = NULL;
     ttm->T_G = ttm->Gt = ttm->G_DD = NULL;
@@ -473,8 +478,8 @@ static void ttm_init_type2(fmd_t *md, ttm_t *ttm, turi_t *t)
             ttm->tgp->pack._1D = type2_1d_pack;
             ttm->tgp->unpack._1D = type2_1d_unpack;
             ttm->tgp->bufsize = type2_1d_calc_tghost_buffsize(md);
-            ttm->tgp->sendbuf = m_alloc(ttm->tgp->bufsize);
-            ttm->tgp->recvbuf = m_alloc(ttm->tgp->bufsize);
+            ttm->tgp->sendbuf = m_alloc(md, ttm->tgp->bufsize);
+            ttm->tgp->recvbuf = m_alloc(md, ttm->tgp->bufsize);
         }
     }
     else
@@ -490,7 +495,9 @@ static void ttm_init_type2(fmd_t *md, ttm_t *ttm, turi_t *t)
 
 ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
 {
-    ttm_t *ttm = (ttm_t *)m_alloc(sizeof(ttm_t));
+    ttm_t *ttm = m_alloc(md, sizeof(ttm_t));
+
+    if (ttm == NULL) return NULL;
 
     switch (t->cat)
     {
@@ -503,7 +510,9 @@ ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
             break;
 
         default:
-            assert(0);
+            _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+            free(ttm);
+            return NULL;
     }
 
     return ttm;
@@ -541,7 +550,11 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t pa
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -553,7 +566,7 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t pa
         ttm->T_C = ttm->Ct = NULL;
     }
 
-    FILE *fp = f_open(path, "r");
+    FILE *fp = f_open(md, path, "r");
 
     double T, C;
     const int incr = 100;
@@ -564,8 +577,8 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t pa
         if (i == cap)
         {
             cap += incr;
-            ttm->T_C = re_alloc(ttm->T_C, cap * sizeof(fmd_real_t));
-            ttm->Ct = re_alloc(ttm->Ct, cap * sizeof(fmd_real_t));
+            ttm->T_C = re_alloc(md, ttm->T_C, cap * sizeof(fmd_real_t));
+            ttm->Ct = re_alloc(md, ttm->Ct, cap * sizeof(fmd_real_t));
         }
 
         ttm->T_C[i] = T * 1e4;
@@ -579,14 +592,14 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t pa
 
     if (ttm->nC < cap)
     {
-        ttm->T_C = re_alloc(ttm->T_C, ttm->nC * sizeof(fmd_real_t));
-        ttm->Ct = re_alloc(ttm->Ct, ttm->nC * sizeof(fmd_real_t));
+        ttm->T_C = re_alloc(md, ttm->T_C, ttm->nC * sizeof(fmd_real_t));
+        ttm->Ct = re_alloc(md, ttm->Ct, ttm->nC * sizeof(fmd_real_t));
     }
 
 #ifdef USE_CSPLINE
 
-    ttm->C_DD = m_alloc(ttm->nC * sizeof(fmd_real_t));
-    spline_prepare_adv(ttm->T_C, ttm->Ct, ttm->nC, ttm->C_DD);
+    ttm->C_DD = m_alloc(md, ttm->nC * sizeof(fmd_real_t));
+    _fmd_spline_prepare_adv(md, ttm->T_C, ttm->Ct, ttm->nC, ttm->C_DD);
 
 #endif
 
@@ -596,7 +609,11 @@ void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -607,7 +624,11 @@ void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_handle_t turi, fmd_ttm
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -620,7 +641,11 @@ void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_handle_t turi, fmd_re
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -636,7 +661,11 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t 
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -648,7 +677,7 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t 
         ttm->T_G = ttm->Gt = NULL;
     }
 
-    FILE *fp = f_open(path, "r");
+    FILE *fp = f_open(md, path, "r");
 
     double T, G;
     const int incr = 100;
@@ -659,8 +688,8 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t 
         if (i == cap)
         {
             cap += incr;
-            ttm->T_G = re_alloc(ttm->T_G, cap * sizeof(fmd_real_t));
-            ttm->Gt = re_alloc(ttm->Gt, cap * sizeof(fmd_real_t));
+            ttm->T_G = re_alloc(md, ttm->T_G, cap * sizeof(fmd_real_t));
+            ttm->Gt = re_alloc(md, ttm->Gt, cap * sizeof(fmd_real_t));
         }
 
         ttm->T_G[i] = T * 1e4;
@@ -674,14 +703,14 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t 
 
     if (ttm->nG < cap)
     {
-        ttm->T_G = re_alloc(ttm->T_G, ttm->nG * sizeof(fmd_real_t));
-        ttm->Gt = re_alloc(ttm->Gt, ttm->nG * sizeof(fmd_real_t));
+        ttm->T_G = re_alloc(md, ttm->T_G, ttm->nG * sizeof(fmd_real_t));
+        ttm->Gt = re_alloc(md, ttm->Gt, ttm->nG * sizeof(fmd_real_t));
     }
 
 #ifdef USE_CSPLINE
 
-    ttm->G_DD = m_alloc(ttm->nG * sizeof(fmd_real_t));
-    spline_prepare_adv(ttm->T_G, ttm->Gt, ttm->nG, ttm->G_DD);
+    ttm->G_DD = m_alloc(md, ttm->nG * sizeof(fmd_real_t));
+    _fmd_spline_prepare_adv(md, ttm->T_G, ttm->Gt, ttm->nG, ttm->G_DD);
 
 #endif
 
@@ -691,7 +720,11 @@ void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_handle_t turi, fmd_real
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -707,7 +740,11 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1 || t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -721,7 +758,11 @@ void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio)
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1 || t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -732,9 +773,18 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t 
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1 || t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
-    assert(value >= 0 && value <= 1); /* TO-DO: handle error */
+    if (value < 0 || value > 1)
+    {
+        _fmd_error_outside_real_interval(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                         "value", value, "[0 1]");
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 
@@ -745,7 +795,11 @@ void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_lase
 {
     turi_t *t = &md->turies[turi];
 
-    assert(t->cat == FMD_TURI_TTM_TYPE1 || t->cat == FMD_TURI_TTM_TYPE2); /* TO-DO: handle error */
+    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
+        return;
+    }
 
     ttm_t *ttm = t->ttm;
 

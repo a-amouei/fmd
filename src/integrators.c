@@ -278,7 +278,7 @@ static void create_force_arrays_of_cells(fmd_t *md)
 
     if (!md->cellinfo.F_active || FembP_alter)
         for (int ic=0; ic < md->subd.ncm; ic++)
-            _fmd_cell_create_force_arrays(md->subd.grid + ic, FembP_alter);
+            _fmd_cell_create_force_arrays(md, md->subd.grid + ic, FembP_alter);
 
     md->cellinfo.F_active = true;
     md->cellinfo.vaream_active = md->potsys.eam_applied;

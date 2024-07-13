@@ -26,6 +26,8 @@
 
 /* typedefs */
 
+typedef void *fmd_pointer_t;
+
 typedef enum
 {
     FMD_SCM_XYZ_ATOMSNUM,
@@ -37,7 +39,8 @@ typedef enum
 typedef enum
 {
     FMD_EVENT_TIMER_TICK,
-    FMD_EVENT_FIELD_UPDATE
+    FMD_EVENT_FIELD_UPDATE,
+    FMD_EVENT_ERROR
 } fmd_event_t;
 
 typedef enum
@@ -79,6 +82,33 @@ typedef char *fmd_string_t;
 typedef struct _fmd_params fmd_params_t;
 
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params);
+
+typedef enum
+{
+    FMD_ERR_UNEXPECTED_POSITION = 1,
+    FMD_ERR_UNABLE_OPEN_FILE,
+    FMD_ERR_UNABLE_ALLOCATE_MEM,
+    FMD_ERR_FILE_CORRUPTED,
+    FMD_ERR_OUTSIDE_REAL_INTERVAL,
+    FMD_ERR_UNACCEPTABLE_INT_VALUE,
+    FMD_ERR_UNSUCCESSFUL_HDF5,
+    FMD_ERR_FUNCTION_FAILED,
+    FMD_ERR_NOT_SUPPORTED_YET,
+    FMD_ERR_UNPREPARED,
+    FMD_ERR_WRONG_POTENTIAL
+} fmd_error_t;
+
+typedef struct
+{
+    fmd_error_t error;
+    bool major;
+    fmd_string_t source;
+    fmd_string_t func;
+    int line;
+    fmd_pointer_t p1;
+    fmd_pointer_t p2;
+    fmd_pointer_t p3;
+} fmd_event_params_error_t;
 
 typedef struct
 {
@@ -157,6 +187,7 @@ void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode);
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...);
 void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime);
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename);
+void fmd_io_setShowErrorMessages(fmd_t *md, bool show);
 
 fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path);
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element);

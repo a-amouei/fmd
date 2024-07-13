@@ -23,77 +23,80 @@
 #include "array.h"
 #include "turi.h"
 #include "general.h"
-#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include "misc.h"
 
-void _fmd_h5_ds_init(h5_dataspaces_t *ds)
+void _fmd_h5_ds_init(fmd_t *md, h5_dataspaces_t *ds)
 {
     hsize_t sz;
 
     ds->ds_scalar = H5Screate(H5S_SCALAR);
-    assert(ds->ds_scalar >= 0);
+    if (ds->ds_scalar < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     sz = 3;
     ds->ds_simple_1_3 = H5Screate_simple(1, &sz, NULL);
-    assert(ds->ds_simple_1_3 >= 0);
+    if (ds->ds_simple_1_3 < 0)
+        _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
-void _fmd_h5_ds_free(h5_dataspaces_t *ds)
+void _fmd_h5_ds_free(fmd_t *md, h5_dataspaces_t *ds)
 {
     herr_t status;
 
     status = H5Sclose(ds->ds_scalar);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Sclose(ds->ds_simple_1_3);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
-static void set_attr_ftuple(h5_dataspaces_t *ds, hid_t obj, const char *name, const float *f)
+static void set_attr_ftuple(fmd_t *md, h5_dataspaces_t *ds, hid_t obj, const char *name, const float *f)
 {
     hid_t attr;
     herr_t status;
 
     attr = H5Acreate(obj, name, H5T_IEEE_F32LE, ds->ds_simple_1_3, H5P_DEFAULT, H5P_DEFAULT);
-    assert(attr >= 0);
+    if (attr < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Awrite(attr, H5T_NATIVE_FLOAT, f);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Aclose(attr);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
-static void set_attr_ituple(h5_dataspaces_t *ds, hid_t obj, const char *name, const fmd_ituple_t i)
+static void set_attr_ituple(fmd_t *md, h5_dataspaces_t *ds, hid_t obj, const char *name, const fmd_ituple_t i)
 {
     hid_t attr;
     herr_t status;
 
     attr = H5Acreate(obj, name, H5T_STD_I32LE, ds->ds_simple_1_3, H5P_DEFAULT, H5P_DEFAULT);
-    assert(attr >= 0);
+    if (attr < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Awrite(attr, H5T_NATIVE_INT, i);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Aclose(attr);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
-static void set_attr_utuple(h5_dataspaces_t *ds, hid_t obj, const char *name, const fmd_utuple_t u)
+static void set_attr_utuple(fmd_t *md, h5_dataspaces_t *ds, hid_t obj, const char *name, const fmd_utuple_t u)
 {
     hid_t attr;
     herr_t status;
 
     attr = H5Acreate(obj, name, H5T_STD_I32LE, ds->ds_simple_1_3, H5P_DEFAULT, H5P_DEFAULT);
-    assert(attr >= 0);
+    if (attr < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Awrite(attr, H5T_NATIVE_UINT, u);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Aclose(attr);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
-static void set_attr_string(h5_dataspaces_t *ds, hid_t obj, const char *name, const char *value)
+static void set_attr_string(fmd_t *md, h5_dataspaces_t *ds, hid_t obj, const char *name, const char *value)
 {
     hid_t str_type_mem, str_type_file, attr;
     herr_t status;
@@ -101,44 +104,49 @@ static void set_attr_string(h5_dataspaces_t *ds, hid_t obj, const char *name, co
     hsize_t len = strlen(value);
 
     str_type_mem = H5Tcopy(H5T_C_S1);
-    assert(str_type_mem >= 0);
+    if (str_type_mem < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Tset_size(str_type_mem, len+1);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     str_type_file = H5Tcopy(H5T_FORTRAN_S1);
-    assert(str_type_file >= 0);
+    if (str_type_file < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Tset_size(str_type_file, len);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     attr = H5Acreate(obj, name, str_type_file, ds->ds_scalar, H5P_DEFAULT, H5P_DEFAULT);
-    assert(attr >= 0);
+    if (attr < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Awrite(attr, str_type_mem, value);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Aclose(attr);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Tclose(str_type_mem);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+
     status = H5Tclose(str_type_file);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
-static void create_mesh(h5_dataspaces_t *ds, hid_t parent, fmd_utuple_t dims, fmd_ftriple_t UpperBounds)
+static void create_mesh(fmd_t *md, h5_dataspaces_t *ds, hid_t parent, fmd_utuple_t dims, fmd_ftriple_t UpperBounds)
 {
     hid_t group_id;
     herr_t status;
 
     group_id = H5Gcreate(parent, "meshA", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    set_attr_string(ds, group_id, "vsType", "mesh");
-    set_attr_string(ds, group_id, "vsKind", "uniform");
-    set_attr_ituple(ds, group_id, "vsStartCell", _fmd_ThreeZeros_int);
-    set_attr_utuple(ds, group_id, "vsNumCells", dims);
-    set_attr_ftuple(ds, group_id, "vsLowerBounds", _fmd_ThreeZeros_float);
-    set_attr_ftuple(ds, group_id, "vsUpperBounds", UpperBounds);
+    set_attr_string(md, ds, group_id, "vsType", "mesh");
+    set_attr_string(md, ds, group_id, "vsKind", "uniform");
+    set_attr_ituple(md, ds, group_id, "vsStartCell", _fmd_ThreeZeros_int);
+    set_attr_utuple(md, ds, group_id, "vsNumCells", dims);
+    set_attr_ftuple(md, ds, group_id, "vsLowerBounds", _fmd_ThreeZeros_float);
+    set_attr_ftuple(md, ds, group_id, "vsUpperBounds", UpperBounds);
 
     status = H5Gclose(group_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
 void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3s_t *arr)
@@ -147,10 +155,10 @@ void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *
     herr_t status;
 
     file_id = H5Fcreate(path, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    assert(file_id >= 0);
+    if (file_id < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     fmd_ftriple_t ubound = {md->l[0], md->l[1], md->l[2]};
-    create_mesh(&md->h5_dataspaces, file_id, t->tdims_global, ubound);
+    create_mesh(md, &md->h5_dataspaces, file_id, t->tdims_global, ubound);
 
     hsize_t s[3];
     s[0] = t->tdims_global[0];
@@ -158,32 +166,34 @@ void _fmd_h5_save_scalar_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *
     s[2] = t->tdims_global[2];
 
     dataspace_id = H5Screate_simple(3, s, NULL);
-    assert(dataspace_id >= 0);
+    if (dataspace_id < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     dataset_id = H5Dcreate1(file_id, fieldname, H5T_IEEE_F32LE, dataspace_id, H5P_DEFAULT);
-    assert(dataset_id >= 0);
+    if (dataset_id < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsType", "variable");
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsMesh", "meshA");
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsCentering", "zonal");
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsIndexOrder", "compMinorC");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsType", "variable");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsMesh", "meshA");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsCentering", "zonal");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsIndexOrder", "compMinorC");
 
-    float *data = _fmd_array_convert_numerical_scalar_3d_to_flat_float(arr);
-    assert(data != NULL);
+    float *data = _fmd_array_convert_numerical_scalar_3d_to_flat_float(md, arr);
+    if (data == NULL)
+        _fmd_error_function_failed(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                   "_fmd_array_convert_numerical_scalar_3d_to_flat_float");
 
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, data);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     free(data);
 
     status = H5Dclose(dataset_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Sclose(dataspace_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Fclose(file_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }
 
 void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t, fmd_string_t path, fmd_array3s_t *arr)
@@ -192,10 +202,10 @@ void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t
     herr_t status;
 
     file_id = H5Fcreate(path, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-    assert(file_id >= 0);
+    if (file_id < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     fmd_ftriple_t ubound = {md->l[0], md->l[1], md->l[2]};
-    create_mesh(&md->h5_dataspaces, file_id, t->tdims_global, ubound);
+    create_mesh(md, &md->h5_dataspaces, file_id, t->tdims_global, ubound);
 
     hsize_t s[4];
     s[0] = t->tdims_global[0];
@@ -204,30 +214,32 @@ void _fmd_h5_save_tuple_field_float(fmd_t *md, fmd_string_t fieldname, turi_t *t
     s[3] = 3;
 
     dataspace_id = H5Screate_simple(4, s, NULL);
-    assert(dataspace_id >= 0);
+    if (dataspace_id < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     dataset_id = H5Dcreate1(file_id, fieldname, H5T_IEEE_F32LE, dataspace_id, H5P_DEFAULT);
-    assert(dataset_id >= 0);
+    if (dataset_id < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsType", "variable");
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsMesh", "meshA");
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsCentering", "zonal");
-    set_attr_string(&md->h5_dataspaces, dataset_id, "vsIndexOrder", "compMinorC");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsType", "variable");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsMesh", "meshA");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsCentering", "zonal");
+    set_attr_string(md, &md->h5_dataspaces, dataset_id, "vsIndexOrder", "compMinorC");
 
-    float *data = _fmd_array_convert_numerical_tuple_3d_to_flat_float(arr);
-    assert(data != NULL);
+    float *data = _fmd_array_convert_numerical_tuple_3d_to_flat_float(md, arr);
+    if (data == NULL)
+        _fmd_error_function_failed(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                   "_fmd_array_convert_numerical_tuple_3d_to_flat_float");
 
     status = H5Dwrite(dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, data);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     free(data);
 
     status = H5Dclose(dataset_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Sclose(dataspace_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 
     status = H5Fclose(file_id);
-    assert(status >= 0);
+    if (status < 0) _fmd_error_unsuccessful_hdf5(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
 }

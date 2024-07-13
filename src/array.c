@@ -19,8 +19,9 @@
 
 #include "array.h"
 #include <stdlib.h>
-#include <assert.h>
 #include "general.h"
+
+typedef struct _fmd fmd_t;
 
 /* creates an uninitialized "neat" dim1 x dim2 array;
    elsize is the size of each data element in the array in bytes;
@@ -141,18 +142,18 @@ void _fmd_array_semineat3d_free(void ***array, unsigned dim1)
     free((void *)array);
 }
 
-void ***_fmd_array_ordinary3d_create(fmd_utriple_t dims, unsigned elsize)
+void ***_fmd_array_ordinary3d_create(fmd_t *md, fmd_utriple_t dims, unsigned elsize)
 {
     void ***arr;
 
-    arr = (void ***)m_alloc(dims[0] * sizeof(void **));
+    arr = (void ***)m_alloc(md, dims[0] * sizeof(void **));
 
     for (int i=0; i < dims[0]; i++)
     {
-        arr[i] = (void **)m_alloc(dims[1] * sizeof(void *));
+        arr[i] = (void **)m_alloc(md, dims[1] * sizeof(void *));
 
         for (int j=0; j < dims[1]; j++)
-            arr[i][j] = (void *)m_alloc(dims[2] * elsize);
+            arr[i][j] = (void *)m_alloc(md, dims[2] * elsize);
     }
 
     return arr;
@@ -172,7 +173,7 @@ void _fmd_array_ordinary3d_free(void ***array, unsigned dim1, unsigned dim2)
 
 /* This function first tries to create a "neat" 3D array. If it isn't possible,
    then tries to make a "semi-neat" one. If not possible yet, makes an "ordinary" 3D array. */
-void _fmd_array_3d_create(fmd_utriple_t dims, unsigned elsize, datatype_t dt, fmd_array3s_t *array)
+void _fmd_array_3d_create(fmd_t *md, fmd_utriple_t dims, unsigned elsize, datatype_t dt, fmd_array3s_t *array)
 {
     array->data = _fmd_array_neat3d_create(dims, elsize);
     if (array->data != NULL)
@@ -184,7 +185,7 @@ void _fmd_array_3d_create(fmd_utriple_t dims, unsigned elsize, datatype_t dt, fm
             array->kind = ARRAY_SEMINEAT3D;
         else
         {
-            array->data = _fmd_array_ordinary3d_create(dims, elsize);
+            array->data = _fmd_array_ordinary3d_create(md, dims, elsize);
             array->kind = ARRAY_ORDINARY3D;
         }
     }
@@ -221,9 +222,9 @@ void fmd_array3s_free(fmd_array3s_t *array)
     }
 }
 
-float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3s_t *array)
+float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_t *md, fmd_array3s_t *array)
 {
-    float *f = (float *)malloc(array->dims[0] * array->dims[1] * array->dims[2] * sizeof(*f));
+    float *f = malloc(array->dims[0] * array->dims[1] * array->dims[2] * sizeof(*f));
     if (f == NULL) return NULL;
 
     int cc = 0;
@@ -257,13 +258,15 @@ float *_fmd_array_convert_numerical_scalar_3d_to_flat_float(fmd_array3s_t *array
             break;
 
         default:
-            assert(0);  /* TO-DO */
+            _fmd_error_unacceptable_int_value(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                              "datatype of array elements", array->datatype);
+            return NULL;
     }
 
     return f;
 }
 
-float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3s_t *array)
+float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_t *md, fmd_array3s_t *array)
 {
     float *f = (float *)malloc(3 * array->dims[0] * array->dims[1] * array->dims[2] * sizeof(*f));
     if (f == NULL) return NULL;
@@ -280,7 +283,9 @@ float *_fmd_array_convert_numerical_tuple_3d_to_flat_float(fmd_array3s_t *array)
             break;
 
         default:
-            assert(0); /* TO-DO */
+            _fmd_error_unacceptable_int_value(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                              "datatype of array elements", array->datatype);
+            return NULL;
     }
 
     return f;

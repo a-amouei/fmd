@@ -40,7 +40,7 @@ static char formatstr_3xpoint16e[] = "%.16e\t%.16e\t%.16e\n";
 
 void _fmd_createGlobalGrid(fmd_t *md)
 {
-    fmd_real_t cutoff = _fmd_pot_get_largest_cutoff(&md->potsys);
+    fmd_real_t cutoff = _fmd_pot_get_largest_cutoff(md, &md->potsys);
 
     for (int d=0; d < DIM; d++)
     {
@@ -54,10 +54,10 @@ void _fmd_createGlobalGrid(fmd_t *md)
     {
         unsigned nc = md->nc[0] * md->nc[1] * md->nc[2];
 
-        md->ggrid = m_alloc(nc * sizeof(cell_t));
+        md->ggrid = m_alloc(md, nc * sizeof(cell_t));
 
         for (int ic=0; ic < nc; ic++)
-            _fmd_cell_init(&md->cellinfo, md->ggrid + ic);
+            _fmd_cell_init(md, &md->cellinfo, md->ggrid + ic);
     }
 }
 
@@ -91,7 +91,7 @@ static void createCommunicators(fmd_t *md)
 
     mdnum = md->ns[0] * md->ns[1] * md->ns[2];
 
-    ranks = (int *)m_alloc(mdnum * sizeof(int));
+    ranks = m_alloc(md, mdnum * sizeof(int));
 
     for (i=0; i<mdnum; i++)
         ranks[i] = i;
@@ -126,19 +126,34 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
 
     if (md->Is_MD_comm_root)
     {
-        fp = f_open(path, "r");
+        fp = f_open(md, path, "r");
+        if (fp == NULL) return;
 
-        int numread = fscanf(fp, "%lf", &StateFileTime);
-        assert(numread == 1); /* TO-DO: handle error */
+        if (fscanf(fp, "%lf", &StateFileTime) != 1)
+        {
+            _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+            return;
+        }
 
         if (UseTime) md->time = StateFileTime;
 
-        numread = fscanf(fp, "%u\n", &ParticlesNum);
-        assert(numread == 1); /* TO-DO: handle error */
-        numread = fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2);
-        assert(numread == 3); /* TO-DO: handle error */
-        numread = fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2);
-        assert(numread == 3); /* TO-DO: handle error */
+        if (fscanf(fp, "%u\n", &ParticlesNum) != 1)
+        {
+            _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+            return;
+        }
+
+        if (fscanf(fp, "%lf%lf%lf", &l0, &l1, &l2) != 3)
+        {
+            _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+            return;
+        }
+
+        if (fscanf(fp, "%d%d%d", &PBC0, &PBC1, &PBC2) != 3)
+        {
+            _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+            return;
+        }
     }
 
     if (!md->BoxSizeDetermined)
@@ -179,9 +194,17 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
             int GroupID;
             unsigned atomkind;
 
-            int numread = fscanf(fp, "%s%d", name, &GroupID);
-            assert(numread == 2); /* TO-DO: handle error */
-            assert(GroupID >= 0);  /* TO-DO: handle error */
+            if (fscanf(fp, "%s%d", name, &GroupID) != 2)
+            {
+                _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+                return;
+            }
+
+            if (GroupID < 0)
+            {
+                _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+                return;
+            }
 
             unsigned j;
 
@@ -192,15 +215,26 @@ void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
                     break;
                 }
 
-            /* TO-DO: what if the name doesn't exist in potsys? */
-            assert(j < md->potsys.atomkinds_num);
+            /* what if the name doesn't exist in potsys? */
+            if (j == md->potsys.atomkinds_num)
+            {
+                _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "atomkind", j);
+                return;
+            }
 
             fmd_rtuple_t x, v;
 
-            numread = fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]);
-            assert(numread == 3); /* TO-DO: handle error */
-            numread = fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]);
-            assert(numread == 3); /* TO-DO: handle error */
+            if (fscanf(fp, "%lf%lf%lf", &x[0], &x[1], &x[2]) != 3)
+            {
+                _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+                return;
+            }
+
+            if (fscanf(fp, "%lf%lf%lf", &v[0], &v[1], &v[2]) != 3)
+            {
+                _fmd_error_file_corrupted(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "state", path);
+                return;
+            }
 
             fmd_ituple_t ic;
 
@@ -248,8 +282,8 @@ void _fmd_refreshGrid(fmd_t *md)
 
                 if (jcv[d] < 0 || jcv[d] >= md->subd.cell_num[d])
                 {
-                    fprintf(stderr, "ERROR: Unexpected particle position!\n");
-                    MPI_Abort(MPI_COMM_WORLD, ERROR_UNEXPECTED_PARTICLE_POSITION);
+                    _fmd_error_unexpected_position(md, true, __FILE__, (fmd_string_t)__func__, __LINE__);
+                    return;
                 }
             }
 
@@ -284,7 +318,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
         if (md->Is_MD_comm_root)
         {
             sprintf(StateFilePath, "%s%s", md->SaveDirectory, filename);
-            fp = f_open(StateFilePath, "w");
+            fp = f_open(md, StateFilePath, "w");
 
             fprintf(fp, "%.16e\n", md->time);
             fprintf(fp, "%u\n", md->TotalNoOfParticles);
@@ -309,7 +343,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 
     if (md->Is_MD_comm_root)
     {
-        nums = (unsigned *)m_alloc(md->subd.numprocs * sizeof(unsigned));
+        nums = m_alloc(md, md->subd.numprocs * sizeof(unsigned));
 
         MPI_Gather(&md->subd.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
@@ -319,7 +353,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
             md->TotalNoOfParticles += nums[k];
 
         sprintf(StateFilePath, "%s%s", md->SaveDirectory, filename);
-        fp = f_open(StateFilePath, "w");
+        fp = f_open(md, StateFilePath, "w");
 
         fprintf(fp, "%.16e\n", md->time);
         fprintf(fp, "%u\n", md->TotalNoOfParticles);
@@ -336,7 +370,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 
         for (int i=1; i < md->subd.numprocs; i++)
         {
-            state_atom_t *states = (state_atom_t *)m_alloc(nums[i] * sizeof(state_atom_t));
+            state_atom_t *states = m_alloc(md, nums[i] * sizeof(state_atom_t));
 
             MPI_Recv(states, nums[i], md->mpi_types.mpi_statea, i, 150, md->MD_comm, &status);
 
@@ -359,7 +393,7 @@ void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
     {
         MPI_Gather(&md->subd.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
-        state_atom_t *states = (state_atom_t *)m_alloc(md->subd.NumberOfParticles * sizeof(state_atom_t));
+        state_atom_t *states = m_alloc(md, md->subd.NumberOfParticles * sizeof(state_atom_t));
 
         unsigned k = 0;
 
@@ -461,7 +495,7 @@ static void free_mpi_types(fmd_t *md)
 
 fmd_t *fmd_create()
 {
-    fmd_t *md = (fmd_t *)m_alloc(sizeof(fmd_t));
+    fmd_t *md = m_alloc(md, sizeof(fmd_t));
 
     md->MPI_initialized_by_me = false;
 
@@ -484,7 +518,7 @@ fmd_t *fmd_create()
     md->time = 0.0;
     md->time_iteration = 0;
 
-    md->SaveDirectory = (char *)m_alloc(1);
+    md->SaveDirectory = m_alloc(md, 1);
     md->SaveDirectory[0] = '\0';
 
     md->subd.grid = NULL;
@@ -508,10 +542,11 @@ fmd_t *fmd_create()
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
     md->KineticEnergyUpdated = false;
+    md->ShowErrorMessages = true;
     md->random_seed_aux = (int)md;
     _fmd_potsys_init(md);
     create_mpi_types(md);
-    _fmd_h5_ds_init(&md->h5_dataspaces);
+    _fmd_h5_ds_init(md, &md->h5_dataspaces);
 
     // this must be the last statement before return
     md->WallTimeOrigin = MPI_Wtime();
@@ -552,13 +587,18 @@ void fmd_proc_setNumThreads(fmd_t *md, int num)
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory)
 {
-    md->SaveDirectory = re_alloc(md->SaveDirectory, strlen(directory)+1);
+    md->SaveDirectory = re_alloc(md, md->SaveDirectory, strlen(directory)+1);
     strcpy(md->SaveDirectory, directory);
 }
 
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode)
 {
     md->SaveConfigMode = mode;
+}
+
+void fmd_io_setShowErrorMessages(fmd_t *md, bool show)
+{
+    md->ShowErrorMessages = show;
 }
 
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
@@ -580,7 +620,7 @@ void fmd_free(fmd_t *md)
     _fmd_potsys_free(md);
     fmd_timer_free(md);
     free_mpi_types(md);
-    _fmd_h5_ds_free(&md->h5_dataspaces);
+    _fmd_h5_ds_free(md, &md->h5_dataspaces);
     fmd_turi_free(md);
     free(md);
 

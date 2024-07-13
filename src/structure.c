@@ -82,7 +82,7 @@ static void makeCuboid_mix(fmd_t *md, lattice_t lt, fmd_real_t x, fmd_real_t y, 
     fmd_ituple_t dims = {dimx, dimy, dimz};
     fmd_rtuple_t r0 = {x, y, z};
 
-    fmd_real_t *prps_cumult = (fmd_real_t *)m_alloc(md->potsys.atomkinds_num * sizeof(fmd_real_t));
+    fmd_real_t *prps_cumult = m_alloc(md, md->potsys.atomkinds_num * sizeof(fmd_real_t));
     fmd_real_t prps_sum = 0.0;
 
     for (int i=0; i < md->potsys.atomkinds_num; i++)
@@ -145,7 +145,11 @@ void fmd_matt_makeCuboidSC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t
 
     if (!md->Is_MD_comm_root) return;
 
-    assert(GroupID >= 0); /* TO-DO: handle error */
+    if (GroupID < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+        return;
+    }
 
     makeCuboid_mix(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 }
@@ -160,9 +164,13 @@ void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 
     if (!md->Is_MD_comm_root) return;
 
-    assert(GroupID >= 0); /* TO-DO: handle error */
+    if (GroupID < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+        return;
+    }
 
-    fmd_real_t *ratio = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
+    fmd_real_t *ratio = c_alloc(md, md->potsys.atomkinds_num, sizeof(fmd_real_t));
     ratio[atomkind] = 1.0;
 
     makeCuboid_mix(md, LATTICE_SC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
@@ -180,7 +188,11 @@ void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
 
     if (!md->Is_MD_comm_root) return;
 
-    assert(GroupID >= 0); /* TO-DO: handle error */
+    if (GroupID < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+        return;
+    }
 
     makeCuboid_mix(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 }
@@ -195,9 +207,13 @@ void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 
     if (!md->Is_MD_comm_root) return;
 
-    assert(GroupID >= 0); /* TO-DO: handle error */
+    if (GroupID < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+        return;
+    }
 
-    fmd_real_t *ratio = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
+    fmd_real_t *ratio = c_alloc(md, md->potsys.atomkinds_num, sizeof(fmd_real_t));
     ratio[atomkind] = 1.0;
 
     makeCuboid_mix(md, LATTICE_BCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
@@ -215,7 +231,11 @@ void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
 
     if (!md->Is_MD_comm_root) return;
 
-    assert(GroupID >= 0); /* TO-DO: handle error */
+    if (GroupID < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+        return;
+    }
 
     makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);
 }
@@ -230,9 +250,13 @@ void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 
     if (!md->Is_MD_comm_root) return;
 
-    assert(GroupID >= 0); /* TO-DO: handle error */
+    if (GroupID < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", GroupID);
+        return;
+    }
 
-    fmd_real_t *ratio = (fmd_real_t *)c_alloc(md->potsys.atomkinds_num, sizeof(fmd_real_t));
+    fmd_real_t *ratio = c_alloc(md, md->potsys.atomkinds_num, sizeof(fmd_real_t));
     ratio[atomkind] = 1.0;
 
     makeCuboid_mix(md, LATTICE_FCC, x, y, z, dimx, dimy, dimz, lp, ratio, GroupID, temp);

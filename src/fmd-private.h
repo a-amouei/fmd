@@ -105,6 +105,7 @@ struct _fmd
     bool ParticlesDistributed;
     bool MPI_initialized_by_me;
     h5_dataspaces_t h5_dataspaces;
+    bool ShowErrorMessages;
     int cell_increment;
     int random_seed_aux;
     int _OldNumberOfParticles;

@@ -68,7 +68,7 @@ static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, i
 {
     dest->parts_num = src->parts_num;
 
-    if (dest->capacity < src->parts_num) _fmd_cell_resize_exact(dest);
+    if (dest->capacity < src->parts_num) _fmd_cell_resize_exact(md, dest);
 
     memcpy(dest->x, src->x, src->parts_num * sizeof(fmd_rtuple_t));
     memcpy(dest->GroupID, src->GroupID, src->parts_num * sizeof(int));
@@ -180,7 +180,7 @@ static void *create_packbuffer_for_partialforces(fmd_t *md, fmd_ituple_t ic_star
         }
     }
 
-    return (size > 0 ? m_alloc(size) : NULL);
+    return (size > 0 ? m_alloc(md, size) : NULL);
 }
 
 static void partialforces_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
@@ -220,7 +220,7 @@ static void partialforces_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t 
 
         if (num > 0)
         {
-            fmd_real_t *F = m_alloc(num * sizeof(fmd_rtuple_t));
+            fmd_real_t *F = m_alloc(md, num * sizeof(fmd_rtuple_t));
 
             MPI_Unpack(in, insize, &byte, F, num, md->mpi_types.mpi_rtuple, md->MD_comm);
 
@@ -258,7 +258,7 @@ static void *create_packbuffer_for_Femb(fmd_t *md, fmd_ituple_t ic_start, fmd_it
         }
     }
 
-    return (size > 0 ? m_alloc(size) : NULL);
+    return (size > 0 ? m_alloc(md, size) : NULL);
 }
 
 static void Femb_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
@@ -348,7 +348,7 @@ static void *create_packbuffer_for_ghostinit(fmd_t *md, fmd_ituple_t ic_start, f
         }
     }
 
-    return (size > 0 ? m_alloc(size) : NULL);
+    return (size > 0 ? m_alloc(md, size) : NULL);
 }
 
 static void ghostinit_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
@@ -418,7 +418,7 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
         {
             c->parts_num = num;
 
-            if (num > c->capacity) _fmd_cell_resize_exact(c);
+            if (num > c->capacity) _fmd_cell_resize_exact(md, c);
 
             MPI_Unpack(in, insize, &byte, c->x, num, md->mpi_types.mpi_rtuple, md->MD_comm);
 
@@ -482,7 +482,7 @@ static void *create_packbuffer_for_migrate(fmd_t *md, fmd_ituple_t ic_start, fmd
         }
     }
 
-    return (size > 0 ? m_alloc(size) : NULL);
+    return (size > 0 ? m_alloc(md, size) : NULL);
 }
 
 static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
@@ -592,7 +592,7 @@ static void transfer(fmd_t *md, int source, int dest,
     {
         MPI_Probe(source, 2, md->MD_comm, &status);
         MPI_Get_count(&status, MPI_PACKED, &recv_size);
-        recv_buff = m_alloc(recv_size);
+        recv_buff = m_alloc(md, recv_size);
         MPI_Recv(recv_buff, recv_size, MPI_PACKED, source, 2, md->MD_comm, &status);
 
         unpack(md, ic_start_recv, ic_stop_recv, recv_size, recv_buff, dim, dir);

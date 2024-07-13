@@ -31,17 +31,22 @@
 
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[])
 {
-    // TO-DO: error should be handled here
-    assert(number > 0);
+    if (number <= 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                          "number of atomkinds", number);
+        return;
+    }
+
 
     md->potsys.atomkinds_num = number;
-    md->potsys.atomkinds = (atomkind_t *)m_alloc(number * sizeof(atomkind_t));
+    md->potsys.atomkinds = m_alloc(md, number * sizeof(atomkind_t));
 
     for (unsigned i=0; i<number; i++)
     {
         md->potsys.atomkinds[i].mass = masses[i] / MD_MASS_UNIT;  // convert from amu to internal mass unit
         size_t len = strlen(names[i]);
-        md->potsys.atomkinds[i].name = (char *)m_alloc(len + 1);
+        md->potsys.atomkinds[i].name = m_alloc(md, len + 1);
         strcpy(md->potsys.atomkinds[i].name, names[i]);
 
         md->potsys.atomkinds[i].eam_element = NULL;
@@ -142,8 +147,8 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
 
         if (loc1 == -1 || loc2 == -1)
         {
-            // TO-DO: error should be handled here
-            assert(loc1 != -1 && loc2 != -1);
+            _fmd_error_wrong_potential(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "EAM", atomkind1, atomkind2);
+            return;
         }
 
         md->potsys.pottable[atomkind1][atomkind2].iloc = loc1;
@@ -210,8 +215,11 @@ static int potcat_compare(const void *a, const void *b)
 
 void _fmd_pot_update_and_process_potcats(fmd_t *md)
 {
-    // TO-DO: error should be handled here
-    assert(md->potsys.pottable != NULL);
+    if (md->potsys.pottable == NULL)
+    {
+        _fmd_error_unprepared(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "potential table");
+        return;
+    }
 
     if (md->potsys.potcats != NULL) return;  /* return if potcats is already updated */
 
@@ -222,8 +230,12 @@ void _fmd_pot_update_and_process_potcats(fmd_t *md)
         {
             potpair_t *potpair = &md->potsys.pottable[i][j];
 
-            // TO-DO: error should be handled here
-            assert(potpair->cat != POT_NONE);
+            if (potpair->cat == POT_NONE)
+            {
+                _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                                  "pair potential category", potpair->cat);
+                return;
+            }
 
             // add the potcat to potcats list, if isn't already included there
             if (_fmd_list_find_custom(md->potsys.potcats, &potpair->cat, potcat_compare) == NULL)
@@ -236,10 +248,13 @@ void _fmd_pot_update_and_process_potcats(fmd_t *md)
     process_potcats(md);
 }
 
-fmd_real_t _fmd_pot_get_largest_cutoff(potsys_t *ps)
+fmd_real_t _fmd_pot_get_largest_cutoff(fmd_t *md, potsys_t *ps)
 {
-    // TO-DO: error should be handled here
-    assert(ps->pottable != NULL);
+    if (ps->pottable == NULL)
+    {
+        _fmd_error_unprepared(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "potential table");
+        return 0.;
+    }
 
     fmd_real_t max = 0.0;
 
@@ -264,7 +279,9 @@ fmd_real_t _fmd_pot_get_largest_cutoff(potsys_t *ps)
                     break;
 
                 default:
-                    assert(0);  /* handle error */
+                    _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                                      "pair potential category", pair->cat);
+                    return 0.;
             }
 
             if (r > max) max = r;

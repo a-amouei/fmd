@@ -73,6 +73,6 @@ void _fmd_potsys_free(fmd_t *md);
 void _fmd_potsys_init(fmd_t *md);
 void _fmd_pot_update_and_process_potcats(fmd_t *md);
 void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t *pot);
-fmd_real_t _fmd_pot_get_largest_cutoff(potsys_t *ps);
+fmd_real_t _fmd_pot_get_largest_cutoff(fmd_t *md, potsys_t *ps);
 
 #endif /* POTENTIAL_H */

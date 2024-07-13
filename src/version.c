@@ -52,9 +52,10 @@ fmd_string_t fmd_version_getString()
                              fmd_version_getMinor(),
                              fmd_version_getRevision());
 
-    fmd_string_t out = m_alloc(strlen(str) + 1);
+    fmd_string_t out = malloc(strlen(str) + 1);
 
-    strcpy(out, str);
+    if (out != NULL)
+        strcpy(out, str);
 
     return out;
 }

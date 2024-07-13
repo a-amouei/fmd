@@ -92,14 +92,14 @@ void _fmd_computeLJ(fmd_t *md)
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
                             fmd_real_t sigma, fmd_real_t epsilon, fmd_real_t cutoff)
 {
-    LJ_6_12_t *lj = (LJ_6_12_t *)m_alloc(sizeof(LJ_6_12_t));
+    LJ_6_12_t *lj = (LJ_6_12_t *)m_alloc(md, sizeof(LJ_6_12_t));
     lj->sig = sigma;
     lj->sig_sqr = sqrr(sigma);
     lj->eps = epsilon;
     lj->eps4 = 4. * epsilon;
     lj->cutoff_sqr = sqrr(cutoff);
 
-    fmd_pot_t *pot = (fmd_pot_t *)m_alloc(sizeof(fmd_pot_t));
+    fmd_pot_t *pot = (fmd_pot_t *)m_alloc(md, sizeof(fmd_pot_t));
     pot->cat = POT_LJ_6_12;
     pot->data = lj;
 

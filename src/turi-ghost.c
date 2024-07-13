@@ -77,7 +77,7 @@ static void communicate_in_direction_d(
     else
         pack(md, t, vitc_start_send_lower, vitc_stop_send_lower, &packsize, NULL);  /* if no lower process, only calculate packsize */
 
-    data_receive = m_alloc(packsize);
+    data_receive = m_alloc(md, packsize);
 
     MPI_Sendrecv(data_send, packsize, MPI_PACKED, t->rank_of_lower_owner[d], 85101,
                  data_receive, packsize, MPI_PACKED, t->rank_of_upper_owner[d], 85101,

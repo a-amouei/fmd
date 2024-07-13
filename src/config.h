@@ -20,7 +20,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// #define NDEBUG
 // #define FMD_FLOAT_CALCS
 #define USE_CSPLINE
 #define DIM 3      /* don't change this */

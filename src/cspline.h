@@ -43,10 +43,12 @@
     b=(x-list[klo])/h;                                                 \
 }
 
-void spline_prepare_adv(fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[]);
-void spline_prepare(fmd_real_t h, fmd_real_t y[], int n, fmd_real_t yDD[]);
-fmd_real_t spline_val(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x);
-fmd_real_t spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x);
-void spline_val_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x, fmd_real_t *y, fmd_real_t *yD);
+typedef struct _fmd fmd_t;
+
+void _fmd_spline_prepare_adv(fmd_t *md, fmd_real_t x[], fmd_real_t y[], int n, fmd_real_t yDD[]);
+void _fmd_spline_prepare(fmd_t *md, fmd_real_t h, fmd_real_t y[], int n, fmd_real_t yDD[]);
+fmd_real_t _fmd_spline_val(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x);
+fmd_real_t _fmd_spline_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x);
+void _fmd_spline_val_deriv(fmd_real_t h, fmd_real_t ya[], fmd_real_t yDDa[], fmd_real_t x, fmd_real_t *y, fmd_real_t *yD);
 
 #endif /* CSPLINE_H */

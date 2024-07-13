@@ -22,12 +22,16 @@
 
 #include "config.h"
 #include "types.h"
+#include "error.h"
 
 typedef enum
 {
     FMD_EVENT_TIMER_TICK,
-    FMD_EVENT_FIELD_UPDATE
+    FMD_EVENT_FIELD_UPDATE,
+    FMD_EVENT_ERROR
 } fmd_event_t;
+
+typedef struct _fmd fmd_t;
 
 typedef void (*fmd_EventHandler_t)(fmd_t *md, fmd_event_t event, void *usp, fmd_params_t *params);
 
@@ -41,5 +45,17 @@ typedef struct
     fmd_handle_t turi;
     fmd_handle_t field;
 } fmd_event_params_field_update_t;
+
+typedef struct
+{
+    fmd_error_t error;
+    bool major;
+    fmd_string_t source;   /* the source code file name where it occurred */
+    fmd_string_t func;     /* the function name where it occurred */
+    int line;              /* the line number where it occurred */
+    fmd_pointer_t p1;      /* p1, p2 and p3 are error-specific */
+    fmd_pointer_t p2;
+    fmd_pointer_t p3;
+} fmd_event_params_error_t;
 
 #endif /* EVENTS_H */

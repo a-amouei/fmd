@@ -23,14 +23,14 @@
 #include "types.h"
 #include "general.h"
 
-void _fmd_cell_create_force_arrays(cell_t *c, bool FembP_alter)
+void _fmd_cell_create_force_arrays(fmd_t *md, cell_t *c, bool FembP_alter)
 {
-    if (c->F == NULL) c->F = m_alloc(c->capacity * sizeof(fmd_rtuple_t));
+    if (c->F == NULL) c->F = m_alloc(md, c->capacity * sizeof(fmd_rtuple_t));
 
     if (FembP_alter)
     {
         if (c->vaream == NULL)
-            c->vaream = m_alloc(c->capacity * sizeof(fmd_real_t));
+            c->vaream = m_alloc(md, c->capacity * sizeof(fmd_real_t));
         else
         {
             free(c->vaream);
@@ -39,26 +39,26 @@ void _fmd_cell_create_force_arrays(cell_t *c, bool FembP_alter)
     }
 }
 
-static inline void realloc_arrays(cell_t *c)
+static inline void realloc_arrays(fmd_t *md, cell_t *c)
 {
-    if (c->x != NULL) c->x = re_alloc(c->x, c->capacity * sizeof(fmd_rtuple_t));
-    if (c->v != NULL) c->v = re_alloc(c->v, c->capacity * sizeof(fmd_rtuple_t));
-    if (c->F != NULL) c->F = re_alloc(c->F, c->capacity * sizeof(fmd_rtuple_t));
-    if (c->vaream != NULL) c->vaream = re_alloc(c->vaream, c->capacity * sizeof(fmd_real_t));
-    if (c->GroupID != NULL) c->GroupID = re_alloc(c->GroupID, c->capacity * sizeof(int));
-    if (c->AtomID != NULL) c->AtomID = re_alloc(c->AtomID, c->capacity * sizeof(unsigned));
-    if (c->atomkind != NULL) c->atomkind = re_alloc(c->atomkind, c->capacity * sizeof(unsigned));
+    if (c->x != NULL) c->x = re_alloc(md, c->x, c->capacity * sizeof(fmd_rtuple_t));
+    if (c->v != NULL) c->v = re_alloc(md, c->v, c->capacity * sizeof(fmd_rtuple_t));
+    if (c->F != NULL) c->F = re_alloc(md, c->F, c->capacity * sizeof(fmd_rtuple_t));
+    if (c->vaream != NULL) c->vaream = re_alloc(md, c->vaream, c->capacity * sizeof(fmd_real_t));
+    if (c->GroupID != NULL) c->GroupID = re_alloc(md, c->GroupID, c->capacity * sizeof(int));
+    if (c->AtomID != NULL) c->AtomID = re_alloc(md, c->AtomID, c->capacity * sizeof(unsigned));
+    if (c->atomkind != NULL) c->atomkind = re_alloc(md, c->atomkind, c->capacity * sizeof(unsigned));
 }
 
-void _fmd_cell_init(cellinfo_t *cinfo, cell_t *c)
+void _fmd_cell_init(fmd_t *md, cellinfo_t *cinfo, cell_t *c)
 {
-    c->x = (cinfo->x_active ? m_alloc(sizeof(fmd_rtuple_t)) : NULL);
-    c->v = (cinfo->v_active ? m_alloc(sizeof(fmd_rtuple_t)) : NULL);
-    c->F = (cinfo->F_active ? m_alloc(sizeof(fmd_rtuple_t)) : NULL);
-    c->vaream = (cinfo->vaream_active ? m_alloc(sizeof(fmd_real_t)) : NULL);
-    c->GroupID = (cinfo->GroupID_active ? m_alloc(sizeof(int)) : NULL);
-    c->AtomID = (cinfo->AtomID_active ? m_alloc(sizeof(unsigned)) : NULL);
-    c->atomkind = (cinfo->atomkind_active ? m_alloc(sizeof(unsigned)) : NULL);
+    c->x = (cinfo->x_active ? m_alloc(md, sizeof(fmd_rtuple_t)) : NULL);
+    c->v = (cinfo->v_active ? m_alloc(md, sizeof(fmd_rtuple_t)) : NULL);
+    c->F = (cinfo->F_active ? m_alloc(md, sizeof(fmd_rtuple_t)) : NULL);
+    c->vaream = (cinfo->vaream_active ? m_alloc(md, sizeof(fmd_real_t)) : NULL);
+    c->GroupID = (cinfo->GroupID_active ? m_alloc(md, sizeof(int)) : NULL);
+    c->AtomID = (cinfo->AtomID_active ? m_alloc(md, sizeof(unsigned)) : NULL);
+    c->atomkind = (cinfo->atomkind_active ? m_alloc(md, sizeof(unsigned)) : NULL);
     c->capacity = 1;
     c->parts_num = 0;
 }
@@ -78,14 +78,14 @@ void _fmd_cell_resize(fmd_t *md, cell_t *c)
 {
     c->capacity = c->parts_num + md->cell_increment;
 
-    realloc_arrays(c);
+    realloc_arrays(md, c);
 }
 
-void _fmd_cell_resize_exact(cell_t *c)
+void _fmd_cell_resize_exact(fmd_t *md, cell_t *c)
 {
     c->capacity = c->parts_num;
 
-    realloc_arrays(c);
+    realloc_arrays(md, c);
 }
 
 void _fmd_cell_minimize(fmd_t *md, cell_t *c)
@@ -95,7 +95,7 @@ void _fmd_cell_minimize(fmd_t *md, cell_t *c)
     if (c->capacity > md->cell_increment)
     {
         c->capacity = md->cell_increment;
-        realloc_arrays(c);
+        realloc_arrays(md, c);
     }
 }
 

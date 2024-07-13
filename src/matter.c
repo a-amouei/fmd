@@ -288,7 +288,7 @@ static void *create_packbuffer_for_matt_distribute(fmd_t *md, fmd_ituple_t globa
         }
     }
 
-    return (size > 0 ? m_alloc(size) : NULL);
+    return (size > 0 ? m_alloc(md, size) : NULL);
 }
 
 static void pack_for_matt_distribute(fmd_t *md, void *buff, int *bytecount,
@@ -431,7 +431,7 @@ void _fmd_matt_distribute(fmd_t *md)
 
         MPI_Get_count(&status, MPI_PACKED, &bufsize);
 
-        void *buff = m_alloc(bufsize);
+        void *buff = m_alloc(md, bufsize);
 
         MPI_Recv(buff, bufsize, MPI_PACKED, RANK0, 51, md->MD_comm, &status);
 
@@ -451,7 +451,11 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
     int i;
     cell_t *c;
 
-    assert(new >= 0);   /* TO-DO: handle error */
+    if (new < 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", new);
+        return;
+    }
 
     if (md->ParticlesDistributed)
     {
@@ -493,7 +497,12 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
 
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
 {
-    assert(!md->ParticlesDistributed); /* TO-DO */
+    if (md->ParticlesDistributed)
+    {
+        _fmd_error_not_supported_yet(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+          "The current version cannot translate matter after particles are distributed among subdomains.");
+        return;
+    }
 
     if (md->ActiveGroup == FMD_GROUP_ALL ||
                 GroupID == FMD_GROUP_ALL ||
@@ -535,7 +544,11 @@ void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fm
                 {
                     jcv[d] = (int)floor(POS(c, i, d) / md->cellh[d]);
 
-                    assert(!(jcv[d] < 0 || jcv[d] >= md->nc[d])); /* TO-DO: handle error */
+                    if (jcv[d] < 0 || jcv[d] >= md->nc[d])
+                    {
+                        _fmd_error_unexpected_position(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+                        return;
+                    }
                 }
 
                 cell_t *c2 = md->ggrid + INDEX_FLAT(jcv, md->nc);
@@ -641,7 +654,7 @@ static config_atom_t *prepare_localdata_for_saveconfig(fmd_t *md)
     int pind;
     int k = 0;
 
-    localdata = (config_atom_t *)m_alloc(md->subd.NumberOfParticles * sizeof(config_atom_t));
+    localdata = m_alloc(md, md->subd.NumberOfParticles * sizeof(config_atom_t));
 
     for (int ic=0; ic < md->subd.nc; ic++)
         for (c = md->subd.grid + ic, pind=0; pind < c->parts_num; pind++)
@@ -665,7 +678,7 @@ static config_atom_t *gather_localdata_on_root_for_saveconfig(fmd_t *md, config_
     unsigned *nums;
     config_atom_t *globaldata;
 
-    if (md->Is_MD_comm_root) nums = (unsigned *)m_alloc(md->subd.numprocs * sizeof(unsigned));
+    if (md->Is_MD_comm_root) nums = m_alloc(md, md->subd.numprocs * sizeof(unsigned));
     MPI_Gather(&md->subd.NumberOfParticles, 1, MPI_UNSIGNED, nums, 1, MPI_UNSIGNED, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
@@ -677,8 +690,8 @@ static config_atom_t *gather_localdata_on_root_for_saveconfig(fmd_t *md, config_
 
         int displ = 0;
 
-        globaldata = (config_atom_t *)m_alloc(md->TotalNoOfParticles * sizeof(config_atom_t));
-        displs     = (int *)m_alloc(md->subd.numprocs * sizeof(int));
+        globaldata = m_alloc(md, md->TotalNoOfParticles * sizeof(config_atom_t));
+        displs     = m_alloc(md, md->subd.numprocs * sizeof(int));
 
         for (int k=0; k < md->subd.numprocs; k++)
         {
@@ -722,7 +735,7 @@ static void save_VTF_file(fmd_t *md, config_atom_t *globaldata)
     int AtomID = 0;
 
     sprintf(ConfigPath, "%s%05d.vtf", md->SaveDirectory, md->_FileIndex++);
-    md->ConfigFilep = f_open(ConfigPath, "w");
+    md->ConfigFilep = f_open(md, ConfigPath, "w");
 
     for (int i=0; i < md->potsys.atomkinds_num; i++)
     {
@@ -779,7 +792,7 @@ void fmd_matt_saveConfiguration(fmd_t *md)
             {
                 if (md->_OldNumberOfParticles != -1) fclose(md->ConfigFilep);
                 sprintf(ConfigPath, "%s%d.xyz", md->SaveDirectory, md->TotalNoOfParticles);
-                md->ConfigFilep = f_open(ConfigPath, "w");
+                md->ConfigFilep = f_open(md, ConfigPath, "w");
                 md->_OldNumberOfParticles = md->TotalNoOfParticles;
             }
             save_XYZ_data(md, globaldata);
@@ -788,14 +801,14 @@ void fmd_matt_saveConfiguration(fmd_t *md)
 
         case FMD_SCM_XYZ_SEPARATE:
             sprintf(ConfigPath, "%s%05d.xyz", md->SaveDirectory, md->_FileIndex++);
-            md->ConfigFilep = f_open(ConfigPath, "w");
+            md->ConfigFilep = f_open(md, ConfigPath, "w");
             save_XYZ_data(md, globaldata);
             fclose(md->ConfigFilep);
             break;
 
         case FMD_SCM_CSV:
             sprintf(ConfigPath, "%s%05d.csv", md->SaveDirectory, md->_FileIndex++);
-            md->ConfigFilep = f_open(ConfigPath, "w");
+            md->ConfigFilep = f_open(md, ConfigPath, "w");
             for (int i=0; i < md->potsys.atomkinds_num; i++)
             {
                 for (int k=0; k < md->TotalNoOfParticles; k++)

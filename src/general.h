@@ -21,22 +21,17 @@
 #define GENERAL_H
 
 #include <stdlib.h>
-#include <assert.h>
 #include <stdio.h>
 #include <mpi.h>
 #include "config.h"
 #include "types.h"
+#include "error.h"
 
 #define RANK0 0
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-/* error codes */
-#define ERROR_UNEXPECTED_PARTICLE_POSITION      1
-#define ERROR_UNABLE_OPEN_FILE                  2
-#define ERROR_UNSUITABLE_FILE                   3
 
 /* unit conversion factors */
 #define MD_MASS_UNIT                9.6485332907e+03   /* Da */
@@ -90,12 +85,15 @@ static inline fmd_real_t sqrrt(fmd_rtuple_t x)
 #endif
 }
 
-static inline void *re_alloc(void *ptr, size_t size)
+static inline void *re_alloc(fmd_t *md, void *ptr, size_t size)
 {
     if (size != 0)
     {
         void *res = realloc(ptr, size);
-        assert(res != NULL);   /* TO-DO: handle memory error */
+
+        if (res == NULL)
+            _fmd_error_unable_allocate_mem(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, size);
+
         return res;
     }
     else
@@ -106,36 +104,36 @@ static inline void *re_alloc(void *ptr, size_t size)
 }
 
 /* size should not be zero */
-static inline void *m_alloc(size_t size)
+static inline void *m_alloc(fmd_t *md, size_t size)
 {
     void *res;
 
     res = malloc(size);
-    assert(res != NULL);   /* TO-DO: handle memory error */
+
+    if (res == NULL)
+        _fmd_error_unable_allocate_mem(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, size);
 
     return res;
 }
 
 /* size should not be zero */
-static inline void *c_alloc(size_t nmemb, size_t size)
+static inline void *c_alloc(fmd_t *md, size_t nmemb, size_t size)
 {
     void *res;
 
     res = calloc(nmemb, size);
-    assert(res != NULL);   /* TO-DO: handle memory error */
+
+    if (res == NULL)
+        _fmd_error_unable_allocate_mem(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, size);
 
     return res;
 }
 
-static inline FILE *f_open(char *filename, char *modes)
+static inline FILE *f_open(fmd_t *md, char *filename, char *modes)
 {
     FILE *fp = fopen(filename, modes);
 
-    if (fp == NULL)
-    {
-        fprintf(stderr, "ERROR: Unable to open %s!\n", filename);
-        MPI_Abort(MPI_COMM_WORLD, ERROR_UNABLE_OPEN_FILE);
-    }
+    if (fp == NULL) _fmd_error_unable_open_file(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, filename);
 
     return fp;
 }
