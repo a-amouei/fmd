@@ -17,6 +17,7 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 PREFIX = /usr
+BUILDPATH = ../build
 CC = h5pcc
 SHAREDLIB = libfmd.so
 CFLAGS = -fPIC -std=c11 -Wno-format-overflow -O3 -fopenmp
@@ -24,7 +25,7 @@ LFLAGS = -fopenmp -lgsl -lgslcblas -shlib
 
 OBJS ::= $(patsubst %.c,%.o,$(wildcard *.c))
 
-.PHONY: all shared clean install uninstall depend
+.PHONY: all shared clean install build uninstall depend
 
 all: shared
 
@@ -40,12 +41,20 @@ depend:
 
 clean:
 	rm -f $(OBJS) $(SHAREDLIB)
+	rm -f $(BUILDPATH)/$(SHAREDLIB)
+	rm -f $(BUILDPATH)/fmd.h
+	rm -fd $(BUILDPATH)
 
 install: $(SHAREDLIB)
 	mkdir -p $(DESTDIR)$(PREFIX)/lib
 	mkdir -p $(DESTDIR)$(PREFIX)/include
 	cp fmd.h $(DESTDIR)$(PREFIX)/include/
 	cp $(SHAREDLIB) $(DESTDIR)$(PREFIX)/lib/
+
+build: $(SHAREDLIB)
+	mkdir -p $(BUILDPATH)
+	cp fmd.h $(BUILDPATH)
+	cp $(SHAREDLIB) $(BUILDPATH)
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/include/fmd.h
