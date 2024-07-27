@@ -701,7 +701,7 @@ static config_atom_t *gather_localdata_on_root_for_saveconfig(fmd_t *md, config_
     }
 
     MPI_Gatherv(localdata, md->subd.NumberOfParticles, md->mpi_types.mpi_configa,
-        globaldata, nums, displs, md->mpi_types.mpi_configa, RANK0, md->MD_comm);
+        globaldata, (const int *)nums, displs, md->mpi_types.mpi_configa, RANK0, md->MD_comm);
 
     if (md->Is_MD_comm_root)
     {
