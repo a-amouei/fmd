@@ -102,7 +102,7 @@ HDF5_RPATH = $(HDF5_LIB)
 MPI_RPATH = $(MPI_LIB)
 GSL_RPATH = $(GSL_LIB)
 
-CFLAGS = -fPIC -std=c11 -O3 -fopenmp $(I_HDF5) $(I_MPI) $(I_GSL)
+CFLAGS = -fPIC -std=c11 -pedantic -O3 -fopenmp $(I_HDF5) $(I_MPI) $(I_GSL)
 LFLAGS = -fopenmp -Wl,-rpath,$(HDF5_RPATH):$(MPI_RPATH):$(GSL_RPATH) $(L_MPI) $(L_HDF5) $(L_GSL) -lgsl -lgslcblas -lhdf5
 
 OBJS ::= $(patsubst %.c,%.o,$(wildcard *.c))
