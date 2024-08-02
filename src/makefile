@@ -46,7 +46,7 @@ GSL_HEADER =
 GSL_LIB =
 #################################################################################
 
-INSTALL_PREFIX = /usr
+INSTALL_PREFIX = /usr/local
 BUILDPATH = ../build
 SHAREDLIB = libfmd.so
 
