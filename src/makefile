@@ -185,10 +185,10 @@ install: $(SHAREDLIB) $(STATICLIB)
 	@echo 'includedir=${INCLUDEDIR}\n' >> $(PKGCPATH)
 	@echo 'Name: $(NAME)' >> $(PKGCPATH)
 	@echo 'Description: $(DESCRIPTION)' >> $(PKGCPATH)
+	@echo 'URL: https://fmd.readthedocs.io/' >> $(PKGCPATH)
 	@echo 'Version: $(VERSION)' >> $(PKGCPATH)
-	@echo 'Requires.private: mpi gsl hdf5' >> $(PKGCPATH)
 	@echo 'Libs: -L$${libdir} -lfmd' >> $(PKGCPATH)
-	@echo 'Libs.private: -fopenmp' >> $(PKGCPATH)
+	@echo 'Libs.private: -lmpi -lgsl -lhdf5 -fopenmp' >> $(PKGCPATH)
 	@echo 'Cflags: -I$${includedir}' >> $(PKGCPATH)
 	@ldconfig
 	@echo "The library was installed successfully!"
