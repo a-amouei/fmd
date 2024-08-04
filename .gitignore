@@ -1,5 +1,6 @@
 build/
 *.so
+*.a
 *.o
 examples/*.x
 examples/*.xyz
