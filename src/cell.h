@@ -21,6 +21,7 @@
 #define CELL_H
 
 #include "config.h"
+#include <stddef.h>
 #include "types.h"
 
 #if DIM==3
@@ -80,6 +81,8 @@ void _fmd_cellinfo_init(cellinfo_t *cinfo);
 void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind);
 void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t *cto, unsigned ito);
 void _fmd_cell_create_force_arrays(fmd_t *md, cell_t *c, bool FembP_alter);
+size_t _fmd_cell_getMemSize(cell_t *c);
+
 
 inline unsigned _fmd_cell_new_particle(fmd_t *md, cell_t *c)
 {

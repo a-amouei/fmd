@@ -309,3 +309,15 @@ void _fmd_conv_ic_loc_to_glob(fmd_t *md, fmd_ituple_t ic, fmd_ituple_t icglob)
     for (int d=0; d<DIM; d++)
         icglob[d] = ic[d] - md->subd.ic_start[d] + md->subd.ic_global_firstcell[d];
 }
+
+/* returns the total memory occupied by the cells pointed by
+   md->subd.grid and their contents */
+size_t _fmd_subd_getGridMemSize(fmd_t *md)
+{
+    size_t size = 0;
+
+    for (int i=0; i < md->subd.ncm; i++)
+        size += _fmd_cell_getMemSize(md->subd.grid + i);
+
+    return size;
+}

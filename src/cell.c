@@ -23,6 +23,23 @@
 #include "types.h"
 #include "general.h"
 
+/* returns the total memory occupied by the cell and its contents */
+size_t _fmd_cell_getMemSize(cell_t *c)
+{
+    size_t size = sizeof(cell_t);
+
+    if (c->x != NULL) size += c->capacity * sizeof(fmd_rtuple_t);
+    if (c->v != NULL) size += c->capacity * sizeof(fmd_rtuple_t);
+    if (c->F != NULL) size += c->capacity * sizeof(fmd_rtuple_t);
+    if (c->vaream != NULL) size += c->capacity * sizeof(*c->vaream);
+    if (c->GroupID != NULL) size += c->capacity * sizeof(*c->GroupID);
+    if (c->AtomID != NULL) size += c->capacity * sizeof(*c->AtomID);
+    if (c->atomkind != NULL) size += c->capacity * sizeof(*c->atomkind);
+    size += (c->cnb0len + c->cnb1len + c->cnb2len) * sizeof(cell_t *);
+
+    return size;
+}
+
 void _fmd_cell_create_force_arrays(fmd_t *md, cell_t *c, bool FembP_alter)
 {
     if (c->F == NULL) c->F = m_alloc(md, c->capacity * sizeof(fmd_rtuple_t));
