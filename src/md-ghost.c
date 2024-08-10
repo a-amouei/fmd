@@ -39,7 +39,7 @@ typedef void (*unpacker_t)(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
 typedef void (*ccopier_t)(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir);
 
 
-static unsigned cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
+/*static unsigned cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
 {
     fmd_ituple_t ic;
     unsigned count = 0;
@@ -56,19 +56,36 @@ static unsigned cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t i
     }
 
     return count;
+}*/
+
+static unsigned set_partsnum_to_zero(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
+{
+    fmd_ituple_t ic;
+    unsigned count = 0;
+
+    LOOP3D(ic, ic_from, ic_to)
+    {
+        cell_t *c = ARRAY_ELEMENT(md->subd.gridp, ic);
+
+        count += c->parts_num;
+        c->parts_num = 0;
+    }
+
+    return count;
 }
 
-void _fmd_ghostparticles_delete(fmd_t *md)
+void _fmd_ghostparticles_clean(fmd_t *md)
 {
     for (int i = md->subd.nc; i < md->subd.ncm; i++)
-        _fmd_cell_minimize(md, md->subd.grid + i);
+        (md->subd.grid + i)->parts_num = 0;
 }
 
 static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
 {
     dest->parts_num = src->parts_num;
 
-    if (dest->capacity < src->parts_num) _fmd_cell_resize_exact(md, dest);
+    if (dest->capacity < dest->parts_num || dest->parts_num + md->cell_increment < dest->capacity)
+        _fmd_cell_resize(md, dest);
 
     memcpy(dest->x, src->x, src->parts_num * sizeof(fmd_rtuple_t));
     memcpy(dest->GroupID, src->GroupID, src->parts_num * sizeof(int));
@@ -128,7 +145,7 @@ static void ccopy_for_migrate(fmd_t *md, cell_t *src, cell_t *dest, int dim, int
     for (int i=oldnum; i < dest->parts_num; i++)
         POS(dest, i, dim) += value;
 
-    _fmd_cell_minimize(md, src);
+    src->parts_num = 0;
 }
 
 /* called instead of transfer() when ns==1 */
@@ -418,7 +435,8 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
         {
             c->parts_num = num;
 
-            if (num > c->capacity) _fmd_cell_resize_exact(md, c);
+            if (c->capacity < c->parts_num || c->parts_num + md->cell_increment < c->capacity)
+                _fmd_cell_resize(md, c);            
 
             MPI_Unpack(in, insize, &byte, c->x, num, md->mpi_types.mpi_rtuple, md->MD_comm);
 
@@ -493,7 +511,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     if (nodest) /* no destination; simply remove the atoms */
     {
-        md->subd.NumberOfParticles -= cleanGridSegment(md, ic_start, ic_stop);
+        md->subd.NumberOfParticles -= set_partsnum_to_zero(md, ic_start, ic_stop);
 
         return;
     }
@@ -523,7 +541,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
             MPI_Pack(c->atomkind, c->parts_num, MPI_UNSIGNED, *out, INT_MAX, size, md->MD_comm);
 
             md->subd.NumberOfParticles -= c->parts_num;
-            _fmd_cell_minimize(md, c);
+            c->parts_num = 0;
         }
     }
 }
@@ -550,9 +568,9 @@ static void migrate_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
             unsigned oldnum = c->parts_num;
 
             c->parts_num += incr;
-            md->subd.NumberOfParticles += incr;
+            if (c->parts_num > c->capacity) _fmd_cell_resize(md, c);
 
-            _fmd_cell_resize(md, c);
+            md->subd.NumberOfParticles += incr;
 
             MPI_Unpack(in, insize, &byte, c->x + oldnum*DIM, incr, md->mpi_types.mpi_rtuple, md->MD_comm);
 
@@ -849,8 +867,8 @@ void _fmd_particles_migrate(fmd_t *md)
             }
             else
             {
-                md->subd.NumberOfParticles -= cleanGridSegment(md, ic_start_send_lower, ic_stop_send_lower);
-                md->subd.NumberOfParticles -= cleanGridSegment(md, ic_start_send_upper, ic_stop_send_upper);
+                md->subd.NumberOfParticles -= set_partsnum_to_zero(md, ic_start_send_lower, ic_stop_send_lower);
+                md->subd.NumberOfParticles -= set_partsnum_to_zero(md, ic_start_send_upper, ic_stop_send_upper);
             }
         }
     }

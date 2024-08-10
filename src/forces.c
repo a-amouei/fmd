@@ -378,7 +378,7 @@ void _fmd_dync_updateForces(fmd_t *md)
         if (_is_time_within_turi_start_stop_times(md, md->active_ttm_turi))
             add_ttm_term_to_forces(md);
 
-    _fmd_ghostparticles_delete(md);
+    _fmd_ghostparticles_clean(md);
 }
 
 void _fmd_clean_forces(fmd_t *md)

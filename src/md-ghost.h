@@ -25,7 +25,7 @@
 void _fmd_ghostparticles_init(fmd_t *md);
 void _fmd_ghostparticles_transfer_partialforces(fmd_t *md);
 void _fmd_ghostparticles_transfer_Femb(fmd_t *md);
-void _fmd_ghostparticles_delete(fmd_t *md);
+void _fmd_ghostparticles_clean(fmd_t *md);
 void _fmd_particles_migrate(fmd_t *md);
 
 #endif /* MD_GHOST_H */

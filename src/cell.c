@@ -98,14 +98,14 @@ void _fmd_cell_resize(fmd_t *md, cell_t *c)
     realloc_arrays(md, c);
 }
 
-void _fmd_cell_resize_exact(fmd_t *md, cell_t *c)
+/*void _fmd_cell_resize_exact(fmd_t *md, cell_t *c)
 {
     c->capacity = c->parts_num;
 
     realloc_arrays(md, c);
-}
+}*/
 
-void _fmd_cell_minimize(fmd_t *md, cell_t *c)
+/*void _fmd_cell_minimize(fmd_t *md, cell_t *c)
 {
     c->parts_num = 0;
 
@@ -114,7 +114,7 @@ void _fmd_cell_minimize(fmd_t *md, cell_t *c)
         c->capacity = md->cell_increment;
         realloc_arrays(md, c);
     }
-}
+}*/
 
 void _fmd_cell_free(cell_t *c)
 {
