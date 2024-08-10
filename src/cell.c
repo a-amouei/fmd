@@ -93,28 +93,10 @@ void _fmd_cellinfo_init(cellinfo_t *cinfo)
 
 void _fmd_cell_resize(fmd_t *md, cell_t *c)
 {
-    c->capacity = c->parts_num + md->cell_increment;
+    c->capacity = c->parts_num + md->cell_inc;
 
     realloc_arrays(md, c);
 }
-
-/*void _fmd_cell_resize_exact(fmd_t *md, cell_t *c)
-{
-    c->capacity = c->parts_num;
-
-    realloc_arrays(md, c);
-}*/
-
-/*void _fmd_cell_minimize(fmd_t *md, cell_t *c)
-{
-    c->parts_num = 0;
-
-    if (c->capacity > md->cell_increment)
-    {
-        c->capacity = md->cell_increment;
-        realloc_arrays(md, c);
-    }
-}*/
 
 void _fmd_cell_free(cell_t *c)
 {
@@ -170,6 +152,6 @@ void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind)
     if (c->parts_num != ind)
         _fmd_cell_copy_atom_from_cell_to_cell(c, c->parts_num, c, ind);
 
-    if (c->parts_num + md->cell_increment < c->capacity)
+    if (c->parts_num + md->cell_inc_dbl < c->capacity)
         _fmd_cell_resize(md, c);
 }

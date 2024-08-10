@@ -38,26 +38,6 @@ typedef void (*unpacker_t)(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
 /* dir is the direction of transfer (+1 or -1) */
 typedef void (*ccopier_t)(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir);
 
-
-/*static unsigned cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
-{
-    fmd_ituple_t ic;
-    unsigned count = 0;
-
-    LOOP3D(ic, ic_from, ic_to)
-    {
-        cell_t *c = ARRAY_ELEMENT(md->subd.gridp, ic);
-
-        if (c->parts_num > 0)
-        {
-            count += c->parts_num;
-            _fmd_cell_minimize(md, c);
-        }
-    }
-
-    return count;
-}*/
-
 static unsigned set_partsnum_to_zero(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
 {
     fmd_ituple_t ic;
@@ -84,7 +64,7 @@ static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, i
 {
     dest->parts_num = src->parts_num;
 
-    if (dest->capacity < dest->parts_num || dest->parts_num + md->cell_increment < dest->capacity)
+    if (dest->capacity < dest->parts_num || dest->parts_num + md->cell_inc_dbl < dest->capacity)
         _fmd_cell_resize(md, dest);
 
     memcpy(dest->x, src->x, src->parts_num * sizeof(fmd_rtuple_t));
@@ -435,8 +415,8 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
         {
             c->parts_num = num;
 
-            if (c->capacity < c->parts_num || c->parts_num + md->cell_increment < c->capacity)
-                _fmd_cell_resize(md, c);            
+            if (c->capacity < c->parts_num || c->parts_num + md->cell_inc_dbl < c->capacity)
+                _fmd_cell_resize(md, c);
 
             MPI_Unpack(in, insize, &byte, c->x, num, md->mpi_types.mpi_rtuple, md->MD_comm);
 

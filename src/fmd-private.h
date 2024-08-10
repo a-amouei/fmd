@@ -106,7 +106,8 @@ struct _fmd
     bool MPI_initialized_by_me;
     h5_dataspaces_t h5_dataspaces;
     bool ShowErrorMessages;
-    int cell_increment;
+    int cell_inc;
+    int cell_inc_dbl;
     int random_seed_aux;
     int _OldNumberOfParticles;
     int _FileIndex;
