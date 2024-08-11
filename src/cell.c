@@ -91,9 +91,11 @@ void _fmd_cellinfo_init(cellinfo_t *cinfo)
     cinfo->atomkind_active = true;
 }
 
+/* c->parts_num must be equal to the new particle number,
+   not the current particle number. */
 void _fmd_cell_resize(fmd_t *md, cell_t *c)
 {
-    c->capacity = c->parts_num + md->cell_inc;
+    c->capacity = c->parts_num + md->cell_incm1;
 
     realloc_arrays(md, c);
 }
@@ -152,6 +154,6 @@ void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind)
     if (c->parts_num != ind)
         _fmd_cell_copy_atom_from_cell_to_cell(c, c->parts_num, c, ind);
 
-    if (c->parts_num + md->cell_inc_dbl < c->capacity)
+    if (c->parts_num + md->cell_2incm1 <= c->capacity)
         _fmd_cell_resize(md, c);
 }

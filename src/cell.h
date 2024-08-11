@@ -81,10 +81,15 @@ void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t
 void _fmd_cell_create_force_arrays(fmd_t *md, cell_t *c, bool FembP_alter);
 size_t _fmd_cell_getMemSize(cell_t *c);
 
-
 inline unsigned _fmd_cell_new_particle(fmd_t *md, cell_t *c)
 {
-    if (c->parts_num == c->capacity) _fmd_cell_resize(md, c);
+    if (c->parts_num == c->capacity)
+    {
+        c->parts_num++;
+        _fmd_cell_resize(md, c);
+
+        return c->parts_num-1;
+    }
 
     return c->parts_num++;
 }

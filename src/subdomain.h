@@ -56,5 +56,6 @@ void _fmd_subd_free(fmd_t *md);
 fmd_real_t _fmd_convert_pos_to_subd_coord_1D(fmd_t *md, fmd_real_t pos, int d);
 void _fmd_convert_pos_to_subd_coord(fmd_t *md, fmd_rtuple_t pos, fmd_rtuple_t s);
 void _fmd_conv_ic_loc_to_glob(fmd_t *md, fmd_ituple_t ic, fmd_ituple_t icglob);
+void fmd_proc_setCellIncrement(fmd_t *md , int incr);
 
 #endif /* SUBDOMAIN_H */

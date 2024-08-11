@@ -538,8 +538,7 @@ fmd_t *fmd_create()
     md->turies_num = 0;
     md->active_ttm_turi = NULL;
     md->SaveConfigMode = FMD_SCM_XYZ_ATOMSNUM;
-    md->cell_inc = 3;
-    md->cell_inc_dbl = 2 * md->cell_inc;
+    fmd_proc_setCellIncrement(md, 3);
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
     md->KineticEnergyUpdated = false;

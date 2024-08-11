@@ -64,7 +64,7 @@ static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, i
 {
     dest->parts_num = src->parts_num;
 
-    if (dest->capacity < dest->parts_num || dest->parts_num + md->cell_inc_dbl < dest->capacity)
+    if (dest->capacity < dest->parts_num || dest->parts_num + md->cell_2incm1 <= dest->capacity)
         _fmd_cell_resize(md, dest);
 
     memcpy(dest->x, src->x, src->parts_num * sizeof(fmd_rtuple_t));
@@ -415,7 +415,7 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
         {
             c->parts_num = num;
 
-            if (c->capacity < c->parts_num || c->parts_num + md->cell_inc_dbl < c->capacity)
+            if (c->capacity < c->parts_num || c->parts_num + md->cell_2incm1 <= c->capacity)
                 _fmd_cell_resize(md, c);
 
             MPI_Unpack(in, insize, &byte, c->x, num, md->mpi_types.mpi_rtuple, md->MD_comm);

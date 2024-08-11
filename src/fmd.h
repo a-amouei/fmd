@@ -204,6 +204,8 @@ fmd_real_t fmd_proc_getWallTime(fmd_t *md);
 bool fmd_proc_hasSubdomain(fmd_t *md);
 bool fmd_proc_isRoot(fmd_t *md);
 void fmd_proc_setNumThreads(fmd_t *md, int num);
+int fmd_proc_getCellIncrement(fmd_t *md);
+void fmd_proc_setCellIncrement(fmd_t *md , int incr);
 
 fmd_t *fmd_create();
 void fmd_free(fmd_t *md);
