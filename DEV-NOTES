@@ -40,3 +40,9 @@ Remarks:
   #2[CLOSED]  In matter.c, the function _fmd_compute_GroupTemperature_etc_localgrid() computes GroupMomentum, but the function
               calculate_GroupTemperature_etc() doesn't. This is not a problem at the moment, because there is no function in the
               library interface reporting the momentum.
+              
+  #3          In md-ghost.c, only fmd_ghostparticles_init() (specifically, ccopy_for_ghostinit() and ghostinit_unpack()) is allowed
+              to decrease the capacity of ghost cells. The only exception is those ghost cells on which fmd_ghostparticles_init() has
+              no influence at all. These are ghost cells at the boundary of the simulation box in directions where PBC is not
+              applied. These latter ghost cells are "cleaned" at each time step by _fmd_particles_migrate() (and migrate_pack()).
+
