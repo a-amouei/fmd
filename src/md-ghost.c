@@ -38,7 +38,7 @@ typedef void (*unpacker_t)(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_sto
 /* dir is the direction of transfer (+1 or -1) */
 typedef void (*ccopier_t)(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir);
 
-static unsigned set_partsnum_to_zero(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
+static unsigned cleanGridSegment(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple_t ic_to)
 {
     fmd_ituple_t ic;
     unsigned count = 0;
@@ -47,8 +47,14 @@ static unsigned set_partsnum_to_zero(fmd_t *md, fmd_ituple_t ic_from, fmd_ituple
     {
         cell_t *c = ARRAY_ELEMENT(md->subd.gridp, ic);
 
-        count += c->parts_num;
-        c->parts_num = 0;
+        if (c->parts_num > 0)
+        {
+            count += c->parts_num;
+            c->parts_num = 0;
+
+            if (md->cell_2incm1 <= c->capacity)
+                _fmd_cell_resize(md, c);
+        }
     }
 
     return count;
@@ -60,12 +66,30 @@ void _fmd_ghostparticles_clean(fmd_t *md)
         (md->subd.grid + i)->parts_num = 0;
 }
 
+static void ccopy_for_partialforces(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
+{
+    if (src->parts_num == 0) return;
+
+    for (unsigned i=0; i < src->parts_num; i++)
+        for (int d=0; d < DIM; d++)
+            FRC(dest, i, d) += FRC(src, i, d);
+}
+
+static void ccopy_for_Femb(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
+{
+    if (src->parts_num == 0) return;
+
+    memcpy(dest->vaream, src->vaream, src->parts_num * sizeof(fmd_real_t));
+}
+
 static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
 {
     dest->parts_num = src->parts_num;
 
     if (dest->capacity < dest->parts_num || dest->parts_num + md->cell_2incm1 <= dest->capacity)
         _fmd_cell_resize(md, dest);
+
+    if (src->parts_num == 0) return;
 
     memcpy(dest->x, src->x, src->parts_num * sizeof(fmd_rtuple_t));
     memcpy(dest->GroupID, src->GroupID, src->parts_num * sizeof(int));
@@ -82,20 +106,10 @@ static void ccopy_for_ghostinit(fmd_t *md, cell_t *src, cell_t *dest, int dim, i
         POS(dest, i, dim) += value;
 }
 
-static void ccopy_for_partialforces(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
-{
-    for (unsigned i=0; i < src->parts_num; i++)
-        for (int d=0; d < DIM; d++)
-            FRC(dest, i, d) += FRC(src, i, d);
-}
-
-static void ccopy_for_Femb(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
-{
-    memcpy(dest->vaream, src->vaream, src->parts_num * sizeof(fmd_real_t));
-}
-
 static void ccopy_for_migrate(fmd_t *md, cell_t *src, cell_t *dest, int dim, int dir)
 {
+    if (src->parts_num == 0) return;
+
     int oldnum = dest->parts_num;
 
     dest->parts_num += src->parts_num;
@@ -147,8 +161,8 @@ static void copy_local(fmd_t *md, fmd_ituple_t ic_start_send, fmd_ituple_t ic_st
 
         cell_t *c_src = ARRAY_ELEMENT(md->subd.gridp, ic_src);
         cell_t *c_des = ARRAY_ELEMENT(md->subd.gridp, ic_des);
-
-        if (c_src->parts_num > 0) ccopy(md, c_src, c_des, dim, dir);
+            
+        ccopy(md, c_src, c_des, dim, dir);
     }
 }
 
@@ -411,13 +425,13 @@ static void ghostinit_unpack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_s
 
         MPI_Unpack(in, insize, &byte, &num, 1, MPI_UNSIGNED, md->MD_comm);
 
+        c->parts_num = num;
+
+        if (c->capacity < c->parts_num || c->parts_num + md->cell_2incm1 <= c->capacity)
+            _fmd_cell_resize(md, c);
+
         if (num > 0)
         {
-            c->parts_num = num;
-
-            if (c->capacity < c->parts_num || c->parts_num + md->cell_2incm1 <= c->capacity)
-                _fmd_cell_resize(md, c);
-
             MPI_Unpack(in, insize, &byte, c->x, num, md->mpi_types.mpi_rtuple, md->MD_comm);
 
             if (trans)
@@ -491,7 +505,7 @@ static void migrate_pack(fmd_t *md, fmd_ituple_t ic_start, fmd_ituple_t ic_stop,
 
     if (nodest) /* no destination; simply remove the atoms */
     {
-        md->subd.NumberOfParticles -= set_partsnum_to_zero(md, ic_start, ic_stop);
+        md->subd.NumberOfParticles -= cleanGridSegment(md, ic_start, ic_stop);
 
         return;
     }
@@ -847,8 +861,8 @@ void _fmd_particles_migrate(fmd_t *md)
             }
             else
             {
-                md->subd.NumberOfParticles -= set_partsnum_to_zero(md, ic_start_send_lower, ic_stop_send_lower);
-                md->subd.NumberOfParticles -= set_partsnum_to_zero(md, ic_start_send_upper, ic_stop_send_upper);
+                md->subd.NumberOfParticles -= cleanGridSegment(md, ic_start_send_lower, ic_stop_send_lower);
+                md->subd.NumberOfParticles -= cleanGridSegment(md, ic_start_send_upper, ic_stop_send_upper);
             }
         }
     }
