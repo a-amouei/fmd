@@ -293,7 +293,7 @@ void _fmd_subd_init(fmd_t *md)
     md->subd.grid = m_alloc(md, md->subd.ncm * sizeof(cell_t));
 
     for (int ic=0; ic < md->subd.ncm; ic++)
-        _fmd_cell_init(md, &md->cellinfo, md->subd.grid + ic);
+        _fmd_cell_init(md->subd.grid + ic);
 
     _fmd_array_3d_create(md, md->subd.cell_num, sizeof(cell_t *), DATATYPE_CELLP, &md->subd.gridp_array);
     md->subd.gridp = (cell_t ****)md->subd.gridp_array.data;

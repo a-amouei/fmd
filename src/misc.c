@@ -57,7 +57,7 @@ void _fmd_createGlobalGrid(fmd_t *md)
         md->ggrid = m_alloc(md, nc * sizeof(cell_t));
 
         for (int ic=0; ic < nc; ic++)
-            _fmd_cell_init(md, &md->cellinfo, md->ggrid + ic);
+            _fmd_cell_init(md->ggrid + ic);
     }
 }
 

@@ -58,25 +58,27 @@ void _fmd_cell_create_force_arrays(fmd_t *md, cell_t *c, bool FembP_alter)
 
 static inline void realloc_arrays(fmd_t *md, cell_t *c)
 {
-    if (c->x != NULL) c->x = re_alloc(md, c->x, c->capacity * sizeof(fmd_rtuple_t));
-    if (c->v != NULL) c->v = re_alloc(md, c->v, c->capacity * sizeof(fmd_rtuple_t));
-    if (c->F != NULL) c->F = re_alloc(md, c->F, c->capacity * sizeof(fmd_rtuple_t));
-    if (c->vaream != NULL) c->vaream = re_alloc(md, c->vaream, c->capacity * sizeof(fmd_real_t));
-    if (c->GroupID != NULL) c->GroupID = re_alloc(md, c->GroupID, c->capacity * sizeof(int));
-    if (c->AtomID != NULL) c->AtomID = re_alloc(md, c->AtomID, c->capacity * sizeof(unsigned));
-    if (c->atomkind != NULL) c->atomkind = re_alloc(md, c->atomkind, c->capacity * sizeof(unsigned));
+    cellinfo_t *info = &md->cellinfo;
+
+    if (info->v_active) c->v = re_alloc(md, c->v, c->capacity * sizeof(fmd_rtuple_t));
+    if (info->F_active) c->F = re_alloc(md, c->F, c->capacity * sizeof(fmd_rtuple_t));
+    if (info->vaream_active) c->vaream = re_alloc(md, c->vaream, c->capacity * sizeof(fmd_real_t));
+    if (info->GroupID_active) c->GroupID = re_alloc(md, c->GroupID, c->capacity * sizeof(int));
+    if (info->AtomID_active) c->AtomID = re_alloc(md, c->AtomID, c->capacity * sizeof(unsigned));
+    c->x = re_alloc(md, c->x, c->capacity * sizeof(fmd_rtuple_t));
+    c->atomkind = re_alloc(md, c->atomkind, c->capacity * sizeof(unsigned));
 }
 
-void _fmd_cell_init(fmd_t *md, cellinfo_t *cinfo, cell_t *c)
+void _fmd_cell_init(cell_t *c)
 {
-    c->x = (cinfo->x_active ? m_alloc(md, sizeof(fmd_rtuple_t)) : NULL);
-    c->v = (cinfo->v_active ? m_alloc(md, sizeof(fmd_rtuple_t)) : NULL);
-    c->F = (cinfo->F_active ? m_alloc(md, sizeof(fmd_rtuple_t)) : NULL);
-    c->vaream = (cinfo->vaream_active ? m_alloc(md, sizeof(fmd_real_t)) : NULL);
-    c->GroupID = (cinfo->GroupID_active ? m_alloc(md, sizeof(int)) : NULL);
-    c->AtomID = (cinfo->AtomID_active ? m_alloc(md, sizeof(unsigned)) : NULL);
-    c->atomkind = (cinfo->atomkind_active ? m_alloc(md, sizeof(unsigned)) : NULL);
-    c->capacity = 1;
+    c->x = NULL;
+    c->v = NULL;
+    c->F = NULL;
+    c->vaream = NULL;
+    c->GroupID = NULL;
+    c->AtomID = NULL;
+    c->atomkind = NULL;
+    c->capacity = 0;
     c->parts_num = 0;
 }
 
