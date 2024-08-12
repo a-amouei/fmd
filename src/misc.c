@@ -580,7 +580,7 @@ bool fmd_proc_hasSubdomain(fmd_t *md)
 
 bool fmd_proc_isRoot(fmd_t *md)
 {
-    return md->Is_MD_comm_root;
+    return md->world_rank == 0;
 }
 
 void fmd_proc_setNumThreads(fmd_t *md, int num)
@@ -606,7 +606,7 @@ void fmd_io_setShowErrorMessages(fmd_t *md, bool show)
 
 void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 {
-    if (md->Is_MD_process && md->Is_MD_comm_root)
+    if (md->world_rank == 0)
     {
         va_list argptr;
 
