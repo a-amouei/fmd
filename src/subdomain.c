@@ -329,8 +329,13 @@ int fmd_proc_getCellIncrement(fmd_t *md)
 
 void fmd_proc_setCellIncrement(fmd_t *md , int incr)
 {
-    if (incr <= 0) _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__,
-                                                     __LINE__, "cell increment value", incr);
+    if (incr <= 0)
+    {
+        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__,
+                                          __LINE__, "cell increment value", incr);
+        return;
+    }
+
     md->cell_incm1 = incr - 1;
     md->cell_2incm1 = 2 * incr - 1;
 }
