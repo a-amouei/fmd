@@ -131,9 +131,8 @@ void _fmd_cell_free(cell_t *c)
 
 void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t *cto, unsigned ito)
 {
-    if (cfrom->x != NULL)
-        for (int d=0; d<DIM; d++)
-            POS(cto, ito, d) = POS(cfrom, ifrom, d);
+    for (int d=0; d<DIM; d++)
+        POS(cto, ito, d) = POS(cfrom, ifrom, d);
 
     if (cfrom->v != NULL)
         for (int d=0; d<DIM; d++)
@@ -146,7 +145,7 @@ void _fmd_cell_copy_atom_from_cell_to_cell(cell_t *cfrom, unsigned ifrom, cell_t
     if (cfrom->vaream != NULL) cto->vaream[ito] = cfrom->vaream[ifrom];
     if (cfrom->GroupID != NULL) cto->GroupID[ito] = cfrom->GroupID[ifrom];
     if (cfrom->AtomID != NULL) cto->AtomID[ito] = cfrom->AtomID[ifrom];
-    if (cfrom->atomkind != NULL) cto->atomkind[ito] = cfrom->atomkind[ifrom];
+    cto->atomkind[ito] = cfrom->atomkind[ifrom];
 }
 
 void _fmd_cell_remove_atom(fmd_t *md, cell_t *c, unsigned ind)
