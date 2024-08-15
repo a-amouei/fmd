@@ -37,7 +37,7 @@ include:
 
 FMD depends on
 
-- an MPI implementation (e.g. OpenMPI or MPICH)
+- an MPI implementation (e.g. Open MPI or MPICH)
 - GNU Scientific Library
 - HDF5
 
@@ -54,7 +54,7 @@ $ make uninstall
 ================================
 
 There is online documentation for this version at:
-https://fmd.readthedocs.io/en/0.3.0/
+https://fmd.readthedocs.io/en/0.4.0/
 
 We welcome questions and comments! If you would like to comment or ask
 any questions related to this project, write to arham.amouei@proton.me
