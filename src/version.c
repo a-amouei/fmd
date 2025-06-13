@@ -41,7 +41,7 @@ int fmd_version_getRevision()
    'd' for development */
 char fmd_version_getType()
 {
-    return 'r';
+    return 'd';
 }
 
 fmd_string_t fmd_version_getString()
