@@ -137,6 +137,7 @@ MPI_RPATH = $(MPI_LIB)
 GSL_RPATH = $(GSL_LIB)
 
 LIBNAME = libfmd
+HFILE = fmd.h
 SHAREDLIB = $(LIBNAME).so
 STATICLIB = $(LIBNAME).a
 
@@ -145,7 +146,7 @@ LFLAGS = -fopenmp -Wl,-rpath,$(HDF5_RPATH):$(MPI_RPATH):$(GSL_RPATH) $(L_MPI) $(
 
 OBJS ::= $(patsubst %.c,%.o,$(wildcard *.c))
 
-.PHONY: all shared clean install uninstall depend
+.PHONY: all shared static clean install build uninstall depend
 
 all: shared static
 
@@ -168,14 +169,14 @@ clean:
 	@rm -f *.o $(SHAREDLIB) $(STATICLIB)
 	@rm -f $(BUILDPATH)/$(SHAREDLIB)
 	@rm -f $(BUILDPATH)/$(STATICLIB)
-	@rm -f $(BUILDPATH)/fmd.h
+	@rm -f $(BUILDPATH)/$(HFILE)
 	@rm -fd $(BUILDPATH)
 	@echo "Cleaned!"
 
 install: $(SHAREDLIB) $(STATICLIB)
 	@mkdir -p $(LIBDIR)
 	@mkdir -p $(INCLUDEDIR)
-	@cp fmd.h $(INCLUDEDIR)
+	@cp $(HFILE) $(INCLUDEDIR)
 	@cp $(SHAREDLIB) $(LIBDIR)
 	@cp $(STATICLIB) $(LIBDIR)
 	@mkdir -p $(PKGCONFIGDIR)
@@ -193,15 +194,15 @@ install: $(SHAREDLIB) $(STATICLIB)
 	@ldconfig
 	@echo "The library was installed successfully!"
 
-build: $(SHAREDLIB)
+build: $(SHAREDLIB) $(STATICLIB)
 	@mkdir -p $(BUILDPATH)
-	@cp fmd.h $(BUILDPATH)
+	@cp $(HFILE) $(BUILDPATH)
 	@cp $(SHAREDLIB) $(BUILDPATH)
 	@cp $(STATICLIB) $(BUILDPATH)
 	@echo "The library was built successfully!"
 
 uninstall:
-	@rm -f $(INCLUDEDIR)/fmd.h
+	@rm -f $(INCLUDEDIR)/$(HFILE)
 	@rm -f $(LIBDIR)/$(SHAREDLIB)
 	@rm -f $(LIBDIR)/$(STATICLIB)
 	@rm -f $(PKGCPATH)
