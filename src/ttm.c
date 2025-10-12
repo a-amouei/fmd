@@ -814,3 +814,8 @@ void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_lase
     ttm->laser_m_absdepth_inv = -1. / Lp;
     ttm->laser_factor_constant = I0 * (1 - R) / Lp;
 }
+
+void fmd_ttm_useExtendedMode(fmd_t *md)
+{
+    md->ttm_extended = true;
+}

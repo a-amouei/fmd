@@ -236,6 +236,7 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
 void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
 void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_gaussian_t laser);
+void fmd_ttm_useExtendedMode(fmd_t *md);
 
 #define fmd_ttm_setHeatCapacity(md, turi, c) \
   _Generic((c), fmd_ttm_heat_capacity_linear_t: _fmd_ttm_setHeatCapacity_linear, \

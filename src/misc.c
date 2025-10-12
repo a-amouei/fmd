@@ -103,15 +103,29 @@ static void createCommunicators(fmd_t *md)
     MPI_Group_free(&MD_group);
 
     free(ranks);
+
+    /* create extd_comm */
+
+    MPI_Comm_dup(MPI_COMM_WORLD, &md->extd_comm);
 }
 
 static void identifyProcess(fmd_t *md)
 {
     int mdnum = md->ns[0] * md->ns[1] * md->ns[2];
+    bool error = false;
 
-    if (mdnum != md->world_numprocs)
+    if (md->ttm_extended) {
+        if (mdnum+1 != md->world_numprocs) error = true;
+    }
+    else {
+        if (mdnum != md->world_numprocs) error = true;
+    }
+
+    if (error) {
         _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__,
-                                          __LINE__, "number of processes", md->world_numprocs);
+          __LINE__, "number of processes", md->world_numprocs);
+    }
+
     if (md->world_rank < mdnum)
         md->Is_MD_process = true;
     else
@@ -540,6 +554,7 @@ fmd_t *fmd_create()
     md->turies = NULL;
     md->turies_num = 0;
     md->active_ttm_turi = NULL;
+    md->ttm_extended = false;
     md->SaveConfigMode = FMD_SCM_XYZ_ATOMSNUM;
     fmd_proc_setCellIncrement(md, 3);
     md->_OldNumberOfParticles = -1;
@@ -626,6 +641,9 @@ void fmd_free(fmd_t *md)
     _fmd_h5_ds_free(md, &md->h5_dataspaces);
     fmd_turi_free(md);
     free(md);
+
+    MPI_Comm_free(&md->MD_comm);
+    MPI_Comm_free(&md->extd_comm);
 
     if (md->MPI_initialized_by_me)
     {

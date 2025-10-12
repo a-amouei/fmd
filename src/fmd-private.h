@@ -68,6 +68,7 @@ struct _fmd
     unsigned turies_num;
     turi_t *turies;
     turi_t *active_ttm_turi;
+    bool ttm_extended;
     bool BoxSizeDetermined;
     bool PBCdetermined;
     fmd_real_t time;
@@ -80,6 +81,7 @@ struct _fmd
     int LOP_iteration;                    /* must be initialized with zero */
     int LOP_period;
     MPI_Comm MD_comm;
+    MPI_Comm extd_comm;                   /* "extended" communicator */
     fmd_real_t GroupKineticEnergy;
     fmd_real_t GroupPotentialEnergy;
     bool KineticEnergyUpdated;            /* for active group */
