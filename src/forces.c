@@ -291,7 +291,7 @@ static void compute_hybrid_pass0(fmd_t *md, fmd_real_t FembSum)
 
 static void add_ttm_term_to_forces(fmd_t *md)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
     ttm_t *ttm = t->ttm;
     cell_t *c;
     int i;
@@ -374,8 +374,8 @@ void _fmd_dync_updateForces(fmd_t *md)
         _fmd_ghostparticles_transfer_partialforces(md);
     }
 
-    if (md->active_ttm_turi != NULL)
-        if (_is_time_within_turi_start_stop_times(md, md->active_ttm_turi))
+    if (md->ttmturi != NULL)
+        if (_is_time_within_turi_start_stop_times(md, md->ttmturi))
             add_ttm_term_to_forces(md);
 
     _fmd_ghostparticles_clean(md);

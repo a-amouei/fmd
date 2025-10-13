@@ -553,7 +553,7 @@ fmd_t *fmd_create()
     md->timers_num = 0;
     md->turies = NULL;
     md->turies_num = 0;
-    md->active_ttm_turi = NULL;
+    md->ttmturi = NULL;
     md->ttm_extended = false;
     md->SaveConfigMode = FMD_SCM_XYZ_ATOMSNUM;
     fmd_proc_setCellIncrement(md, 3);

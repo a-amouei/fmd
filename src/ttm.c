@@ -62,7 +62,7 @@ typedef struct
 
 void _fmd_ttm_getReady(fmd_t *md)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
     ttm_t *ttm = t->ttm;
 
     fmd_rtuple_t ll, ul;
@@ -548,7 +548,7 @@ void _fmd_ttm_destruct(turi_t *t)
 
 void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_string_t path)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -613,7 +613,7 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_string_t path)
 
 void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_ttm_heat_capacity_linear_t c)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -634,7 +634,7 @@ void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_ttm_heat_capacity_linear_t c
 
 void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_ttm_heat_conductivity_zhigilei_t k)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -657,7 +657,7 @@ void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_ttm_heat_conductivity_
 
 void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_real_t k)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -683,7 +683,7 @@ void _fmd_ttm_setHeatConductivity_constant2(fmd_t *md, fmd_ttm_heat_conductivity
 
 void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_string_t path)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -748,7 +748,7 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_string_t path)
 
 void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_real_t g)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -774,7 +774,7 @@ void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_ttm_coupling_factor_con
 
 void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -798,7 +798,7 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te)
 
 void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -819,7 +819,7 @@ void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio)
 
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_real_t value)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -847,7 +847,7 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_real_t value)
 
 void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_ttm_laser_gaussian_t laser)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {
@@ -882,7 +882,7 @@ void fmd_ttm_useExtendedMode(fmd_t *md)
 
 void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz)
 {
-    turi_t *t = md->active_ttm_turi;
+    turi_t *t = md->ttmturi;
 
     if (t == NULL)
     {

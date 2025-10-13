@@ -182,7 +182,7 @@ static void SymplecticEuler_integrate(fmd_t *md, fmd_real_t duration)
 {
     fmd_real_t start = md->time;
 
-    if (md->active_ttm_turi != NULL) _fmd_ttm_getReady(md);
+    if (md->ttmturi != NULL) _fmd_ttm_getReady(md);
 
     /* update force-independent fields */
     if (md->turies_num > 0)
@@ -294,7 +294,7 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
 
     md->timestep = timestep;
 
-    if (md->active_ttm_turi != NULL)
+    if (md->ttmturi != NULL)
         SymplecticEuler_integrate(md, duration);
     else
         VelocityVerlet_integrate(md, duration, false);

@@ -67,7 +67,7 @@ struct _fmd
     fmd_timer_t *timers;
     unsigned turies_num;
     turi_t *turies;
-    turi_t *active_ttm_turi;
+    turi_t *ttmturi;
     bool ttm_extended;
     bool BoxSizeDetermined;
     bool PBCdetermined;

@@ -649,7 +649,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 {
     if (md->subd.grid == NULL) _fmd_subd_init(md);
 
-    if ((md->active_ttm_turi != NULL) && (cat == FMD_TURI_TTM_TYPE1 || cat == FMD_TURI_TTM_TYPE2))
+    if ((md->ttmturi != NULL) && (cat == FMD_TURI_TTM_TYPE1 || cat == FMD_TURI_TTM_TYPE2))
     {
         _fmd_error_ttm_turi_already_exists(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
         return -1;
@@ -733,7 +733,7 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
         case FMD_TURI_TTM_TYPE1:
         case FMD_TURI_TTM_TYPE2:
             t->ttm = _fmd_ttm_construct(md, t);
-            md->active_ttm_turi = t;
+            md->ttmturi = t;
             break;
 
         default:
@@ -1848,7 +1848,7 @@ void fmd_turi_free(fmd_t *md)
 
     md->turies = NULL;
     md->turies_num = 0;
-    md->active_ttm_turi = NULL;
+    md->ttmturi = NULL;
 }
 
 /* negative returned value means the field doesn't exist */
