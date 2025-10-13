@@ -92,6 +92,7 @@ struct _fmd
     fmd_ituple_t PBC;
     fmd_ituple_t ns;                      // number of subdomains = ns[0] x ns[1] x ns[2]
     fmd_rtuple_t l;                       // size of the simulation box
+    fmd_real_t lext;                      /* length of extended region */
     fmd_ituple_t nc;                      // number of grid cells in the simulation box
     fmd_rtuple_t cellh;                   // size of one single grid cell
     bool UseAutoStep;

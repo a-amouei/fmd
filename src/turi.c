@@ -649,6 +649,12 @@ fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dim
 {
     if (md->subd.grid == NULL) _fmd_subd_init(md);
 
+    if ((md->active_ttm_turi != NULL) && (cat == FMD_TURI_TTM_TYPE1 || cat == FMD_TURI_TTM_TYPE2))
+    {
+        _fmd_error_ttm_turi_already_exists(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return -1;
+    }
+
     int ti = md->turies_num;
 
     md->turies = (turi_t *)re_alloc(md, md->turies, (ti+1) * sizeof(turi_t));

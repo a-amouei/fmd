@@ -122,7 +122,7 @@ static void identifyProcess(fmd_t *md)
     }
 
     if (error) {
-        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__,
+        _fmd_error_unacceptable_int_value(md, true, __FILE__, (fmd_string_t)__func__,
           __LINE__, "number of processes", md->world_numprocs);
     }
 

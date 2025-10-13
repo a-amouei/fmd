@@ -224,36 +224,37 @@ void fmd_field_save_as_hdf5(fmd_t *md, fmd_handle_t turi, fmd_handle_t field, fm
 fmd_array3s_t *fmd_field_getArray(fmd_t *md, fmd_handle_t turi, fmd_handle_t field,
   fmd_array3_t *array, fmd_utriple_t dims);
 
-void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_capacity_linear_t c);
-void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t path);
-void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_handle_t turi, fmd_real_t k);
-void _fmd_ttm_setHeatConductivity_constant2(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k);
-void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_zhigilei_t k);
-void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_handle_t turi, fmd_real_t g);
-void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g);
-void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t path);
-void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te);
-void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio);
-void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value);
-void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_gaussian_t laser);
+void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_ttm_heat_capacity_linear_t c);
+void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_string_t path);
+void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_real_t k);
+void _fmd_ttm_setHeatConductivity_constant2(fmd_t *md, fmd_ttm_heat_conductivity_constant_t k);
+void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_ttm_heat_conductivity_zhigilei_t k);
+void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_real_t g);
+void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_ttm_coupling_factor_constant_t g);
+void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_string_t path);
+void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te);
+void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio);
+void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_real_t value);
+void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_ttm_laser_gaussian_t laser);
 void fmd_ttm_useExtendedMode(fmd_t *md);
+void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz);
 
-#define fmd_ttm_setHeatCapacity(md, turi, c) \
+#define fmd_ttm_setHeatCapacity(md, c) \
   _Generic((c), fmd_ttm_heat_capacity_linear_t: _fmd_ttm_setHeatCapacity_linear, \
-                fmd_string_t: _fmd_ttm_setHeatCapacity_file)(md, turi, c)
+                fmd_string_t: _fmd_ttm_setHeatCapacity_file)(md, c)
 
-#define fmd_ttm_setHeatConductivity(md, turi, k) \
+#define fmd_ttm_setHeatConductivity(md, k) \
   _Generic((k), fmd_ttm_heat_conductivity_constant_t: _fmd_ttm_setHeatConductivity_constant2, \
                 fmd_real_t: _fmd_ttm_setHeatConductivity_constant1, \
-                fmd_ttm_heat_conductivity_zhigilei_t: _fmd_ttm_setHeatConductivity_zhigilei)(md, turi, k)
+                fmd_ttm_heat_conductivity_zhigilei_t: _fmd_ttm_setHeatConductivity_zhigilei)(md, k)
 
-#define fmd_ttm_setCouplingFactor(md, turi, g) \
+#define fmd_ttm_setCouplingFactor(md, g) \
   _Generic((g), fmd_ttm_coupling_factor_constant_t: _fmd_ttm_setCouplingFactor_constant2, \
                 fmd_real_t: _fmd_ttm_setCouplingFactor_constant1, \
-                fmd_string_t: _fmd_ttm_setCouplingFactor_file)(md, turi, g)
+                fmd_string_t: _fmd_ttm_setCouplingFactor_file)(md, g)
 
-#define fmd_ttm_setLaserSource(md, turi, laser) \
-  _Generic((laser), fmd_ttm_laser_gaussian_t: _fmd_ttm_setLaserSource_gaussian)(md, turi, laser)
+#define fmd_ttm_setLaserSource(md, laser) \
+  _Generic((laser), fmd_ttm_laser_gaussian_t: _fmd_ttm_setLaserSource_gaussian)(md, laser)
 
 void fmd_array3s_free(fmd_array3s_t *array);
 

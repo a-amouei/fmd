@@ -116,7 +116,7 @@ void _fmd_error_file_corrupted(fmd_t *md, bool major, fmd_string_t source,
     if (md->ShowErrorMessages)
         fprintf(stderr, FORMAT1"Not a healthy %s file (%s)!\n",
                 source, func, line, ftype, path);
-    
+
     if (md->EventHandler == NULL) return;
 
     fmd_event_params_error_t err;
@@ -231,6 +231,38 @@ void _fmd_error_wrong_potential(fmd_t *md, bool major, fmd_string_t source,
     err.p1 = pname;
     err.p2 = &atomkind1;
     err.p3 = &atomkind2;
+
+    md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
+}
+
+void _fmd_error_no_ttm_turi(fmd_t *md, bool major, fmd_string_t source,
+                            fmd_string_t func, int line)
+{
+    if (md->ShowErrorMessages)
+        fprintf(stderr, FORMAT1"No TTM turi is defined!\n", source, func, line);
+
+    if (md->EventHandler == NULL) return;
+
+    fmd_event_params_error_t err;
+
+    err.error = FMD_ERR_NO_TTM_TURI;
+    error_set_common_members(&err, major, source, func, line);
+
+    md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
+}
+
+void _fmd_error_ttm_turi_already_exists(fmd_t *md, bool major, fmd_string_t source,
+                                        fmd_string_t func, int line)
+{
+    if (md->ShowErrorMessages)
+        fprintf(stderr, FORMAT1"TTM turi already exists!\n", source, func, line);
+
+    if (md->EventHandler == NULL) return;
+
+    fmd_event_params_error_t err;
+
+    err.error = FMD_ERR_TTM_TURI_ALREADY_EXISTS;
+    error_set_common_members(&err, major, source, func, line);
 
     md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
 }

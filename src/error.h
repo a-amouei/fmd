@@ -35,7 +35,9 @@ typedef enum
     FMD_ERR_FUNCTION_FAILED,
     FMD_ERR_NOT_SUPPORTED_YET,
     FMD_ERR_UNPREPARED,
-    FMD_ERR_WRONG_POTENTIAL
+    FMD_ERR_WRONG_POTENTIAL,
+    FMD_ERR_NO_TTM_TURI,
+    FMD_ERR_TTM_TURI_ALREADY_EXISTS
 } fmd_error_t;
 
 typedef struct _fmd fmd_t;
@@ -76,5 +78,11 @@ void _fmd_error_unprepared(fmd_t *md, bool major, fmd_string_t source,
 void _fmd_error_wrong_potential(fmd_t *md, bool major, fmd_string_t source,
                                 fmd_string_t func, int line, fmd_string_t pname,
                                 int atomkind1, int atomkind2);
+
+void _fmd_error_no_ttm_turi(fmd_t *md, bool major, fmd_string_t source,
+                            fmd_string_t func, int line);
+
+void _fmd_error_ttm_turi_already_exists(fmd_t *md, bool major, fmd_string_t source,
+                                        fmd_string_t func, int line);
 
 #endif /* ERROR_H */

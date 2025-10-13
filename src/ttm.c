@@ -546,9 +546,15 @@ void _fmd_ttm_destruct(turi_t *t)
     t->ttm = NULL;
 }
 
-void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t path)
+void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_string_t path)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -605,9 +611,15 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_handle_t turi, fmd_string_t pa
 
 }
 
-void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_capacity_linear_t c)
+void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_ttm_heat_capacity_linear_t c)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1)
     {
@@ -620,9 +632,15 @@ void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_
     ttm->C_gamma = c.gamma * JOULE_PER_METER3_KELVIN2;
 }
 
-void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_zhigilei_t k)
+void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_ttm_heat_conductivity_zhigilei_t k)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -637,9 +655,15 @@ void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_handle_t turi, fmd_ttm
     ttm->Kzh.v2 = sqrr(k.v * METER_PER_SECOND);
 }
 
-void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_handle_t turi, fmd_real_t k)
+void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_real_t k)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1)
     {
@@ -652,14 +676,20 @@ void _fmd_ttm_setHeatConductivity_constant1(fmd_t *md, fmd_handle_t turi, fmd_re
     ttm->K = k * WATT_PER_METER_KELVIN;
 }
 
-void _fmd_ttm_setHeatConductivity_constant2(fmd_t *md, fmd_handle_t turi, fmd_ttm_heat_conductivity_constant_t k)
+void _fmd_ttm_setHeatConductivity_constant2(fmd_t *md, fmd_ttm_heat_conductivity_constant_t k)
 {
-    _fmd_ttm_setHeatConductivity_constant1(md, turi, k.value);
+    _fmd_ttm_setHeatConductivity_constant1(md, k.value);
 }
 
-void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t path)
+void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_string_t path)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -716,9 +746,15 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_handle_t turi, fmd_string_t 
 
 }
 
-void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_handle_t turi, fmd_real_t g)
+void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_real_t g)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1)
     {
@@ -731,14 +767,20 @@ void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_handle_t turi, fmd_real
     ttm->G = g * WATT_PER_METER3_KELVIN;
 }
 
-void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_handle_t turi, fmd_ttm_coupling_factor_constant_t g)
+void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_ttm_coupling_factor_constant_t g)
 {
-    _fmd_ttm_setCouplingFactor_constant1(md, turi, g.value);
+    _fmd_ttm_setCouplingFactor_constant1(md, g.value);
 }
 
-void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
+void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -754,9 +796,15 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_handle_t turi, fmd_real_t Te)
         ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = Te;
 }
 
-void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio)
+void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -769,9 +817,15 @@ void fmd_ttm_setTimestepRatio(fmd_t *md, fmd_handle_t turi, int ratio)
     ttm->timestep_ratio = ratio;
 }
 
-void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t value)
+void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_real_t value)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -791,9 +845,15 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_handle_t turi, fmd_real_t 
     ttm->CellActivFrac = value;
 }
 
-void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_laser_gaussian_t laser)
+void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_ttm_laser_gaussian_t laser)
 {
-    turi_t *t = &md->turies[turi];
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 
     if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
     {
@@ -818,4 +878,15 @@ void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_handle_t turi, fmd_ttm_lase
 void fmd_ttm_useExtendedMode(fmd_t *md)
 {
     md->ttm_extended = true;
+}
+
+void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz)
+{
+    turi_t *t = md->active_ttm_turi;
+
+    if (t == NULL)
+    {
+        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+        return;
+    }
 }
