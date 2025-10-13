@@ -137,21 +137,21 @@ int main()
     // set the parameters and quantities for TTM solver of type 2
     // the values are in SI unit system
 
-    fmd_ttm_setHeatCapacity(md, turi, "data/Ce_Cu.dat");
+    fmd_ttm_setHeatCapacity(md, "data/Ce_Cu.dat");
 
     fmd_ttm_heat_conductivity_zhigilei_t K;
     K.A = 2.66e+6;
     K.B = 2.41e+11;
     K.v = 1.57e+6;
-    fmd_ttm_setHeatConductivity(md, turi, K);
+    fmd_ttm_setHeatConductivity(md, K);
 
-    fmd_ttm_setCouplingFactor(md, turi, "data/G_Cu.dat");
+    fmd_ttm_setCouplingFactor(md, "data/G_Cu.dat");
 
-    fmd_ttm_setElectronTemperature(md, turi, 303.0);
+    fmd_ttm_setElectronTemperature(md, 303.0);
 
-    fmd_ttm_setTimestepRatio(md, turi, 200);
+    fmd_ttm_setTimestepRatio(md, 200);
 
-    fmd_ttm_setCellActivationFraction(md, turi, 0.1);
+    fmd_ttm_setCellActivationFraction(md, 0.1);
 
     fmd_ttm_laser_gaussian_t laser;
     laser.fluence = 2e4;
@@ -159,7 +159,7 @@ int main()
     laser.duration = 100e-15;
     laser.t0 = 1e-12;
     laser.AbsorptionDepth = 14e-9;
-    fmd_ttm_setLaserSource(md, turi, laser);
+    fmd_ttm_setLaserSource(md, laser);
 
     fmd_io_printf(md, "start...\n");
 

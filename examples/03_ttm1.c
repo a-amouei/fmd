@@ -138,17 +138,17 @@ int main()
     // the values are in SI unit system
     fmd_ttm_heat_capacity_linear_t C;
     C.gamma = 96.6;
-    fmd_ttm_setHeatCapacity(md, turi, C);
+    fmd_ttm_setHeatCapacity(md, C);
 
-    fmd_ttm_setHeatConductivity(md, turi, 400.);
+    fmd_ttm_setHeatConductivity(md, 400.);
 
-    fmd_ttm_setCouplingFactor(md, turi, 1e17);
+    fmd_ttm_setCouplingFactor(md, 1e17);
 
-    fmd_ttm_setElectronTemperature(md, turi, 300.0);
+    fmd_ttm_setElectronTemperature(md, 300.0);
 
-    fmd_ttm_setTimestepRatio(md, turi, 200);
+    fmd_ttm_setTimestepRatio(md, 200);
 
-    fmd_ttm_setCellActivationFraction(md, turi, 0.1);
+    fmd_ttm_setCellActivationFraction(md, 0.1);
 
     fmd_ttm_laser_gaussian_t laser;
     laser.fluence = 4e4;
@@ -156,7 +156,7 @@ int main()
     laser.duration = 100e-15;
     laser.t0 = 1e-12;
     laser.AbsorptionDepth = 14e-9;
-    fmd_ttm_setLaserSource(md, turi, laser);
+    fmd_ttm_setLaserSource(md, laser);
 
     fmd_io_printf(md, "start...\n");
 
