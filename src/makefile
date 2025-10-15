@@ -49,7 +49,7 @@ GSL_LIB =
 #################################################################################
 
 PREFIX ?= /usr/local
-BUILDPATH = ../build
+BUILD_DIR = ../build
 LIBDIR = $(PREFIX)/lib
 INCLUDEDIR = $(PREFIX)/include
 PKGCONFIGDIR = $(LIBDIR)/pkgconfig
@@ -142,23 +142,30 @@ SHAREDLIB = $(LIBNAME).so
 STATICLIB = $(LIBNAME).a
 
 CFLAGS = -fPIC -std=c11 -pedantic -O3 -fopenmp $(I_HDF5) $(I_MPI) $(I_GSL)
-LFLAGS = -fopenmp -Wl,-rpath,$(HDF5_RPATH):$(MPI_RPATH):$(GSL_RPATH) $(L_MPI) $(L_HDF5) $(L_GSL) -lgsl -lgslcblas -lhdf5
+LDFLAGS = -fopenmp -Wl,-rpath,$(HDF5_RPATH):$(MPI_RPATH):$(GSL_RPATH) $(L_MPI) $(L_HDF5) $(L_GSL) -lgsl -lgslcblas -lhdf5
 
-OBJS ::= $(patsubst %.c,%.o,$(wildcard *.c))
+OBJS := $(patsubst %.c,%.o,$(wildcard *.c))
 
-.PHONY: all shared static clean install build uninstall depend
+.PHONY: all shared static clean install uninstall depend
 
 all: shared static
+	@echo "The library was built successfully!"
 
-shared: $(SHAREDLIB)
+shared: $(BUILD_DIR)/$(SHAREDLIB) | $(BUILD_DIR)/$(HFILE)
 
-$(SHAREDLIB): $(OBJS)
-	$(CC) -shared -o $@ $(OBJS) $(LFLAGS)
+$(BUILD_DIR)/$(SHAREDLIB): $(OBJS) | $(BUILD_DIR)
+	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
-static: $(STATICLIB)
+static: $(BUILD_DIR)/$(STATICLIB) | $(BUILD_DIR)/$(HFILE)
 
-$(STATICLIB): $(OBJS)
-	ar rcs $(STATICLIB) $(OBJS)
+$(BUILD_DIR)/$(STATICLIB): $(OBJS) | $(BUILD_DIR)
+	ar rcs $@ $^
+
+$(BUILD_DIR)/$(HFILE): $(HFILE)
+	@install -m 644 $< $@
+
+$(BUILD_DIR):
+	@mkdir -p $@
 
 include makefile.d
 
@@ -166,20 +173,18 @@ depend:
 	gcc -MM *.c > makefile.d
 
 clean:
-	@rm -f *.o $(SHAREDLIB) $(STATICLIB)
-	@rm -f $(BUILDPATH)/$(SHAREDLIB)
-	@rm -f $(BUILDPATH)/$(STATICLIB)
-	@rm -f $(BUILDPATH)/$(HFILE)
-	@rm -fd $(BUILDPATH)
-	@echo "Cleaned!"
+	@rm -f *.o
+	@rm -f $(BUILD_DIR)/$(SHAREDLIB)
+	@rm -f $(BUILD_DIR)/$(STATICLIB)
+	@rm -f $(BUILD_DIR)/$(HFILE)
+	@rmdir $(BUILD_DIR) 2>/dev/null || true
+	@if [ -d $(BUILD_DIR) ]; then echo "Note: The directory '$(BUILD_DIR)\' preserved (not empty)"; fi
 
-install: $(SHAREDLIB) $(STATICLIB)
-	@mkdir -p $(LIBDIR)
-	@mkdir -p $(INCLUDEDIR)
-	@cp $(HFILE) $(INCLUDEDIR)
-	@cp $(SHAREDLIB) $(LIBDIR)
-	@cp $(STATICLIB) $(LIBDIR)
-	@mkdir -p $(PKGCONFIGDIR)
+install: $(BUILD_DIR)/$(SHAREDLIB) $(BUILD_DIR)/$(STATICLIB) $(BUILD_DIR)/$(HFILE)
+	@install -d -m 755 $(LIBDIR) $(INCLUDEDIR) $(PKGCONFIGDIR)
+	@install -m 644 $(BUILD_DIR)/$(HFILE) $(INCLUDEDIR)/
+	@install -m 755 $(BUILD_DIR)/$(SHAREDLIB) $(LIBDIR)/
+	@install -m 644 $(BUILD_DIR)/$(STATICLIB) $(LIBDIR)/
 	@echo 'prefix=$(PREFIX)' > $(PKGCPATH)
 	@echo 'exec_prefix=$${prefix}' >> $(PKGCPATH)
 	@echo 'libdir=${LIBDIR}' >> $(PKGCPATH)
@@ -193,13 +198,6 @@ install: $(SHAREDLIB) $(STATICLIB)
 	@echo 'Cflags: -I$${includedir}' >> $(PKGCPATH)
 	@ldconfig
 	@echo "The library was installed successfully!"
-
-build: $(SHAREDLIB) $(STATICLIB)
-	@mkdir -p $(BUILDPATH)
-	@cp $(HFILE) $(BUILDPATH)
-	@cp $(SHAREDLIB) $(BUILDPATH)
-	@cp $(STATICLIB) $(BUILDPATH)
-	@echo "The library was built successfully!"
 
 uninstall:
 	@rm -f $(INCLUDEDIR)/$(HFILE)
