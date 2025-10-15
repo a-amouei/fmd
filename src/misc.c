@@ -512,7 +512,15 @@ static void free_mpi_types(fmd_t *md)
 
 fmd_t *fmd_create()
 {
-    fmd_t *md = m_alloc(md, sizeof(fmd_t));
+    fmd_t *md = malloc(sizeof(fmd_t));
+    if (md == NULL)
+    {
+        fprintf(stderr, "FMD: ERROR: Unable to create FMD instance!\n");
+        return NULL;
+    }
+
+    md->ShowErrorMessages = true;
+    md->EventHandler = NULL;
 
     md->MPI_initialized_by_me = false;
 
@@ -530,8 +538,6 @@ fmd_t *fmd_create()
 
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
-    md->LOP_iteration = 0;
-    md->UseAutoStep = false;
     md->time = 0.0;
     md->time_iteration = 0;
 
@@ -548,7 +554,6 @@ fmd_t *fmd_create()
     md->PBC[0] = md->PBC[1] = md->PBC[2] = false;
     md->Is_MD_comm_root = false;
     md->Is_MD_process = false;
-    md->EventHandler = NULL;
     md->timers = NULL;
     md->timers_num = 0;
     md->turies = NULL;
@@ -560,7 +565,6 @@ fmd_t *fmd_create()
     md->_OldNumberOfParticles = -1;
     md->_FileIndex = 0;
     md->KineticEnergyUpdated = false;
-    md->ShowErrorMessages = true;
     md->random_seed_aux = (long)md;
     _fmd_potsys_init(md);
     create_mpi_types(md);

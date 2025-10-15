@@ -78,8 +78,6 @@ struct _fmd
     fmd_real_t GroupTemperature;          /* for the "active group" only */
     bool Is_MD_process;
     bool Is_MD_comm_root;
-    int LOP_iteration;                    /* must be initialized with zero */
-    int LOP_period;
     MPI_Comm MD_comm;
     MPI_Comm extd_comm;                   /* "extended" communicator */
     fmd_real_t GroupKineticEnergy;
@@ -95,8 +93,6 @@ struct _fmd
     fmd_real_t lext;                      /* length of extended region */
     fmd_ituple_t nc;                      // number of grid cells in the simulation box
     fmd_rtuple_t cellh;                   // size of one single grid cell
-    bool UseAutoStep;
-    fmd_real_t AutoStepSensitivity;
     fmd_string_t SaveDirectory;
     fmd_real_t BerendsenThermostatParam;
     fmd_SaveConfigMode_t SaveConfigMode;
