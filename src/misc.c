@@ -538,6 +538,7 @@ fmd_t *fmd_create()
 
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
+    md->MD_comm = md->extd_comm = MPI_COMM_NULL;
     md->time = 0.0;
     md->time_iteration = 0;
 
@@ -646,8 +647,11 @@ void fmd_free(fmd_t *md)
     fmd_turi_free(md);
     free(md);
 
-    MPI_Comm_free(&md->MD_comm);
-    MPI_Comm_free(&md->extd_comm);
+    if (md->MD_comm != MPI_COMM_NULL)
+    {
+        MPI_Comm_free(&md->MD_comm);
+        MPI_Comm_free(&md->extd_comm);
+    }
 
     if (md->MPI_initialized_by_me)
     {
