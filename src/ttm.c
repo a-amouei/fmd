@@ -889,4 +889,7 @@ void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz)
         _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
         return;
     }
+
+    t->ttm->dimz_ext = dimz;
+    md->lext = length;
 }

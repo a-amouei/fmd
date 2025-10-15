@@ -60,6 +60,7 @@ typedef struct _ttm
     fmd_array3s_t Geis;         /* electron-ion coupling factor, used when G changes with position */
     int iTe;                    /* index of the field for electron temperature */
     int ixi;                    /* index of the field for xi */
+    int dimz_ext;               /* the dimension of the extended part of the TTM turi in z direction */
     unsigned ***num;
     fmd_rtuple_t ***vcm;
     fmd_real_t ***Ti;
