@@ -29,6 +29,16 @@
 #include "morse.h"
 #include "lj.h"
 
+static void atomkinds_free(fmd_t *md)
+{
+    for (int i=0; i < md->potsys.atomkinds_num; i++)
+        free(md->potsys.atomkinds[i].name);
+
+    free(md->potsys.atomkinds);
+    md->potsys.atomkinds = NULL;
+    md->potsys.atomkinds_num = 0;
+}
+
 void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[], const fmd_real_t masses[])
 {
     if (number <= 0)
@@ -38,6 +48,7 @@ void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[
         return;
     }
 
+    if (md->potsys.atomkinds != NULL) atomkinds_free(md);
 
     md->potsys.atomkinds_num = number;
     md->potsys.atomkinds = m_alloc(md, number * sizeof(atomkind_t));
@@ -78,37 +89,22 @@ static void potlist_free(fmd_t *md)
     md->potsys.potlist = NULL;
 }
 
-static void atomkinds_free(fmd_t *md)
-{
-    for (int i=0; i < md->potsys.atomkinds_num; i++)
-        free(md->potsys.atomkinds[i].name);
-
-    free(md->potsys.atomkinds);
-    md->potsys.atomkinds_num = 0;
-}
-
 void _fmd_potsys_free(fmd_t *md)
 {
-    if (md->potsys.atomkinds != NULL)
-    {
+    if (md->potsys.atomkinds != NULL) {
         atomkinds_free(md);
-        md->potsys.atomkinds = NULL;
     }
 
-    if (md->potsys.pottable != NULL)
-    {
+    if (md->potsys.pottable != NULL) {
         _fmd_array_neat2d_free((void **)md->potsys.pottable);
         md->potsys.pottable = NULL;
     }
 
-    if (md->potsys.potlist != NULL)
-    {
+    if (md->potsys.potlist != NULL) {
         potlist_free(md);
-        md->potsys.potlist = NULL;
     }
 
-    if (md->potsys.potcats != NULL)
-    {
+    if (md->potsys.potcats != NULL) {
         _fmd_list_free(md->potsys.potcats);
         md->potsys.potcats = NULL;
     }
