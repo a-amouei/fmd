@@ -303,6 +303,8 @@ void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t 
 void fmd_dync_equilibrate(fmd_t *md, int GroupID, fmd_real_t duration,
   fmd_real_t timestep, fmd_real_t tau, fmd_real_t temperature)
 {
+    if (!md->Is_MD_process) return;
+
     if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
     _fmd_pot_update_and_process_potcats(md);
     create_force_arrays_of_cells(md);
