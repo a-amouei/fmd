@@ -64,6 +64,9 @@
 extern const fmd_itriple_t _fmd_ThreeZeros_int;
 extern const fmd_ftriple_t _fmd_ThreeZeros_float;
 
+fmd_string_t _fmd_str_dup_m(fmd_t *md, fmd_string_t str);
+fmd_string_t _fmd_str_dup_re(fmd_t *md, fmd_string_t old, fmd_string_t str);
+
 /* dest = A - B */
 static inline void diffrt(fmd_rtuple_t dest, fmd_rtuple_t A, fmd_rtuple_t B)
 {

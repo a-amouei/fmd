@@ -400,8 +400,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *path)
             if (fscanf(fp, "%s", str) != 1)
                 _fmd_error_file_corrupted(md, true, __FILE__, (fmd_string_t)__func__, __LINE__, ftype, path);
 
-            eam->elements[i].name = (char *)m_alloc(md, strlen(str) + 1);
-            strcpy(eam->elements[i].name, str);
+            eam->elements[i].name = _fmd_str_dup_m(md, str);
         }
 
         fmd_real_t cutoff;

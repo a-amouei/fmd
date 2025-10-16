@@ -18,8 +18,25 @@
 */
 
 #include <mpi.h>
+#include <string.h>
 #include "general.h"
 
 const fmd_itriple_t _fmd_ThreeZeros_int = {0, 0, 0};
 
 const fmd_ftriple_t _fmd_ThreeZeros_float = {0.0, 0.0, 0.0};
+
+fmd_string_t _fmd_str_dup_m(fmd_t *md, fmd_string_t str)
+{
+    fmd_string_t new = m_alloc(md, strlen(str) + 1);
+    strcpy(new, str);
+
+    return new;
+}
+
+fmd_string_t _fmd_str_dup_re(fmd_t *md, fmd_string_t old, fmd_string_t str)
+{
+    fmd_string_t new = re_alloc(md, old, strlen(str) + 1);
+    strcpy(new, str);
+
+    return new;
+}

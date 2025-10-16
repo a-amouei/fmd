@@ -610,8 +610,7 @@ void fmd_proc_setNumThreads(fmd_t *md, int num)
 
 void fmd_io_setSaveDirectory(fmd_t *md, fmd_string_t directory)
 {
-    md->SaveDirectory = re_alloc(md, md->SaveDirectory, strlen(directory)+1);
-    strcpy(md->SaveDirectory, directory);
+    md->SaveDirectory = _fmd_str_dup_re(md, md->SaveDirectory, directory);
 }
 
 void fmd_io_setSaveConfigMode(fmd_t *md, fmd_SaveConfigMode_t mode)

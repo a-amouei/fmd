@@ -56,9 +56,7 @@ void fmd_matt_setAtomKinds(fmd_t *md, unsigned number, const fmd_string_t names[
     for (unsigned i=0; i<number; i++)
     {
         md->potsys.atomkinds[i].mass = masses[i] / MD_MASS_UNIT;  // convert from amu to internal mass unit
-        size_t len = strlen(names[i]);
-        md->potsys.atomkinds[i].name = m_alloc(md, len + 1);
-        strcpy(md->potsys.atomkinds[i].name, names[i]);
+        md->potsys.atomkinds[i].name = _fmd_str_dup_m(md, names[i]);
 
         md->potsys.atomkinds[i].eam_element = NULL;
     }
