@@ -203,7 +203,7 @@ void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t 
 fmd_handle_t fmd_timer_makeSimple(fmd_t *md, fmd_real_t start, fmd_real_t interval, fmd_real_t stop);
 
 fmd_real_t fmd_proc_getWallTime(fmd_t *md);
-bool fmd_proc_hasSubdomain(fmd_t *md);
+bool fmd_proc_isExtended(fmd_t *md);
 bool fmd_proc_isRoot(fmd_t *md);
 void fmd_proc_setNumThreads(fmd_t *md, int num);
 int fmd_proc_getCellIncrement(fmd_t *md);

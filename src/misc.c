@@ -597,9 +597,9 @@ fmd_real_t fmd_proc_getWallTime(fmd_t *md)
     return (MPI_Wtime() - md->WallTimeOrigin);
 }
 
-bool fmd_proc_hasSubdomain(fmd_t *md)
+bool fmd_proc_isExtended(fmd_t *md)
 {
-    return md->Is_MD_process;
+    return !md->Is_MD_process;
 }
 
 bool fmd_proc_isRoot(fmd_t *md)
