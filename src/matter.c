@@ -116,6 +116,8 @@ static void compute_GroupTemperature_etc_globalgrid(fmd_t *md)
 
 void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, fmd_real_t vz)
 {
+    if (!md->Is_MD_process) return;
+
     cell_t *grid;
     int nc;
 
@@ -497,6 +499,8 @@ void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
 
 void fmd_matt_translate(fmd_t *md, int GroupID, fmd_real_t dx, fmd_real_t dy, fmd_real_t dz)
 {
+    if (!md->Is_MD_process) return;
+
     if (md->ParticlesDistributed)
     {
         _fmd_error_not_supported_yet(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
