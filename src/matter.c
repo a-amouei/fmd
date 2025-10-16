@@ -157,6 +157,8 @@ void fmd_matt_addVelocity(fmd_t *md, int GroupID, fmd_real_t vx, fmd_real_t vy, 
 
 void fmd_matt_findLimits(fmd_t *md, int GroupID, fmd_rtuple_t LowerLimit, fmd_rtuple_t UpperLimit)
 {
+    if (!md->Is_MD_process) return;
+
     cell_t *grid;
     int nc;
 
@@ -450,14 +452,16 @@ void _fmd_matt_distribute(fmd_t *md)
 
 void fmd_matt_changeGroupID(fmd_t *md, int old, int new)
 {
-    int i;
-    cell_t *c;
+    if (!md->Is_MD_process) return;
 
     if (new < 0)
     {
         _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "GroupID", new);
         return;
     }
+
+    int i;
+    cell_t *c;
 
     if (md->ParticlesDistributed)
     {

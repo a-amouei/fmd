@@ -134,6 +134,8 @@ static void identifyProcess(fmd_t *md)
 
 void fmd_io_loadState(fmd_t *md, fmd_string_t path, bool UseTime)
 {
+    if (!md->Is_MD_process) return;
+
     FILE *fp;
     char name[3];
     fmd_real_t StateFileTime;
@@ -323,6 +325,8 @@ void _fmd_refreshGrid(fmd_t *md)
 
 void fmd_io_saveState(fmd_t *md, fmd_string_t filename)
 {
+    if (!md->Is_MD_process) return;
+
     unsigned *nums;
     char StateFilePath[MAX_PATH_LENGTH];
     FILE *fp;
