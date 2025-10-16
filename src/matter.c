@@ -579,6 +579,8 @@ static void compute_GroupTemperature_etc(fmd_t *md)
 
 fmd_real_t fmd_matt_getKineticEnergy(fmd_t *md)
 {
+    if (!md->Is_MD_process) return 0.0;
+
     if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
 
     return md->GroupKineticEnergy;
@@ -591,6 +593,8 @@ fmd_real_t fmd_matt_getTotalEnergy(fmd_t *md)
 
 void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp)
 {
+    if (!md->Is_MD_process) return;
+
     cell_t *grid;
     int nc;
 
@@ -638,6 +642,8 @@ void fmd_matt_giveMaxwellDistribution(fmd_t *md, int GroupID, fmd_real_t temp)
 
 fmd_real_t fmd_matt_getTemperature(fmd_t *md)
 {
+    if (!md->Is_MD_process) return 0.0;
+
     if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
 
     return md->GroupTemperature;
@@ -645,6 +651,8 @@ fmd_real_t fmd_matt_getTemperature(fmd_t *md)
 
 void fmd_matt_getMomentum(fmd_t *md, fmd_rtuple_t out)
 {
+    if (!md->Is_MD_process) return;
+
     if (!md->KineticEnergyUpdated) compute_GroupTemperature_etc(md);
 
     for (int d=0; d<DIM; d++)
@@ -778,6 +786,8 @@ static void save_VTF_file(fmd_t *md, config_atom_t *globaldata)
 
 void fmd_matt_saveConfiguration(fmd_t *md)
 {
+    if (!md->Is_MD_process) return;
+
     config_atom_t *localdata, *globaldata;
 
     localdata = prepare_localdata_for_saveconfig(md);

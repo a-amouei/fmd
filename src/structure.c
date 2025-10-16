@@ -185,6 +185,8 @@ void fmd_matt_makeCuboidSC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 void fmd_matt_makeCuboidBCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
+    if (!md->Is_MD_process) return;
+
     if  (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
@@ -230,6 +232,8 @@ void fmd_matt_makeCuboidBCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
 void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, fmd_real_t ratio[], int GroupID, fmd_real_t temp)
 {
+    if (!md->Is_MD_process) return;
+
     if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
