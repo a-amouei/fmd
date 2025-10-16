@@ -54,8 +54,12 @@ fmd_string_t fmd_version_getString()
 
     fmd_string_t out = malloc(strlen(str) + 1);
 
-    if (out != NULL)
-        strcpy(out, str);
+    if (out == NULL) {
+        fprintf(stderr, "FMD: ERROR: Unable to produce version string!\n");
+        return NULL;
+    }
+
+    strcpy(out, str);
 
     return out;
 }
