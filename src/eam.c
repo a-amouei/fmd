@@ -555,6 +555,8 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *path)
 
 fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
 {
+    if (!md->Is_MD_process) return NULL;
+
     eam_t *eam = load_DYNAMOsetfl(md, path);
 
     if (eam == NULL) return NULL;

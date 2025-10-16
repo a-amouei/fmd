@@ -128,6 +128,8 @@ static void pottable_create(fmd_t *md)
 
 void fmd_pot_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2, fmd_pot_t *pot)
 {
+    if (!md->Is_MD_process) return;
+
     // create the pottable if doesn't exist
     if (md->potsys.pottable == NULL) pottable_create(md);
 

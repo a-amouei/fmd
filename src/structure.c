@@ -243,6 +243,8 @@ void fmd_matt_makeCuboidFCC_mix(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_
 void fmd_matt_makeCuboidFCC(fmd_t *md, fmd_real_t x, fmd_real_t y, fmd_real_t z,
   int dimx, int dimy, int dimz, fmd_real_t lp, unsigned atomkind, int GroupID, fmd_real_t temp)
 {
+    if (!md->Is_MD_process) return;
+
     if (md->ggrid == NULL) _fmd_createGlobalGrid(md);
 
     if (GroupID == md->ActiveGroup || md->ActiveGroup == FMD_GROUP_ALL)
