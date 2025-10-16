@@ -92,6 +92,8 @@ void _fmd_computeLJ(fmd_t *md)
 fmd_pot_t *fmd_pot_lj_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
                             fmd_real_t sigma, fmd_real_t epsilon, fmd_real_t cutoff)
 {
+    if (!md->Is_MD_process) return NULL;
+
     LJ_6_12_t *lj = m_alloc(md, sizeof(LJ_6_12_t));
     lj->sig = sigma;
     lj->sig_sqr = sqrr(sigma);

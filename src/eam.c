@@ -572,6 +572,8 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
 
 fmd_real_t fmd_pot_eam_getCutoffRadius(fmd_t *md, fmd_pot_t *pot)
 {
+    if (!md->Is_MD_process) return 0.;
+
     if (pot->cat != POT_EAM_ALLOY)
         _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
                                           "potential category", pot->cat);
@@ -604,6 +606,8 @@ void _fmd_pot_eam_free(eam_t *eam)
 
 fmd_real_t fmd_pot_eam_getLatticeParameter(fmd_t *md, fmd_pot_t *pot, fmd_string_t element)
 {
+    if (!md->Is_MD_process) return 0.;
+
     if (pot->cat != POT_EAM_ALLOY)
     {
         _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,

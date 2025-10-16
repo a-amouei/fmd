@@ -94,6 +94,8 @@ void _fmd_computeMorse(fmd_t *md)
 fmd_pot_t *fmd_pot_morse_apply(fmd_t *md, unsigned atomkind1, unsigned atomkind2,
                                fmd_real_t D0, fmd_real_t alpha, fmd_real_t r0, fmd_real_t cutoff)
 {
+    if (!md->Is_MD_process) return NULL;
+
     morse_t *morse = m_alloc(md, sizeof(morse_t));
     morse->D0 = D0;
     morse->alpha = alpha;
