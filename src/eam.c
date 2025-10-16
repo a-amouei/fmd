@@ -375,7 +375,7 @@ static void create_mpi_eam(fmd_t *md, MPI_Datatype *mpi_eam)
 
 static eam_t *load_DYNAMOsetfl(fmd_t *md, char *path)
 {
-    eam_t *eam = (eam_t *)m_alloc(md, sizeof(eam_t));
+    eam_t *eam = m_alloc(md, sizeof(eam_t));
 
     if (eam == NULL) return NULL;
 
@@ -416,7 +416,7 @@ static eam_t *load_DYNAMOsetfl(fmd_t *md, char *path)
         eam->cutoff_sqr = sqrr(cutoff);
         eam->dr2 = sqrr((eam->Nr-1) * eam->dr) / (eam->Nr2-1);
 
-        fmd_real_t *TempArray = (fmd_real_t *)m_alloc(md, eam->Nr * sizeof(fmd_real_t));
+        fmd_real_t *TempArray = m_alloc(md, eam->Nr * sizeof(fmd_real_t));
 
         for (int i=0; i < eam->ElementsNo; i++)
         {
@@ -559,7 +559,7 @@ fmd_pot_t *fmd_pot_eam_alloy_load(fmd_t *md, fmd_string_t path)
 
     if (eam == NULL) return NULL;
 
-    fmd_pot_t *pot = (fmd_pot_t *)m_alloc(md, sizeof(fmd_pot_t));
+    fmd_pot_t *pot = m_alloc(md, sizeof(fmd_pot_t));
     pot->cat = POT_EAM_ALLOY;
     pot->data = eam;
 
