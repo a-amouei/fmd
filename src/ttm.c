@@ -546,6 +546,55 @@ void _fmd_ttm_destruct(turi_t *t)
     t->ttm = NULL;
 }
 
+/* X and Y and YY are pointers to 1D arrays of data
+   X is for the first column in the file
+   Y is for the second column
+   YY is for use in CSPLINE */
+static int read_2col_and_prep_cspline(fmd_t *md, fmd_string_t filepath, fmd_real_t **X,
+                                      fmd_real_t **Y, fmd_real_t **YY, fmd_real_t xscale,
+                                      fmd_real_t yscale)
+{
+    if (*X != NULL) {
+        free(*X);
+        free(*Y);
+        free(*YY);
+        *X = *Y = NULL;
+    }
+
+    FILE *fp = f_open(md, filepath, "r");
+
+    double x, y;
+    const int incr = 100;
+    int i = 0, cap = 0;
+
+    while (fscanf(fp, "%lf%lf", &x, &y) == 2) {
+
+        if (i == cap) {
+            cap += incr;
+            *X = re_alloc(md, *X, cap * sizeof(fmd_real_t));
+            *Y = re_alloc(md, *Y, cap * sizeof(fmd_real_t));
+        }
+
+        (*X)[i] = x * xscale;
+        (*Y)[i] = y * yscale;
+        i++;
+    }
+
+    fclose(fp);
+
+    if (i < cap) {
+        *X = re_alloc(md, *X, i * sizeof(fmd_real_t));
+        *Y = re_alloc(md, *Y, i * sizeof(fmd_real_t));
+    }
+
+#ifdef USE_CSPLINE
+    *YY = m_alloc(md, i * sizeof(fmd_real_t));
+    _fmd_spline_prepare_adv(md, *X, *Y, i, *YY);
+#endif
+
+    return i; /* return number of data lines read */
+}
+
 void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_string_t path)
 {
     turi_t *t = md->ttmturi;
@@ -564,51 +613,8 @@ void _fmd_ttm_setHeatCapacity_file(fmd_t *md, fmd_string_t path)
 
     ttm_t *ttm = t->ttm;
 
-    if (ttm->T_C != NULL)
-    {
-        free(ttm->T_C);
-        free(ttm->Ct);
-        free(ttm->C_DD);
-        ttm->T_C = ttm->Ct = NULL;
-    }
-
-    FILE *fp = f_open(md, path, "r");
-
-    double T, C;
-    const int incr = 100;
-    int i = 0, cap = 0;
-
-    while (fscanf(fp, "%lf%lf", &T, &C) == 2)
-    {
-        if (i == cap)
-        {
-            cap += incr;
-            ttm->T_C = re_alloc(md, ttm->T_C, cap * sizeof(fmd_real_t));
-            ttm->Ct = re_alloc(md, ttm->Ct, cap * sizeof(fmd_real_t));
-        }
-
-        ttm->T_C[i] = T * 1e4;
-        ttm->Ct[i] = C * 1e5 * JOULE_PER_METER3_KELVIN;
-        i++;
-    }
-
-    fclose(fp);
-
-    ttm->nC = i;
-
-    if (ttm->nC < cap)
-    {
-        ttm->T_C = re_alloc(md, ttm->T_C, ttm->nC * sizeof(fmd_real_t));
-        ttm->Ct = re_alloc(md, ttm->Ct, ttm->nC * sizeof(fmd_real_t));
-    }
-
-#ifdef USE_CSPLINE
-
-    ttm->C_DD = m_alloc(md, ttm->nC * sizeof(fmd_real_t));
-    _fmd_spline_prepare_adv(md, ttm->T_C, ttm->Ct, ttm->nC, ttm->C_DD);
-
-#endif
-
+    ttm->nC = read_2col_and_prep_cspline(md, path, &ttm->T_C, &ttm->Ct, &ttm->C_DD,
+                                         1e4, 1e5 * JOULE_PER_METER3_KELVIN);
 }
 
 void _fmd_ttm_setHeatCapacity_linear(fmd_t *md, fmd_ttm_heat_capacity_linear_t c)
@@ -699,51 +705,8 @@ void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_string_t path)
 
     ttm_t *ttm = t->ttm;
 
-    if (ttm->T_G != NULL)
-    {
-        free(ttm->T_G);
-        free(ttm->Gt);
-        free(ttm->G_DD);
-        ttm->T_G = ttm->Gt = NULL;
-    }
-
-    FILE *fp = f_open(md, path, "r");
-
-    double T, G;
-    const int incr = 100;
-    int i = 0, cap = 0;
-
-    while (fscanf(fp, "%lf%lf", &T, &G) == 2)
-    {
-        if (i == cap)
-        {
-            cap += incr;
-            ttm->T_G = re_alloc(md, ttm->T_G, cap * sizeof(fmd_real_t));
-            ttm->Gt = re_alloc(md, ttm->Gt, cap * sizeof(fmd_real_t));
-        }
-
-        ttm->T_G[i] = T * 1e4;
-        ttm->Gt[i] = G * 1e17 * WATT_PER_METER3_KELVIN;
-        i++;
-    }
-
-    fclose(fp);
-
-    ttm->nG = i;
-
-    if (ttm->nG < cap)
-    {
-        ttm->T_G = re_alloc(md, ttm->T_G, ttm->nG * sizeof(fmd_real_t));
-        ttm->Gt = re_alloc(md, ttm->Gt, ttm->nG * sizeof(fmd_real_t));
-    }
-
-#ifdef USE_CSPLINE
-
-    ttm->G_DD = m_alloc(md, ttm->nG * sizeof(fmd_real_t));
-    _fmd_spline_prepare_adv(md, ttm->T_G, ttm->Gt, ttm->nG, ttm->G_DD);
-
-#endif
-
+    ttm->nG = read_2col_and_prep_cspline(md, path, &ttm->T_G, &ttm->Gt, &ttm->G_DD,
+                                         1e4, 1e17 * WATT_PER_METER3_KELVIN);
 }
 
 void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_real_t g)
