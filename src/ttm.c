@@ -782,12 +782,6 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te)
         return;
     }
 
-    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
-    {
-        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
-        return;
-    }
-
     ttm_t *ttm = t->ttm;
 
     fmd_ituple_t itc;
@@ -806,12 +800,6 @@ void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio)
         return;
     }
 
-    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
-    {
-        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
-        return;
-    }
-
     ttm_t *ttm = t->ttm;
 
     ttm->timestep_ratio = ratio;
@@ -824,12 +812,6 @@ void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_real_t value)
     if (t == NULL)
     {
         _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
-        return;
-    }
-
-    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
-    {
-        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
         return;
     }
 
@@ -852,12 +834,6 @@ void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_ttm_laser_gaussian_t laser)
     if (t == NULL)
     {
         _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
-        return;
-    }
-
-    if (t->cat != FMD_TURI_TTM_TYPE1 && t->cat != FMD_TURI_TTM_TYPE2)
-    {
-        _fmd_error_unacceptable_int_value(md, false, __FILE__, (fmd_string_t)__func__, __LINE__, "turi category", t->cat);
         return;
     }
 
