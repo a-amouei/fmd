@@ -89,6 +89,27 @@ void _fmd_error_outside_real_interval(fmd_t *md, bool major, fmd_string_t source
     md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
 }
 
+void _fmd_error_outside_int_set(fmd_t *md, bool major, fmd_string_t source,
+                                fmd_string_t func, int line, fmd_string_t qname,
+                                int val, fmd_string_t setdesc)
+{
+    if (md->ShowErrorMessages)
+        fprintf(stderr, FORMAT1"The %s (%d) is outside the set %s!\n",
+                source, func, line, qname, val, setdesc);
+
+    if (md->EventHandler == NULL) setdesc;
+
+    fmd_event_params_error_t err;
+
+    err.error = FMD_ERR_OUTSIDE_INT_SET;
+    error_set_common_members(&err, major, source, func, line);
+    err.p1 = qname;
+    err.p2 = &val;
+    err.p3 = setdesc;
+
+    md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
+}
+
 void _fmd_error_unacceptable_int_value(fmd_t *md, bool major, fmd_string_t source,
                                        fmd_string_t func, int line, fmd_string_t qname,
                                        int val)
@@ -263,6 +284,26 @@ void _fmd_error_ttm_turi_already_exists(fmd_t *md, bool major, fmd_string_t sour
 
     err.error = FMD_ERR_TTM_TURI_ALREADY_EXISTS;
     error_set_common_members(&err, major, source, func, line);
+
+    md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
+}
+
+void _fmd_error_wrong_call_order(fmd_t *md, bool major, fmd_string_t source,
+                                 fmd_string_t func, int line, fmd_string_t func1,
+                                 fmd_string_t str)
+{
+    if (md->ShowErrorMessages)
+        fprintf(stderr, FORMAT1"The function %s must be called before %s!\n",
+                source, func, line, func1, str);
+
+    if (md->EventHandler == NULL) return;
+
+    fmd_event_params_error_t err;
+
+    err.error = FMD_ERR_WRONG_CALL_ORDER;
+    error_set_common_members(&err, major, source, func, line);
+    err.p1 = func1;
+    err.p2 = str;
 
     md->EventHandler(md, FMD_EVENT_ERROR, md->userobject, (fmd_params_t *)&err);
 }

@@ -163,7 +163,7 @@ static void type2_update_Ce_Ke_G(fmd_t *md, turi_t *t, ttm_t *ttm)
         if (ttm->Te_1d[i] < ttm->T_C[0] || ttm->Te_1d[i] > ttm->T_C[ttm->nC-1])
             _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,
                                              "electron temperature", ttm->Te_1d[i],
-                                             "related to electron heat capacity");
+                                             "defined by the electron heat capacity file");
 
         FIND_klo_AND_ETC(ttm->T_C, ttm->Te_1d[i], ttm->nC);
 
@@ -179,7 +179,7 @@ static void type2_update_Ce_Ke_G(fmd_t *md, turi_t *t, ttm_t *ttm)
         if (ttm->Te_1d[i] < ttm->T_G[0] || ttm->Te_1d[i] > ttm->T_G[ttm->nG-1])
             _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,
                                              "electron temperature", ttm->Te_1d[i],
-                                             "related to electron-ion coupling factor");
+                                             "defined by the electron-ion coupling factor file");
 
         FIND_klo_AND_ETC(ttm->T_G, ttm->Te_1d[i], ttm->nG);
 
@@ -229,24 +229,6 @@ static void presolve_common_types_1_2(fmd_t *md, turi_t *t, ttm_t *ttm)
     }
 }
 
-static void ttm_type2_presolve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
-{
-    presolve_common_types_1_2(md, t, ttm);
-
-    type2_update_Ce_Ke_G(md, t, ttm);
-
-    if (t->has_upper_lower_owner_procs[2]) /* again! since ghost cells may have been activated/deactivated */
-        _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp); /* also transfers correct Ke data */
-}
-
-static void ttm_type1_presolve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
-{
-    presolve_common_types_1_2(md, t, ttm);
-
-    if (t->has_upper_lower_owner_procs[2]) /* again! since ghost cells may have been activated/deactivated */
-        _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
-}
-
 static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
     bool CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? true : false;
@@ -255,6 +237,8 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
     /* time loop */
     for (int j=0; j < ttm->timestep_ratio; j++)
     {
+        if (t->has_upper_lower_owner_procs[2]) _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
+
         fmd_real_t source_spcind;
 
         if (CalcSource)
@@ -290,9 +274,6 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
         fmd_real_t *tempo = ttm->Te2_1d;
         ttm->Te2_1d = ttm->Te_1d;
         ttm->Te_1d = tempo;
-
-        if (t->has_upper_lower_owner_procs[2] && j < ttm->timestep_ratio-1)
-            _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
     } /* end of time loop */
 
     if (ttm->Te2_1d != ((fmd_real_t ***)ttm->Te_aux.data)[0][0])
@@ -311,6 +292,75 @@ static void ttm_type1_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
     }
 }
 
+/* to be run on extended process only */
+static void ttm_type1_solve_extended_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
+{
+    fmd_real_t dt = md->timestep / ttm->timestep_ratio;
+    fmd_real_t Ti_factor = dt * ttm->G / md->ttm_extd->Cl;
+
+    /* time loop */
+    for (int j=0; j < ttm->timestep_ratio; j++) {
+        /* spatial loop */
+        for (int i = t->itc_start[2]; i < t->itc_stop[2]; i++) {
+            int ilo = (ttm->Te_1d[i-1] < 0) ? i : i-1;
+            int ihi = (ttm->Te_1d[i+1] < 0) ? i : i+1;
+
+            ttm->Te2_1d[i] = ttm->Te_1d[i] + dt/(ttm->C_gamma * ttm->Te_1d[i]) * (
+              ttm->K * (ttm->Te_1d[ihi]-2*ttm->Te_1d[i]+ttm->Te_1d[ilo])/ttm->dz2
+              - ttm->G * (ttm->Te_1d[i] - ttm->Ti_1d[i]) );
+
+            ttm->Ti_1d[i] += Ti_factor * (ttm->Te_1d[i] - ttm->Ti_1d[i]);
+        } /* end of spatial loop */
+
+        fmd_real_t *tempo = ttm->Te2_1d;
+        ttm->Te2_1d = ttm->Te_1d;
+        ttm->Te_1d = tempo;
+    } /* end of time loop */
+
+    if (ttm->Te2_1d != ((fmd_real_t ***)ttm->Te_aux.data)[0][0]) {
+        fmd_array3s_t tempo = ttm->Te_aux;
+        ttm->Te_aux = t->fields[ttm->iTe].data;
+        t->fields[ttm->iTe].data = tempo;
+    }
+}
+
+/* to be run on extended process only */
+static void ttm_type2_solve_extended_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
+{
+    fmd_real_t dt = md->timestep / ttm->timestep_ratio;
+    fmd_real_t Ti_factor = dt * ttm->G / md->ttm_extd->Cl;
+
+    /* time loop */
+    for (int j=0; j < ttm->timestep_ratio; j++) {
+        /* spatial loop */
+        for (int i = t->itc_start[2]; i < t->itc_stop[2]; i++) {
+            int ilo = (ttm->Te_1d[i-1] < 0) ? i : i-1;
+            int ihi = (ttm->Te_1d[i+1] < 0) ? i : i+1;
+
+            fmd_real_t KeL = 0.5 * (ttm->Ke_1d[i] + ttm->Ke_1d[ilo]);
+            fmd_real_t KeR = 0.5 * (ttm->Ke_1d[i] + ttm->Ke_1d[ihi]);
+
+            ttm->Te2_1d[i] = ttm->Te_1d[i] + dt/ttm->Ce_1d[i] * (
+              (KeR * (ttm->Te_1d[ihi]-ttm->Te_1d[i]) - KeL * (ttm->Te_1d[i]-ttm->Te_1d[ilo])) / ttm->dz2
+              - ttm->G_1d[i] * (ttm->Te_1d[i] - ttm->Ti_1d[i]) );
+
+            ttm->Ti_1d[i] += Ti_factor * (ttm->Te_1d[i] - ttm->Ti_1d[i]);
+
+        } /* end of spatial loop */
+
+        fmd_real_t *tempo = ttm->Te2_1d;
+        ttm->Te2_1d = ttm->Te_1d;
+        ttm->Te_1d = tempo;
+    } /* end of time loop */
+
+    if (ttm->Te2_1d != ((fmd_real_t ***)ttm->Te_aux.data)[0][0])
+    {
+        fmd_array3s_t tempo = ttm->Te_aux;
+        ttm->Te_aux = t->fields[ttm->iTe].data;
+        t->fields[ttm->iTe].data = tempo;
+    }
+}
+
 static void ttm_type2_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 {
     bool CalcSource = fabs(md->time - ttm->laser_t0) < ttm->laser_tdiff ? true : false;
@@ -319,6 +369,9 @@ static void ttm_type2_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
     /* time loop */
     for (int j=0; j < ttm->timestep_ratio; j++)
     {
+        type2_update_Ce_Ke_G(md, t, ttm);
+        if (t->has_upper_lower_owner_procs[2]) _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
+
         fmd_real_t source_spcind;
 
         if (CalcSource)
@@ -357,13 +410,6 @@ static void ttm_type2_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
         fmd_real_t *tempo = ttm->Te2_1d;
         ttm->Te2_1d = ttm->Te_1d;
         ttm->Te_1d = tempo;
-
-        if (j < ttm->timestep_ratio-1)
-        {
-            type2_update_Ce_Ke_G(md, t, ttm);
-
-            if (t->has_upper_lower_owner_procs[2]) _fmd_turi_update_ghosts_1d(md, t, 2, ttm->tgp);
-        }
     } /* end of time loop */
 
     if (ttm->Te2_1d != ((fmd_real_t ***)ttm->Te_aux.data)[0][0])
@@ -384,11 +430,18 @@ static void ttm_type2_solve_1d(fmd_t *md, turi_t *t, ttm_t *ttm)
 
 static void init_common_types_1_2(fmd_t *md, ttm_t *ttm, turi_t *t)
 {
-    int inum = _fmd_field_add(md, t, FMD_FIELD_NUMBER, md->timestep, false);
-    int ivcm = _fmd_field_add(md, t, FMD_FIELD_VCM, md->timestep, true);
-    int iTi = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, md->timestep, false);
-    ttm->iTe = _fmd_field_add(md, t, FMD_FIELD_TTM_TE, md->timestep, false);
-    ttm->ixi = _fmd_field_add(md, t, FMD_FIELD_TTM_XI, md->timestep, true);
+    int inum, ivcm;
+
+    if (md->Is_MD_process) {
+        inum = _fmd_field_add(md, t, FMD_FIELD_NUMBER, md->timestep, false, true);
+        ivcm = _fmd_field_add(md, t, FMD_FIELD_VCM, md->timestep, true, true);
+        ttm->ixi = _fmd_field_add(md, t, FMD_FIELD_TTM_XI, md->timestep, true, true);
+    }
+    else {
+        //_fmd_array_3d_create(md, t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Ti_aux);
+    }
+    ttm->iTi = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, md->timestep, false, md->Is_MD_process);
+    ttm->iTe = _fmd_field_add(md, t, FMD_FIELD_TTM_TE, md->timestep, false, md->Is_MD_process);
 
     _fmd_array_3d_create(md, t->tdims_local, sizeof(fmd_real_t), DATATYPE_REAL, &ttm->Te_aux);
 
@@ -399,32 +452,47 @@ static void init_common_types_1_2(fmd_t *md, ttm_t *ttm, turi_t *t)
     {
         ttm->dim = 1;
 
-        ttm->num_1d = ((unsigned ***)t->fields[inum].data.data)[0][0];
-        ttm->vcm_1d = ((fmd_rtuple_t ***)t->fields[ivcm].data.data)[0][0];
-        ttm->Ti_1d = ((fmd_real_t ***)t->fields[iTi].data.data)[0][0];
+        ttm->Ti_1d = ((fmd_real_t ***)t->fields[ttm->iTi].data.data)[0][0];
         ttm->Te_1d = ((fmd_real_t ***)t->fields[ttm->iTe].data.data)[0][0];
         ttm->Te2_1d = ((fmd_real_t ***)ttm->Te_aux.data)[0][0];
-        ttm->xi_1d = ((fmd_real_t ***)t->fields[ttm->ixi].data.data)[0][0];
 
-        ttm->num_1d[0] = ttm->num_1d[t->itc_stop[2]] = 0;
+        if (md->Is_MD_process) {
+            ttm->num_1d = ((unsigned ***)t->fields[inum].data.data)[0][0];
+            ttm->vcm_1d = ((fmd_rtuple_t ***)t->fields[ivcm].data.data)[0][0];
+            ttm->xi_1d = ((fmd_real_t ***)t->fields[ttm->ixi].data.data)[0][0];
+        }
+        else {
+            //ttm->Ti2_1d = ((fmd_real_t ***)ttm->Ti_aux.data)[0][0];
+        }
 
-        ttm->dz2 = t->tcellh[2] * t->tcellh[2];
+        ttm->Te_1d[0] = ttm->Te2_1d[0] = -1.;
+        ttm->Te_1d[t->itc_stop[2]] = ttm->Te2_1d[t->itc_stop[2]] = -1.;
 
-        if (t->ownerscomm.owned_tcells_num == 0)
-            ttm->tgp = NULL;
+        ttm->dz2 = sqrr(t->tcellh[2]);
+
+        if (md->Is_MD_process) {
+            if (t->ownerscomm.owned_tcells_num == 0)
+                ttm->tgp = NULL;
+            else
+                ttm->tgp = m_alloc(md, sizeof(tghost_pack_t));
+        }
         else
-            ttm->tgp = m_alloc(md, sizeof(tghost_pack_t));
+            ttm->tgp = NULL; // TO-DO
     }
     else
     {
         ttm->dim = 3;
 
-        ttm->num = (unsigned ***)t->fields[inum].data.data;
-        ttm->vcm = (fmd_rtuple_t ***)t->fields[ivcm].data.data;
-        ttm->Ti = (fmd_real_t ***)t->fields[iTi].data.data;
+        if (md->Is_MD_process) {
+            ttm->num = (unsigned ***)t->fields[inum].data.data;
+            ttm->vcm = (fmd_rtuple_t ***)t->fields[ivcm].data.data;
+            ttm->xi = (fmd_real_t ***)t->fields[ttm->ixi].data.data;
+        }
+        ttm->Ti = (fmd_real_t ***)t->fields[ttm->iTi].data.data;
         ttm->Te = (fmd_real_t ***)t->fields[ttm->iTe].data.data;
         ttm->Te2 = (fmd_real_t ***)ttm->Te_aux.data;
-        ttm->xi = (fmd_real_t ***)t->fields[ttm->ixi].data.data;
+
+        ttm->tgp = NULL;
     }
 }
 
@@ -434,22 +502,27 @@ static void ttm_init_type1(fmd_t *md, ttm_t *ttm, turi_t *t)
 
     if (ttm->dim == 1)
     {
-        ttm->preupdate_xe_te = ttm_type1_presolve_1d;
-        ttm->update_xe_te = ttm_type1_solve_1d;
+        if (md->Is_MD_process) {
+            ttm->preupdate_ttm = presolve_common_types_1_2;
+            ttm->update_ttm = ttm_type1_solve_1d;
 
-        if (t->ownerscomm.owned_tcells_num > 0)
-        {
-            ttm->tgp->pack._1D = type1_1d_pack;
-            ttm->tgp->unpack._1D = type1_1d_unpack;
-            ttm->tgp->bufsize = type1_1d_calc_tghost_buffsize(md);
-            ttm->tgp->sendbuf = m_alloc(md, ttm->tgp->bufsize);
-            ttm->tgp->recvbuf = m_alloc(md, ttm->tgp->bufsize);
+            if (t->ownerscomm.owned_tcells_num > 0) {
+                ttm->tgp->pack._1D = type1_1d_pack;
+                ttm->tgp->unpack._1D = type1_1d_unpack;
+                ttm->tgp->bufsize = type1_1d_calc_tghost_buffsize(md);
+                ttm->tgp->sendbuf = m_alloc(md, ttm->tgp->bufsize);
+                ttm->tgp->recvbuf = m_alloc(md, ttm->tgp->bufsize);
+            }
+        }
+        else {
+            ttm->preupdate_ttm = NULL;
+            ttm->update_ttm = NULL;
         }
     }
     else
     {
-        ttm->preupdate_xe_te = NULL;
-        ttm->update_xe_te = NULL; /* no 3D preupdater and updater is written */
+        ttm->preupdate_ttm = NULL;
+        ttm->update_ttm = NULL; /* no 3D preupdater and updater is written */
     }
 }
 
@@ -470,16 +543,21 @@ static void ttm_init_type2(fmd_t *md, ttm_t *ttm, turi_t *t)
         ttm->Ce_1d = ((fmd_real_t ***)ttm->Cel.data)[0][0];
         ttm->G_1d = ((fmd_real_t ***)ttm->Geis.data)[0][0];
 
-        ttm->preupdate_xe_te = ttm_type2_presolve_1d;
-        ttm->update_xe_te = ttm_type2_solve_1d;
+        if (md->Is_MD_process) {
+            ttm->preupdate_ttm = presolve_common_types_1_2;
+            ttm->update_ttm = ttm_type2_solve_1d;
 
-        if (t->ownerscomm.owned_tcells_num > 0)
-        {
-            ttm->tgp->pack._1D = type2_1d_pack;
-            ttm->tgp->unpack._1D = type2_1d_unpack;
-            ttm->tgp->bufsize = type2_1d_calc_tghost_buffsize(md);
-            ttm->tgp->sendbuf = m_alloc(md, ttm->tgp->bufsize);
-            ttm->tgp->recvbuf = m_alloc(md, ttm->tgp->bufsize);
+            if (t->ownerscomm.owned_tcells_num > 0) {
+                ttm->tgp->pack._1D = type2_1d_pack;
+                ttm->tgp->unpack._1D = type2_1d_unpack;
+                ttm->tgp->bufsize = type2_1d_calc_tghost_buffsize(md);
+                ttm->tgp->sendbuf = m_alloc(md, ttm->tgp->bufsize);
+                ttm->tgp->recvbuf = m_alloc(md, ttm->tgp->bufsize);
+            }
+        }
+        else {
+            ttm->preupdate_ttm = NULL;
+            ttm->update_ttm = NULL;
         }
     }
     else
@@ -488,8 +566,8 @@ static void ttm_init_type2(fmd_t *md, ttm_t *ttm, turi_t *t)
         ttm->Ce = (fmd_real_t ***)ttm->Cel.data;
         ttm->Gei = (fmd_real_t ***)ttm->Geis.data;
 
-        ttm->preupdate_xe_te = NULL;
-        ttm->update_xe_te = NULL; /* no 3D preupdater and updater is written */
+        ttm->preupdate_ttm = NULL;
+        ttm->update_ttm = NULL; /* no 3D preupdater and updater is written */
     }
 }
 
@@ -518,9 +596,10 @@ ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t)
     return ttm;
 }
 
-void _fmd_ttm_destruct(turi_t *t)
+void _fmd_ttm_destruct(fmd_t *md, turi_t *t)
 {
     _fmd_array_3d_free(&t->ttm->Te_aux);
+    //if (!md->Is_MD_process) _fmd_array_3d_free(&t->ttm->Ti_aux);
 
     if (t->cat == FMD_TURI_TTM_TYPE2)
     {
@@ -735,7 +814,7 @@ void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_ttm_coupling_factor_con
     _fmd_ttm_setCouplingFactor_constant1(md, g.value);
 }
 
-void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te)
+void fmd_ttm_setTemperature(fmd_t *md, fmd_real_t T)
 {
     turi_t *t = md->ttmturi;
 
@@ -749,8 +828,16 @@ void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te)
 
     fmd_ituple_t itc;
 
-    LOOP3D(itc, t->itc_start, t->itc_stop)
-        ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = Te;
+    if (md->Is_MD_process) {
+        LOOP3D(itc, t->itc_start, t->itc_stop)
+            ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = T;
+    }
+    else {
+        LOOP3D(itc, t->itc_start, t->itc_stop) {
+            ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTe].data.data, itc) = T;
+            ARRAY_ELEMENT((fmd_real_t ***)t->fields[ttm->iTi].data.data, itc) = T;
+        }
+    }
 }
 
 void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio)
@@ -814,21 +901,35 @@ void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_ttm_laser_gaussian_t laser)
     ttm->laser_factor_constant = I0 * (1 - R) / Lp;
 }
 
-void fmd_ttm_useExtendedMode(fmd_t *md)
+void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz, fmd_real_t Cl)
 {
-    md->ttm_extended = true;
-}
+    if (md->extd_comm != MPI_COMM_NULL) {
+        _fmd_error_wrong_call_order(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+          (fmd_string_t)__func__, "fmd_box_setSubdomains");
 
-void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz)
-{
-    turi_t *t = md->ttmturi;
-
-    if (t == NULL)
-    {
-        _fmd_error_no_ttm_turi(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
         return;
     }
 
-    t->ttm->dimz_ext = dimz;
-    md->lext = length;
+    if (length <= 0.0) {
+        _fmd_error_outside_real_interval(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                         "value of length", length, "of positive real numbers");
+        return;
+    }
+
+    if (dimz <= 0) {
+        _fmd_error_outside_int_set(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                   "value of dimz", dimz, "of positive integer numbers");
+        return;
+    }
+
+    if (Cl <= 0.0) {
+        _fmd_error_outside_real_interval(md, false, __FILE__, (fmd_string_t)__func__, __LINE__,
+                                         "value of lattice heat capacity", Cl, "of positive real numbers");
+        return;
+    }
+
+    md->ttm_extd = re_alloc(md, md->ttm_extd, sizeof(ttm_extended_params_t));
+    md->ttm_extd->dimz_extd = dimz;
+    md->ttm_extd->lext = length;
+    md->ttm_extd->Cl = Cl * JOULE_PER_METER3_KELVIN;
 }

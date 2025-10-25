@@ -168,7 +168,7 @@ void _fmd_clean_vaream(fmd_t *md)
         if (irho >= eam->Nrho - 1)                                                                \
             _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,\
                                              "electron density", rho_host,                        \
-                                             "related to EAM potential");                         \
+                                             "defined by the EAM potential");                         \
         int irho_h = irho + 1;                                                                    \
         fmd_real_t *F = el->F;                                                                    \
         fmd_real_t *F_DD = el->F_DD;                                                              \
@@ -189,7 +189,7 @@ void _fmd_clean_vaream(fmd_t *md)
         if (irho >= eam->Nrho - 1)                                                                \
             _fmd_error_outside_real_interval(md, true, __FILE__, (fmd_string_t)__func__, __LINE__,\
                                              "electron density", rho_host,                        \
-                                             "related to EAM potential");                         \
+                                             "defined by the EAM potential");                         \
         int irho_h = irho + 1;                                                                    \
         fmd_real_t *F = el->F;                                                                    \
         c1->vaream[i1] = (F[irho_h] - F[irho]) / h;                                               \

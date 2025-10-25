@@ -29,8 +29,8 @@ typedef struct _fmd fmd_t;
 typedef struct _ttm ttm_t;
 typedef struct _tghost_pack tghost_pack_t;
 
-typedef void (*xi_te_preupdater_t)(fmd_t *md, turi_t *t, ttm_t *ttm);
-typedef void (*xi_te_updater_t)(fmd_t *md, turi_t *t, ttm_t *ttm);
+typedef void (*ttm_preupdater_t)(fmd_t *md, turi_t *t, ttm_t *ttm);
+typedef void (*ttm_updater_t)(fmd_t *md, turi_t *t, ttm_t *ttm);
 
 typedef struct
 {
@@ -55,12 +55,13 @@ typedef struct _ttm
     fmd_real_t *Gt;             /* used when electron-ion coupling factor is tabulated */
     fmd_real_t *G_DD;           /* used when electron-ion coupling factor is tabulated */
     fmd_array3s_t Te_aux;
+    //fmd_array3s_t Ti_aux;
     fmd_array3s_t Kel;          /* electron heat conductivity, used when Ke changes with position */
     fmd_array3s_t Cel;          /* electron heat capacity, used when Ce changes with position */
     fmd_array3s_t Geis;         /* electron-ion coupling factor, used when G changes with position */
     int iTe;                    /* index of the field for electron temperature */
+    int iTi;                    /* index of the field for ion temperature */
     int ixi;                    /* index of the field for xi */
-    int dimz_ext;               /* the dimension of the extended part of the TTM turi in z direction */
     unsigned ***num;
     fmd_rtuple_t ***vcm;
     fmd_real_t ***Ti;
@@ -73,6 +74,7 @@ typedef struct _ttm
     unsigned *num_1d;
     fmd_rtuple_t *vcm_1d;
     fmd_real_t *Ti_1d;
+    //fmd_real_t *Ti2_1d;
     fmd_real_t *Te_1d;
     fmd_real_t *Te2_1d;
     fmd_real_t *xi_1d;
@@ -85,8 +87,8 @@ typedef struct _ttm
     unsigned initial_atoms_num;
     unsigned min_atoms_num;     /* ttm-cells with fewer atoms than this are deactivated */
     fmd_real_t dz2;             /* delta_z^2 -- for 1D case */
-    xi_te_preupdater_t preupdate_xe_te;
-    xi_te_updater_t update_xe_te;
+    ttm_preupdater_t preupdate_ttm;
+    ttm_updater_t update_ttm;
     tghost_pack_t *tgp;
     fmd_real_t laser_factor_constant;
     fmd_real_t laser_m_absdepth_inv;  /* -1 x inverse of absorption depth */
@@ -95,8 +97,15 @@ typedef struct _ttm
     fmd_real_t laser_tdiff;
 } ttm_t;
 
+typedef struct _ttm_extended_params
+{
+    fmd_real_t Cl;              /* lattice heat capacity */
+    fmd_real_t lext;            /* length of extended region */
+    int dimz_extd;              /* dimension of the extended region discretization in z direction */
+} ttm_extended_params_t;
+
 ttm_t *_fmd_ttm_construct(fmd_t *md, turi_t *t);
-void _fmd_ttm_destruct(turi_t *t);
+void _fmd_ttm_destruct(fmd_t *md, turi_t *t);
 void _fmd_ttm_getReady(fmd_t *md);
 
 #endif /* TTM_H */

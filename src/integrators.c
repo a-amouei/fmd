@@ -286,6 +286,8 @@ static void create_force_arrays_of_cells(fmd_t *md)
 
 void fmd_dync_integrate(fmd_t *md, int GroupID, fmd_real_t duration, fmd_real_t timestep)
 {
+    if (!md->Is_MD_process) return;
+
     if (!md->ParticlesDistributed) _fmd_matt_distribute(md);
     _fmd_pot_update_and_process_potcats(md);
     create_force_arrays_of_cells(md);

@@ -90,6 +90,7 @@ typedef enum
     FMD_ERR_UNABLE_ALLOCATE_MEM,
     FMD_ERR_FILE_CORRUPTED,
     FMD_ERR_OUTSIDE_REAL_INTERVAL,
+    FMD_ERR_OUTSIDE_INT_SET,
     FMD_ERR_UNACCEPTABLE_INT_VALUE,
     FMD_ERR_UNSUCCESSFUL_HDF5,
     FMD_ERR_FUNCTION_FAILED,
@@ -97,7 +98,8 @@ typedef enum
     FMD_ERR_UNPREPARED,
     FMD_ERR_WRONG_POTENTIAL,
     FMD_ERR_NO_TTM_TURI,
-    FMD_ERR_TTM_TURI_ALREADY_EXISTS
+    FMD_ERR_TTM_TURI_ALREADY_EXISTS,
+    FMD_ERR_WRONG_CALL_ORDER
 } fmd_error_t;
 
 typedef struct
@@ -234,12 +236,11 @@ void _fmd_ttm_setHeatConductivity_zhigilei(fmd_t *md, fmd_ttm_heat_conductivity_
 void _fmd_ttm_setCouplingFactor_constant1(fmd_t *md, fmd_real_t g);
 void _fmd_ttm_setCouplingFactor_constant2(fmd_t *md, fmd_ttm_coupling_factor_constant_t g);
 void _fmd_ttm_setCouplingFactor_file(fmd_t *md, fmd_string_t path);
-void fmd_ttm_setElectronTemperature(fmd_t *md, fmd_real_t Te);
+void fmd_ttm_setTemperature(fmd_t *md, fmd_real_t T);
 void fmd_ttm_setTimestepRatio(fmd_t *md, int ratio);
 void fmd_ttm_setCellActivationFraction(fmd_t *md, fmd_real_t value);
 void _fmd_ttm_setLaserSource_gaussian(fmd_t *md, fmd_ttm_laser_gaussian_t laser);
-void fmd_ttm_useExtendedMode(fmd_t *md);
-void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz);
+void fmd_ttm_setExtendedRegion(fmd_t *md, fmd_real_t length, int dimz, fmd_real_t Cl);
 
 #define fmd_ttm_setHeatCapacity(md, c) \
   _Generic((c), fmd_ttm_heat_capacity_linear_t: _fmd_ttm_setHeatCapacity_linear, \

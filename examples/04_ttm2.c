@@ -147,7 +147,7 @@ int main()
 
     fmd_ttm_setCouplingFactor(md, "data/G_Cu.dat");
 
-    fmd_ttm_setElectronTemperature(md, 303.0);
+    fmd_ttm_setTemperature(md, 303.0);
 
     fmd_ttm_setTimestepRatio(md, 200);
 

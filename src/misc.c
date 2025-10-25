@@ -114,7 +114,7 @@ static void identifyProcess(fmd_t *md)
     int mdnum = md->ns[0] * md->ns[1] * md->ns[2];
     bool error = false;
 
-    if (md->ttm_extended) {
+    if (md->ttm_extd != NULL) {  /* extended mome */
         if (mdnum+1 != md->world_numprocs) error = true;
     }
     else {
@@ -539,16 +539,13 @@ fmd_t *fmd_create()
     }
 
     md->numthreads = 1;
-
     MPI_Comm_size(MPI_COMM_WORLD, &(md->world_numprocs));
     MPI_Comm_rank(MPI_COMM_WORLD, &(md->world_rank));
     md->MD_comm = md->extd_comm = MPI_COMM_NULL;
     md->time = 0.0;
     md->time_iteration = 0;
-
-    md->SaveDirectory = m_alloc(md, 1);
-    md->SaveDirectory[0] = '\0';
-
+    md->SaveDirectory = _fmd_str_dup_m(md, "");
+    md->ttm_extd = NULL;
     md->subd.grid = NULL;
     md->TotalNoOfParticles = 0;
     md->ActiveGroup = FMD_GROUP_ALL;             /* all groups are active by default */
@@ -564,7 +561,6 @@ fmd_t *fmd_create()
     md->turies = NULL;
     md->turies_num = 0;
     md->ttmturi = NULL;
-    md->ttm_extended = false;
     md->SaveConfigMode = FMD_SCM_XYZ_ATOMSNUM;
     fmd_proc_setCellIncrement(md, 3);
     md->_OldNumberOfParticles = -1;
@@ -642,6 +638,7 @@ void fmd_io_printf(fmd_t *md, const fmd_string_t restrict format, ...)
 void fmd_free(fmd_t *md)
 {
     free(md->SaveDirectory);
+    free(md->ttm_extd);
     _fmd_subd_free(md);
     _fmd_potsys_free(md);
     fmd_timer_free(md);

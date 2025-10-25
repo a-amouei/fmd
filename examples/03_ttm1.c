@@ -144,7 +144,7 @@ int main()
 
     fmd_ttm_setCouplingFactor(md, 1e17);
 
-    fmd_ttm_setElectronTemperature(md, 300.0);
+    fmd_ttm_setTemperature(md, 300.0);
 
     fmd_ttm_setTimestepRatio(md, 200);
 

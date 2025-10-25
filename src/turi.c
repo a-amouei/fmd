@@ -645,15 +645,80 @@ static void init_rank_of_lower_upper_owner(fmd_t *md, turi_t *t)
     }
 }
 
-fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz, fmd_real_t starttime, fmd_real_t stoptime)
+/* to prevent memory leak, review turi_free() when this function is modified */
+static fmd_handle_t add_ttmturi_to_extended_proc(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz,
+                                                 fmd_real_t starttime, fmd_real_t stoptime)
 {
-    if (md->subd.grid == NULL) _fmd_subd_init(md);
+    int ti = md->turies_num;
 
-    if ((md->ttmturi != NULL) && (cat == FMD_TURI_TTM_TYPE1 || cat == FMD_TURI_TTM_TYPE2))
-    {
-        _fmd_error_ttm_turi_already_exists(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
-        return -1;
+    md->turies = (turi_t *)re_alloc(md, md->turies, (ti+1) * sizeof(turi_t));
+
+    turi_t *t = &md->turies[ti];
+
+    t->turi_index = ti;
+
+    t->tdims_global[0] = dimx;
+    t->tdims_global[1] = dimy;
+    t->tdims_global[2] = md->ttm_extd->dimz_extd;
+
+    t->starttime = starttime;
+    t->stoptime = stoptime;
+
+    t->tcells_global_num = dimx * dimy * md->ttm_extd->dimz_extd;
+
+    t->itc_start[0] = t->itc_start[1] = 0;
+    t->itc_start[2] = 1;
+
+    t->tcellh[0] = md->l[0] / dimx;
+    t->tcellh[1] = md->l[1] / dimy;
+    t->tcellh[2] = md->ttm_extd->lext / md->ttm_extd->dimz_extd;
+
+    for (int d=0; d<DIM; d++) {
+        t->itc_start_global[d] = 0;
+        t->itc_start_owned[d] = t->itc_start[d];
+        t->itc_stop_global[d] = t->tdims_global[d];
+        t->tdims_local_nonmarg[d] = t->itc_stop_global[d] - t->itc_start_global[d];
+        t->itc_stop[d] = t->itc_start[d] + t->tdims_local_nonmarg[d];
+        t->tdims_local[d] = t->itc_start[d] + t->itc_stop[d];
+        t->itc_glob_to_loc[d] = -t->itc_start_global[d] + t->itc_start[d];
     }
+
+    t->tcell_volume = t->tcellh[0] * t->tcellh[1] * t->tcellh[2];
+
+    t->cat = cat;
+
+    t->ttm = NULL;
+    t->fields = NULL;
+    t->fields_num = 0;
+
+    md->turies_num++;
+
+    t->comms_num = 0;
+    t->comms = NULL;
+
+    t->ttm = _fmd_ttm_construct(md, t);
+    md->ttmturi = t;
+
+    return ti;
+}
+
+fmd_handle_t fmd_turi_add(fmd_t *md, fmd_turi_t cat, int dimx, int dimy, int dimz,
+                          fmd_real_t starttime, fmd_real_t stoptime)
+{
+    if (cat == FMD_TURI_TTM_TYPE1 || cat == FMD_TURI_TTM_TYPE2) {
+        if (md->ttmturi != NULL) {
+            _fmd_error_ttm_turi_already_exists(md, false, __FILE__, (fmd_string_t)__func__, __LINE__);
+            return -1;
+        }
+
+        if (!md->Is_MD_process)
+            return add_ttmturi_to_extended_proc(md, cat, dimx, dimy, dimz, starttime, stoptime);
+    }
+    else {
+        if (!md->Is_MD_process) return -1;
+    }
+
+    if (md->subd.grid == NULL) _fmd_subd_init(md);
 
     int ti = md->turies_num;
 
@@ -1355,12 +1420,12 @@ static void update_field_ttm_Te_and_xi(fmd_t *md, field_t *f, turi_t *t)
 
     if (t->ownerscomm.owned_tcells_num > 0)
     {
-        ttm->preupdate_xe_te(md, t, ttm);
+        ttm->preupdate_ttm(md, t, ttm);
 
         if (md->EventHandler != NULL)
             _fmd_field_call_update_event_handler(md, fTe->field_index, t->turi_index);
 
-        ttm->update_xe_te(md, t, ttm);
+        ttm->update_ttm(md, t, ttm);
     }
     else
     {
@@ -1423,38 +1488,39 @@ static void field_intervals_add(fmd_t *md, field_t *f, fmd_real_t interval, bool
 
 /* when a field is updated and allhave is equal to false, in the current subdomain
    the field is only updated in those turi-cells which are "owned" by the current subdomain. */
-int _fmd_field_add(fmd_t *md, turi_t *t, fmd_field_t cat, fmd_real_t interval, bool allhave)
+int _fmd_field_add(fmd_t *md, turi_t *t, fmd_field_t cat, fmd_real_t interval, bool allhave, bool addep)
 {
     int i;
     field_t *f;
     unsigned dep1, dep2;
 
     /* add dependency fields */
-    switch (cat)
-    {
-        case FMD_FIELD_TEMPERATURE:
-            dep1 = _fmd_field_add(md, t, FMD_FIELD_NUMBER, interval, allhave);
-            dep2 = _fmd_field_add(md, t, FMD_FIELD_VCM, interval, true);
-            break;
+    if (addep) {
+        switch (cat) {
+            case FMD_FIELD_TEMPERATURE:
+                dep1 = _fmd_field_add(md, t, FMD_FIELD_NUMBER, interval, allhave, addep);
+                dep2 = _fmd_field_add(md, t, FMD_FIELD_VCM, interval, true, addep);
+                break;
 
-        case FMD_FIELD_VCM:
-            dep1 = _fmd_field_add(md, t, FMD_FIELD_MASS, interval, allhave);
-            break;
+            case FMD_FIELD_VCM:
+                dep1 = _fmd_field_add(md, t, FMD_FIELD_MASS, interval, allhave, addep);
+                break;
 
-        case FMD_FIELD_NUMBER_DENSITY:
-            dep1 = _fmd_field_add(md, t, FMD_FIELD_NUMBER, interval, allhave);
-            break;
+            case FMD_FIELD_NUMBER_DENSITY:
+                dep1 = _fmd_field_add(md, t, FMD_FIELD_NUMBER, interval, allhave, addep);
+                break;
 
-        case FMD_FIELD_TTM_TE:
-            dep1 = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, interval, false);
-            break;
+            case FMD_FIELD_TTM_TE:
+                dep1 = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, interval, false, addep);
+                break;
 
-        case FMD_FIELD_TTM_XI:
-            dep1 = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, interval, false);
-            break;
+            case FMD_FIELD_TTM_XI:
+                dep1 = _fmd_field_add(md, t, FMD_FIELD_TEMPERATURE, interval, false, addep);
+                break;
 
-        default:
-            ;
+            default:
+                ;
+        }
     }
 
     /* check if this field is already added */
@@ -1475,23 +1541,24 @@ int _fmd_field_add(fmd_t *md, turi_t *t, fmd_field_t cat, fmd_real_t interval, b
         f->intervals = NULL;
         f->intervals_num = 0;
         t->fields_num++;
+        f->dependcs_num = 0;
 
-        if (cat == FMD_FIELD_TEMPERATURE)
-        {
-            f->dependcs_num = 2;
-            f->dependcs = m_alloc(md, f->dependcs_num * sizeof(unsigned));
-            f->dependcs[0] = dep1;
-            f->dependcs[1] = dep2;
+        if (addep) {
+            if (cat == FMD_FIELD_TEMPERATURE)
+            {
+                f->dependcs_num = 2;
+                f->dependcs = m_alloc(md, f->dependcs_num * sizeof(unsigned));
+                f->dependcs[0] = dep1;
+                f->dependcs[1] = dep2;
+            }
+            else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY || cat == FMD_FIELD_TTM_TE ||
+                     cat == FMD_FIELD_TTM_XI)
+            {
+                f->dependcs_num = 1;
+                f->dependcs = m_alloc(md, sizeof(unsigned));
+                f->dependcs[0] = dep1;
+            }
         }
-        else if (cat == FMD_FIELD_VCM || cat == FMD_FIELD_NUMBER_DENSITY || cat == FMD_FIELD_TTM_TE ||
-                 cat == FMD_FIELD_TTM_XI)
-        {
-            f->dependcs_num = 1;
-            f->dependcs = m_alloc(md, sizeof(unsigned));
-            f->dependcs[0] = dep1;
-        }
-        else
-            f->dependcs_num = 0;
 
         set_field_data_el_size_and_type(md, f);
 
@@ -1509,7 +1576,7 @@ int _fmd_field_add(fmd_t *md, turi_t *t, fmd_field_t cat, fmd_real_t interval, b
 
 fmd_handle_t fmd_field_add(fmd_t *md, fmd_handle_t turi, fmd_field_t cat, fmd_real_t interval)
 {
-    return _fmd_field_add(md, &md->turies[turi], cat, interval, false);
+    return _fmd_field_add(md, &md->turies[turi], cat, interval, false, true);
 }
 
 static void update_field_TRUE_TRUE_TRUE(fmd_t *md, field_t *f, turi_t *t, bool allhave)
@@ -1835,9 +1902,9 @@ static void turi_free(fmd_t *md, turi_t *t)
 
     free(t->comms);
 
-    if (t->ttm != NULL) _fmd_ttm_destruct(t);
+    if (t->ttm != NULL) _fmd_ttm_destruct(md, t);
 
-    turi_ownerscomm_free(md, &t->ownerscomm);
+    if (md->Is_MD_process) turi_ownerscomm_free(md, &t->ownerscomm);
 }
 
 void fmd_turi_free(fmd_t *md)
@@ -1854,6 +1921,8 @@ void fmd_turi_free(fmd_t *md)
 /* negative returned value means the field doesn't exist */
 fmd_handle_t fmd_field_find(fmd_t *md, fmd_handle_t turi, fmd_field_t cat)
 {
+    if (turi < 0 || turi >= md->turies_num) return -1;
+
     turi_t *t = &md->turies[turi];
 
     for (unsigned u=0; u < t->fields_num; u++)

@@ -30,6 +30,7 @@ typedef enum
     FMD_ERR_UNABLE_ALLOCATE_MEM,
     FMD_ERR_FILE_CORRUPTED,
     FMD_ERR_OUTSIDE_REAL_INTERVAL,
+    FMD_ERR_OUTSIDE_INT_SET,
     FMD_ERR_UNACCEPTABLE_INT_VALUE,
     FMD_ERR_UNSUCCESSFUL_HDF5,
     FMD_ERR_FUNCTION_FAILED,
@@ -37,7 +38,8 @@ typedef enum
     FMD_ERR_UNPREPARED,
     FMD_ERR_WRONG_POTENTIAL,
     FMD_ERR_NO_TTM_TURI,
-    FMD_ERR_TTM_TURI_ALREADY_EXISTS
+    FMD_ERR_TTM_TURI_ALREADY_EXISTS,
+    FMD_ERR_WRONG_CALL_ORDER
 } fmd_error_t;
 
 typedef struct _fmd fmd_t;
@@ -51,6 +53,10 @@ void _fmd_error_unexpected_position(fmd_t *md, bool major, fmd_string_t source,
 void _fmd_error_outside_real_interval(fmd_t *md, bool major, fmd_string_t source,
                                       fmd_string_t func, int line, fmd_string_t qname,
                                       fmd_real_t val, fmd_string_t intvname);
+
+void _fmd_error_outside_int_set(fmd_t *md, bool major, fmd_string_t source,
+                                fmd_string_t func, int line, fmd_string_t qname,
+                                int val, fmd_string_t setdesc);
 
 void _fmd_error_unacceptable_int_value(fmd_t *md, bool major, fmd_string_t source,
                                        fmd_string_t func, int line, fmd_string_t qname,
@@ -84,5 +90,9 @@ void _fmd_error_no_ttm_turi(fmd_t *md, bool major, fmd_string_t source,
 
 void _fmd_error_ttm_turi_already_exists(fmd_t *md, bool major, fmd_string_t source,
                                         fmd_string_t func, int line);
+
+void _fmd_error_wrong_call_order(fmd_t *md, bool major, fmd_string_t source,
+                                 fmd_string_t func, int line, fmd_string_t func1,
+                                 fmd_string_t func2);
 
 #endif /* ERROR_H */
